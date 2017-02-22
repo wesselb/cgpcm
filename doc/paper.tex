@@ -309,20 +309,20 @@ Assume that the circuit is critically damped and that $R=2$ and $L=1$. Then $f(t
 
 {\color{red} Experiment.}
 
-\subsection{Fricative Consonant}
+\subsection{Unvoiced Fricatives}
+Unvoiced fricatives are consonants produced by forcing air through a narrow constriction in the vocal tract, thereby creating a noisy, turbulant sound \cite{Taylor:2009:Text-To-Speech_Synthesis}.
+
 {\color{red} Experiment.}
 
 \subsection{Head-Related Transfer Function}
+A head-related transfer function (HRTF) is a transfer function that describes how an ear receives sound from a certain point in space.
+
 {\color{red} Experiment.}
 
 \section{Discussion}
-\begin{itemize}
-    \item Discussion from \cite{Tobar:2015:Learning_Stationary,Tobar:2015:Inter-Domain_Inducing}
-    \item Improved interdomain transformation
-    \item HCM to improve sampling
-    \item Bayesian inference over the parameters
-    \item Improved model solving
-\end{itemize}
+We have presented the CGPCM as a model for causally-generated stationary time series. Inference is performed by finding an initial approximation through a variational mean-field approach, and then refining this approximation through a variational structured mean-field approach combined with elliptical slice sampling. The GPCM has been validated {\color{red} discussion of results of experiments here.}
+
+In future research on the CGPCM, various directions can be explored: First, the model could be extented to multidimensional input and output spaces by following a construction similar to that by \citet{Bruinsma:2016:GGPCM}. Second, the application of more efficient sparse approximation for $h$ and $x$, such as the tree-structured approximation \cite{Bui:2014:Tree-Structured_Gaussian}, would scale the CGPCM to larger data sets. Third, to deal with signals that are band-limited, but not necessarily baseband, the use of an harmonic interdomain transformation \cite{Tobar:2015:Inter-Domain_Inducing} and an harmonic extension of the causal interdomain transformation could be explored. Fourth, in the low noise case, ESS has a hard time exploring $q(u)$; therefore, in that case, afternative sampling algorithms such as Hamiltonian Monte-Carlo \cite{Neal:2012:MCMC_Using_Hamiltonian_Dynamics} could be used. Finally, using an approach similar to that by \citet{Lazaro-Gredilla:2013:Variational_Inference_for_Mahalanobis_Distance}, Bayesian inference in the hyperparameters could be attempted.
 
 \appendix
 \section{Moments of $f\cond u, h$}
