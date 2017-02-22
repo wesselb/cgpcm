@@ -1,0 +1,452 @@
+\documentclass{article}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+\usepackage{hyperref}
+
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{cleveref}
+\usepackage{cancel}
+
+% Break in equations...
+% \allowdisplaybreaks
+
+% Commonly used sets
+\newcommand{\Z}{\mathbb{Z}}   % Integers
+\newcommand{\R}{\mathbb{R}}   % Real numbers
+\newcommand{\N}{\mathbb{N}}   % Natural numbers
+
+% Symbols
+\newcommand{\es}{\varnothing}  % Empty set
+\newcommand{\e}{\varepsilon}   % Epsilon
+\newcommand{\sub}{\subseteq}   % Subset
+\renewcommand{\d}{\partial}    % Partial
+\renewcommand{\th}{\theta}     % Theta
+\renewcommand{\O}{\mathcal{O}} % Landau's symbol
+
+% Operators
+\renewcommand{\Re}{\operatorname{Re}}
+\renewcommand{\Im}{\operatorname{Im}}
+\renewcommand{\max}{\operatorname{max}}
+\newcommand{\argmax}{\operatorname{argmax}}
+\newcommand{\argmin}{\operatorname{argmin}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\sign}{\operatorname{sign}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\card}{\#}
+\newcommand{\comp}{\circ}
+\newcommand{\had}{\circ}
+\newcommand{\chol}{\operatorname{chol}}
+\newcommand{\ind}{1}
+\newcommand{\KL}{\operatorname{D}_{\text{KL}}}
+
+% Special math commands
+\renewcommand{\ss}[1]{_\mathit{#1}}       % Subscripts without spacing
+\newcommand{\id}[1]{\, \mathrm{d} #1}     % Straight 'd' in integral
+\newcommand{\sce}{\text{\sc{e}}}          % Scientific notation
+\newcommand{\cond}{\, | \,}               % Conditioning
+\renewcommand{\ll}{\left}
+\newcommand{\rr}{\right}
+\newcommand{\la}{\langle}
+\newcommand{\ra}{\rangle}
+\newcommand{\phan}[1]{\hphantom{#1\;}}
+
+% Cref
+\newtheorem{model}{Model}
+\crefname{model}{model}{models}
+\Crefname{model}{Model}{Models}
+\crefname{equation}{equation}{equations}
+\Crefname{equation}{Equation}{Equations}
+
+\usepackage[accepted]{icml2017}  % option: accepted
+\icmltitlerunning{Learning Causally-Generated Stationary Time Series}
+
+\begin{document}
+\twocolumn[
+    \icmltitle{Learning Causally-Generated Stationary Time Series}
+    \icmlsetsymbol{equal}{*}
+    \begin{icmlauthorlist}
+    \icmlauthor{Wessel P.\ Bruinsma}{invenia}
+    \icmlauthor{Rich E.\ Turner}{cam}
+    \end{icmlauthorlist}
+    \icmlaffiliation{cam}{University of Cambridge, Cambridge, United Kingdom}
+    \icmlaffiliation{invenia}{Invenia Labs Limited, Cambridge, United Kingdom}
+    \icmlcorrespondingauthor{Wessel Bruinsma}{wessel.bruinsma@invenialabs.co.uk}
+    \icmlkeywords{ICML, machine learning, probabilistic modelling, approximate inference, Gaussian process, causality}
+    \vskip 0.3in
+]
+\printAffiliationsAndNotice{}
+% \printAffiliationsAndNotice{\icmlEqualContribution}
+% \footnotetext{hi}
+
+
+% A table:
+% \begin{table}[t]
+%     \caption{Classification accuracies for naive Bayes and flexible
+%     Bayes on various data sets.}
+%     \label{sample-table}
+%     \vskip 0.15in
+%     \centering
+%     \begin{small},
+%         \begin{sc}
+%             \begin{tabular}{ll}
+%             \hline
+%             \abovespace\belowspace
+%             Name & Filter \\
+%             \hline
+%             \abovespace
+%             a & a \\
+%             \belowspace
+%             a & a \\
+%             \hline
+%             \end{tabular}
+%         \end{sc}
+%     \end{small}
+%     \vskip -0.1in
+% \end{table}
+
+\begin{abstract}
+We investigate the notion of causality in modelling stationary time series. Extending on the work by \citet{Tobar:2015:Learning_Stationary}, we present the Causal Gaussian Process Convolution Model (CGPCM). The CGPCM models the kernel of a Gaussian process nonparametrically and has an inductive bias towards causally-generated time series. We develop an algorithm to perform inference and apply the CGPCM to tasks involving real-world data.
+\end{abstract}
+
+\section{Introduction}
+Classically, nature is considered to be \textit{causal}, meaning that at any point in time the output of any realisable system can only depend on past values of the input. We should aim to include this inductive bias---\textit{causality}---in modelling dynamical phenomena, since that would exclude any unrealisable system from the model prior.
+
+A widely-used model for a stationary time series $f:\R \to \R$ is the Gaussian process, which constructs a prior over functions by assuming that any finite collection of function values $f(t_1),\ldots,f(t_n)$ is multivariate-Gaussian distributed. An important modelling decision in using a Gaussian process is the choice of covariance   $k_f(t,t')$ between any two function values $f(t)$ and $f(t')$---$k_f$ is also called the \textit{kernel} of $f$. This choice of kernel entirely\footnote{The mean of any function value is without loss of generality assumed to be zero. \cite{Rasmussen:2006:Gaussian_Processes}} determines the nature of $f$. Hence much work has been done in developing flexible kernels \cite{Duvenaud:2014:Automatic_Construction,Wilson:2013:Spectral_Mixture,Tobar:2015:Learning_Stationary,Tobar:2015:Inter-Domain_Inducing}; most notably, \citet{Tobar:2015:Learning_Stationary} present the Gaussian Process Convolution Model (GPCM), which parametrises the kernel with \textit{another} Gaussian process.
+
+In this paper we revisit the GPCM and bias it towards signals generated by causal systems---\textit{causally-generated signals}---whilst retaining the flexibility of modelling the kernel nonparametrically. We then investigate a number of properties, develop an algorithm to perform inference, and finally apply it to tasks involving real-world data.
+
+\section{Modelling Causally-Generated Stationary Time Series}
+Consider modelling the stationary time series $f$. Since many dynamical systems in nature can accurately be described by an initial value problem or a linear system, we let $f$ be the solution of a time-invariant linear initial value problem with causal Green's function $h$ and forcing function $x$, or equivalently the system response of a time-invariant linear system with causal impulse response $h$ and excitation $x$. It then holds that
+\begin{align} \label{eq:model}
+    f(t) = \int^t h(t- \tau)x(\tau)\id{\tau}.
+\end{align}
+We denote integration from negative infinity or to positive infinity by respectively omitting the lower or upper limit of the integral.
+Note that $f(t)$ depends on $x(\tau)$ only for $\tau \le t$; this reveals \cref{eq:model}'s causal nature.
+
+In this paper we consider the case that $x$ is white noise; that is, informally denoted, $x \sim \mathcal{GP}(0,\delta(t-t'))$ where $\delta$ denotes the Dirac delta function. In that case \cref{eq:model} can be interpreted as a Gaussian process with zero mean and kernel
+\begin{align}
+    &k_{f\cond h}(t,t')\nonumber \\
+    &\quad= \int^t h(t- \tau)\int^{t'}h(t'- \tau')
+        \mathbb{E}[ x(\tau) x(\tau')]\id{\tau'} \id{\tau} \nonumber \\
+    &\quad= \int^{t \land t'} h(t - \tau) h(t' - \tau) \id{\tau} \nonumber \\
+    &\quad= \int_0 h(|t - t'| + \tau)h(\tau) \id{\tau} \label{eq:kernel} \\
+    &\quad= k_{f\cond h}(t-t') \nonumber
+\end{align}
+where $t \land t'$ denotes the minimum of $t$ and $t'$. Alternatively, \cref{eq:model} can in that case be interpreted as the continuous-time generalisation of a causal moving-average filter.
+
+Since $h$ consitutes an unknown function, we choose to model it using a Gaussian process; that is, we let $h \sim \mathcal{GP}(0,k_h(t,t'))$. In choosing $k_h(t,t')$, we require that $f$ has finite power, since every real-world signal has so as well. This can be achieved by letting $h$ decay to zero at infinity sufficiently quickly \cite{Tobar:2015:Learning_Stationary}: let $h\cond g = w g$ where $w(t)= \exp(- \alpha t^2)$ and $g \sim \mathcal{GP}(0,k_g(t-t'))$ has finite power; in that case,
+\begin{align*}
+    \mathbb{V}[f(t)]
+    &= \int_{0}\exp(-2 \alpha t^2)\mathbb{V}[g(\tau)]\id{\tau} \\
+    &\le k_g(0) \int_0 \exp(- 2 \alpha t^2) \id{\tau} < \infty,
+\end{align*}
+which could be infinite otherwise.
+Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated square. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines $k_f$'s length scale and $\gamma$ its flexibility.
+
+Through specifying a prior on $x$ and a prior on $h$ we have specified a prior on $f$. Further including a scale $\sigma_f$ to control $f$'s prior power, we call this prior on $f$ the Causal Gaussian Process Convolution Model (CGPCM). To recapitulate, the CGPCM is formulated as follows:
+
+\begin{model}[CGCPM (First Formulation)] \label{mod:cgpcm}
+    \begin{align*}
+        x &\sim \mathcal{GP}(0,\delta(t-t')), \\
+        h &\sim \mathcal{GP}(0, k_h(t,t')), \\
+        f\cond h, x &= \sigma_f \int^t h(t- \tau)x(\tau)\id{\tau}.
+    \end{align*}
+\end{model}
+\begin{model}[CGPCM (Second Formulation)] \label{mod:cgpcm2}
+    \begin{align*}
+        h &\sim \mathcal{GP}(0, k_h(t,t')), \\
+        f \cond h &\sim \mathcal{GP}(0,  \sigma_f^2\int_0 h(|t-t'|+\tau)h(\tau)\id{\tau}).
+    \end{align*}
+\end{model}
+
+\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$.
+
+The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:Latent_Force_Models}: whereas we let $h$ be free-form and let $x$ be white noise, \citet{Alvarez:2009:Latent_Force_Models} specify $h$ deterministically and let $x$ be free-form.
+
+\subsection{Sampling from the CGPCM}
+Sampling from the CGPCM is difficult because the integrals in \cref{mod:cgpcm,mod:cgpcm2} depend on the entirety of $h$ and $x$. To resolve this issue, we follow \citet{Tobar:2015:Learning_Stationary} and approximate \cref{eq:kernel} using quadrature \cite{Minka:2000:Quadrature_GP} by conditioning on finitely many values $u=(h(t_{u,1}),\ldots,h(t_{u,n_u}))\sim \mathcal{N}(0,K_u)$ of $h$:
+\begin{align*}
+    k_{f\cond h}(r)
+    &\approx \mathbb{E}[k_{f\cond h}(r)\cond u]
+    = \int_{0} \mathbb{E}[h(|r| + \tau) h(\tau)\cond u] \id{\tau} \\
+    &= \int_0 k_h(|r| + \tau, \tau) \id{\tau} \\
+    &\phan{=}+ \tr M^u \int_{0} k_h(t_u, |r|+ \tau)k_h(\tau, t_u^T) \id{\tau}
+\end{align*}
+where $M^{u}=K_u^{-1}uu^T K_u^{-1}-K_u$. Unlike the GPCM, the kernel approximation $\mathbb{E}[k_{f\cond h}(r)\cond u]$ of the CGPCM will not be a mixture of Gaussians, but a more complicated expression instead.
+
+
+\subsection{Roughness of Sample Paths}
+We show that the CGCPM models both differentiable and nondifferentiable phenomena, the latter in various levels of roughness. This modelling capability holds false for the GPCM, whose sample paths are always differentiable.
+
+Let $h$ be fixed and decay to zero at infinity. We claim that $f$'s sample paths are almost surely everywhere differentiable if $h(0)=0$, and almost surely nowhere differentiable if $h(0)\neq 0$. To show this, let
+\begin{align*}
+    g(r) = \int_0 h(r + \tau) h(\tau) \id{\tau}
+\end{align*}
+so that
+\begin{align*}
+    k_{f\cond h}(r)
+    &= g(|r|) \\
+    &= g(0) + g'(0)|r| + \frac{1}{2}g''(0)r^2 + \O(|r|^3).
+\end{align*}
+Then, according to theorem 2.6 and example 2.3 in section 2.3.1.2 in \cite{Lindgren:2006:Lectures_on_Stationary_Stochastic_Processes}, $f$'s sample paths are almost surely everywhere differentiable if $g'(0)=0$; otherwise, $f$ is not even mean square differentiable, in which case $f$'s sample paths are almost surely nowhere differentiable, according to theorem 5 in \cite{Cambanis:1973:On_Some_Continuity_and_Differentiability}. Finally, it holds that
+\begin{align*}
+    g'(0)
+    &= \int_0 h'(\tau) h(\tau) \id{\tau} \\
+    &= \ll[ h^2(\tau)\rr]_0 - \int_0 h(\tau) h'(\tau) \id{\tau},
+\end{align*}
+which shows that $g'(0) = -\frac{1}{2} h^2(0)$---we assumed that $h$ decays to zero at infinity. Hence the claim is shown.
+
+In the case that $h(0)\neq 0$, we can locally approximate $f$ by a scaled Wiener process; this scale $\sigma^2$ then quantifies the roughness of the sample paths. Specifically, given that the variance of an increment of a Wiener process is equal the increment's length, we have that
+\begin{align*}
+    \sigma^2
+    &= \lim_{\e \downarrow 0} \frac{\mathbb{V}[f(t+\e)-f(t)]}{\e} \\
+    &= \lim_{\e \downarrow 0} \frac{2k_{f\cond h}(0) - 2k_{f\cond h}(\e)}{\e}
+    = -2g'(0)
+    = h^2(0).
+\end{align*}
+
+In summary, the CGPCM models differentiable phenoma if $h(0)=0$ and nondifferentiable phenoma if $h(0)\neq 0$. In the latter case $|h(0)|$ quantifies the level of roughness.
+
+\Cref{fig:interpolation} shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$. Note that the sample appears smooth for $h(0)=0$ and becomes rougher as $|h(0)|$ increases.
+
+\begin{figure*}[t]
+    % \vskip 0.2in
+    \centering
+    \includegraphics[width=\linewidth]{../../GGPCM/output/interpolation2.pdf}
+    \caption{Generative process of the CGPCM. Shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$.}
+    \label{fig:interpolation}
+    % \vskip -0.2in
+\end{figure*}
+
+
+\section{Inference}
+Let $y(t)\cond \sim \mathcal{N}(f(t),\sigma^2)$ for all $t$ be a noisy version of $f$. Then, given some observations $e=(y(t_1),\ldots,y(t_n))$ of $y$, we wish to compute $p(f\cond e)$.
+
+We learn $h$ and $x$ through inducing points $u=(h(t_{u,1}),\ldots,h(t_{u,n_u}))\sim \mathcal{N}(0,K_u)$ and $z=(s(t_{z,1}),\ldots,s(t_{z,n_z}))\sim \mathcal{N}(0,K_z)$ for respectively the processes $h$ and $s=T[x]$ where $T$ is some linear interdomain transformation \cite{Titsias:2009:Variational_Learning,Lazaro-Gredilla:2009:Inter-Domain_Gaussian_Processes_for_Sparse,Alvarez:2010:Efficient_Multioutput_Gaussian_Processes_Through,Tobar:2015:Learning_Stationary}. Concretely, let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond u, z)q(u)q(z)$ of $p(f,u,z\cond e)$ be such that it is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence.
+% \begin{align*}
+%     (q(u),q(z))&= \underset{(q(u),q(z))}{\argmin}\KL(q(f,u,z)\|p(f,u,z\cond e)).
+% \end{align*}
+
+Rearranging
+\begin{align*}
+    &\log p(e) - \KL(q(f,u,z)\|p(f,u,z\cond e)) \\
+    &\quad= \ll\la \log \frac{p(e\cond f)\cancel{p(f\cond u, z)}p(u)p(z)}{\cancel{p(f\cond u, z)}q(u)q(z)} \rr\ra_{q(f,u,z)} \\
+    &\quad= \underbrace{\la \log p(e\cond f) \ra_{q(f,u,z)}}_{\text{reconstruction cost}} \\
+    &\quad\phan{=}- \underbrace{\ll(\ll\la\log\frac{q(u)}{p(u)}\rr\ra_{q(u)} + \ll\la\log\frac{q(z)}{p(z)}\rr\ra_{q(z)}\rr)}_{\text{divergence from prior}} \\
+    &\quad=\mathcal{L}[q(u),q(z)]
+\end{align*}
+shows that can find $q(u)$ and $q(z)$ by maximising $\mathcal{L}$. Since $\log p(e)\ge\mathcal{L}$, $\mathcal{L}$ is called the \textit{evidence lower bound} (ELBO). Observe that maximisation of $\mathcal{L}$ attempts to explain the data well whilst not diverging too far from the model prior.
+
+To optimise $\mathcal{L}$ with respect to $q(u)$ and $q(z)$ we set their respective variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z)$ to zero; then solving for $q(u)$ and $q(z)$ yields that
+\begin{align}
+    q(u) &\propto p(u) \exp \la \log p(e\cond f) \ra_{p(f\cond u,z)q(z)}, \label{eq:qu} \\
+    q(z) &\propto p(z) \exp \la \log p(e\cond f) \ra_{p(f\cond u,z)q(u)}, \label{eq:qz}
+\end{align}
+which are computed in \cref{app:computation_quqz}.
+\Cref{app:moments_f} shows that the mean and variance of $p(f\cond u, z)$ are respectively linear and quadratic in both $u$ and $z$; therefore, since $p(e\cond f)$ is Gaussian, we can find a stationary point of $\mathcal{L}$ in which both $q(u)$ and $q(z)$ are Gaussian. Hence, to find $q(u)$ and $q(z)$, we can initialise $q(u)$ and $q(z)$ to some Gaussian and either iterate \cref{eq:qu,eq:qz} or maximise $\mathcal{L}$ directly using gradient-based optimisation. In the latter case we can include any hyperparameter in the optimisation.
+
+We can, however, significantly speed up the optimisation by solving for either $q(u)$ or $q(z)$ analytically. Substituting the optimal form $q(z)$ back in $\mathcal{L}$ yields that
+\begin{align}
+    &\mathcal{L}^*[q(u)] \nonumber\\
+    &\quad=\max_{q(z)} \mathcal{L}[q(u),q(z)]\nonumber\\
+    &\quad= \log \int p(z)\exp \la \log p(e\cond f) \ra_{p(f\cond u, z)q(u)} \id{z} \nonumber\\
+    &\quad\phan{=}-\ll\la\log\frac{q(u)}{p(u)}\rr\ra_{q(u)},\label{eq:saturated_elbo}
+\end{align}
+which is computed in \cref{app:saturated_elbo}. We optimise this saturated lower bound $\mathcal{L}^*$ to yield $q(u)$ and then obtain $q(z)$ through \cref{eq:qz}.
+
+Variational mean-field (MF) approaches to inference, like the one just presented, are often computationally efficient, but they are known to suffer from certain biases \cite{MacKay:2002:Information_Theory_Learning,Turner:2011:Two_Problems_With_Variational_Expectation,Murphy:2012:Probabilistic_Perspective}. We therefore further refine the MF approximation to alleviate these biases.
+
+To this end, let the \textit{structured mean-field} (SMF) approximation $q(f,u,z)=p(f\cond u, z)q(u,z)$ of $p(f,u,z\cond e)$ be such that it that is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence. Note that the only assumption underlying the SMF approximation is sufficiency of $u$ and $z$ for respectively $h$ and $s$; hence, the SMF approximation will be close the true posterior in the case that there are sufficiently many $u$ and $z$.
+
+Following an argument similar to the one previously presented, we derive the corresponding ELBO:
+\begin{align*}
+    &\mathcal{L}[q(u),q(z\cond u)] \\
+    &\quad= \la \log p(e\cond f) \ra_{q(f,u,z)}- \ll\la\log\frac{q(u)q(z\cond u)}{p(u)p(z)}\rr\ra_{q(u)q(z\cond u)}.
+\end{align*}
+Again, setting the variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z\cond u)$ to zero and solving for for respectively $q(u)$ and $q(z\cond u)$ yields that
+\begin{align}
+    q(u) &\propto p(u) \int p(z) \exp\la\log p(e\cond f)\ra_{p(f\cond u, z)}\id{z}, \label{eq:qu-smf} \\
+    q(z\cond u) &\propto p(z)\exp\la \log p(e\cond f)\ra_{p(f\cond u, z)}, \label{eq:qz-smf}
+\end{align}
+which are computed in \cref{app:computation_quz}.
+As opposed to \cref{eq:qu,eq:qz}, \cref{eq:qu-smf,eq:qz-smf} are uncoupled, but $q(u)$'s moments are now intractable. We can, however, evaluate $q(u)$. We therefore use elliptical slice sampling (ESS) \cite{Murray:2010:Elliptical_Slice_Sampling} to sample from $q(u)$ and use these samples to approximate $q(f, u, z)$. To help mixing the Markov chain, we initialise the sampler with the MF approximation.
+
+\subsection{Interdomain Transformation}
+The interdomain transformation $T$ remains yet unspecified. We let
+\begin{align*}
+    T[x](t)=\int r(t- \tau)x(\tau) \id{\tau}
+\end{align*}
+where $r$ is some filter. In choosing $r$, we should make sure that $s=T[x]$ has power at the majority of frequencies present in the signal that we aim to model.
+
+For baseband signals, we follow \citet{Tobar:2015:Learning_Stationary} and let $r(t)=\exp(-\omega t^2)$. For signals that have power at all frequencies, such as nondifferentiable signals, we let $r(t)=\exp(- \omega t^2)H(t)$ where $H$ denotes the Heaviside step function; namely, the step at $t=0$ spreads power throughout the whole spectrum. Note that this choice of $T$ yields a \textit{causal interdomain transformation}.
+
+\section{Experiments}
+We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at \url{https://github.com/wesselb/cgpcm}.} The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires extensive evaluation of the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Since the BNCDF is not available in TensorFlow, we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. We furthermore implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f} and constructs the corresponding matrices afterwards; namely, manually solving these expressions  otherwise would be tedious and error prone.
+
+\subsection{Ornstein-Uhlenbeck Process}
+The Ornstein-Uhlenbeck process is a noisy relaxation process that can be formulated as a Gaussian process with kernel of the form $k(r)=\exp(- \alpha |r|)$ \cite{Rasmussen:2006:Gaussian_Processes}. This corresponds to the particular case of the CGPCM where $h(t)=\sqrt{2 \alpha} \exp(- \alpha |t|)$.
+
+{\color{red} Experiment.}
+
+\subsection{RLC Series Circuit}
+Consider the voltage response $f(t)$ of a series circuit consisting of a resistance $R$, capacitance $C$, and inductance $L$ excited by current $x(t)$ with unity PSD due to thermal noise of the resistance. Application of Kirchhoff's voltage law \cite{Irwin:2010:Basic_Engineering_Circuit_Analysis} yields that
+\begin{align*}
+     L f'(t) + R f(t)+\frac{1}{C}\int^t f(t)\id{t} = x(t).
+\end{align*}
+Assume that the circuit is critically damped and that $R=2$ and $L=1$. Then $f(t)$ is of the form of \cref{eq:model} where $h(t) = t \exp(-t)$. Therefore, according to \cref{mod:cgpcm2}, it holds that $f(t) \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ where
+\begin{align*}
+    k_{f\cond h}(r) = \frac{1}{4}(1+|r|)\exp(-|r|).
+\end{align*}
+
+{\color{red} Experiment.}
+
+\subsection{Fricative Consonant}
+{\color{red} Experiment.}
+
+\subsection{Head-Related Transfer Function}
+{\color{red} Experiment.}
+
+\section{Discussion}
+\begin{itemize}
+    \item Discussion from \cite{Tobar:2015:Learning_Stationary,Tobar:2015:Inter-Domain_Inducing}
+    \item Improved interdomain transformation
+    \item HCM to improve sampling
+    \item Bayesian inference over the parameters
+    \item Improved model solving
+\end{itemize}
+
+\appendix
+\section{Moments of $f\cond u, h$}
+\label{app:moments_f}
+We solve for $\la f(t) \ra_{p(f\cond u,z)}$ and $\la f(t) f(t') \ra_{p(f\cond u,z)}$. First, we have that
+\begin{align*}
+    &\la f(t) \ra_{p(f\cond u,z)} \\
+    &\quad= \int^t \la h(t - \tau)\ra_{p(f\cond u)} \la x(\tau) \ra_{p(x\cond z)} \id{\tau} \\
+    &\quad= u^T K_u^{-1} \underbrace{\int^t k_h(t_u,t-\tau) k_{xs}(\tau, t_z^T) \id{ \tau}}_{A^{hx}(t)=A^{(xh)T}(t)} K_z^{-1} z.
+\end{align*}
+Second, it holds that
+
+\begin{align*}
+    &\la f(t) f(t') \ra_{p(f\cond u,z)} \\
+    &\quad= \int^t\!\!\!\!\int^{t'} \la h(t- \tau) h(t' - \tau')\ra_{p(h\cond u)} \\
+    &\quad\phan{=\int^t\!\!\!\!\int^{t'}} \la x(\tau) x(\tau') \ra_{p(x\cond z)}\id{\tau'}\id{\tau} \\
+    &\quad= \int^t\!\!\!\!\int^{t'} ( k_h(t- \tau,t' - \tau') \\
+    &\quad\phan{=\int^t\!\!\!\!\int^{t'} (}+ k_h(t- \tau, t_u^T) M^u k_h(t_u, t' - \tau')) \\
+    &\quad\phan{=\int^t\!\!\!\!\int^{t'}}( k_x(\tau,\tau') + k_{xs}(\tau, t_z^T) M^z k_{sx}(t_z, \tau')) \id{\tau'}\id{\tau} \\
+    &\quad= a(t,t') + \tr M^u A^{h}(t,t') + \tr M^z A^{x}(t,t') \\
+    &\quad\phan{=} + \tr M^u A^{hx}(t) M^z A^{xh}(t')
+\end{align*}
+where $M^u=K_u^{-1}uu^T K_u^{-1}-K_u^{-1}$, $M^z=K_z^{-1}zz^TK_z^{-1}-K_z^{-1}$, and
+\begin{align*}
+    a(t,t')&=\int^t\!\!\!\!\int^{t'} k_h(t- \tau,t' - \tau') k_x(\tau,\tau') \id{\tau'}\id{\tau} \\
+    &=\int^{t \land t'} k_h(t- \tau,t' - \tau)\id{\tau}, \\
+    A^{h}(t,t')&=\int^t\!\!\!\!\int^{t'} k_h(t_{u}, t' - \tau') k_x(\tau,\tau') \\
+    &\phan{=\int^t\!\!\!\!\int^{t'}}\, k_h(t- \tau, t_{u}^T) \id{\tau'}\id{\tau}\\
+    &=\int^{t \land t'} k_h(t_{u}, t' - \tau)k_h(t- \tau, t_{u}^T) \id{\tau}  \\
+    A^{x}(t,t')&=\int^t\!\!\!\!\int^{t'} k_{sx}(t_z, \tau') k_h(t- \tau,t'-\tau') \\
+    &\phan{=\int^t\!\!\!\!\int^{t'}}\, k_{xs}(\tau, t_z^T) \id{\tau'}\id{\tau}.
+\end{align*}
+Rearranging, we arrive at $\la f(t) \ra = u^T  A^{hx}(t) z$ and
+\begin{align*}
+    &\la f(t) f(t') \ra - \la f(t) \ra \la f(t') \ra \\
+    &\quad = b(t,t') + u^T B^{h}(t,t') u + z^T B^{x}(t,t') z
+\end{align*}
+where the expectation is over $p(f\cond K_u^{-1} u, K_z^{-1} z)$ and
+\begin{align*}
+    b(t,t) &= a(t,t') - \tr K_u^{-1} A^{h}(t,t') - \tr K_z^{-1}A^{x}(t,t') \\
+    &\phan{=} + \tr K_u^{-1}A^{hx}(t)K_z^{-1}A^{xh}(t'), \\
+    B^{h}(t,t') &= A^{h}(t,t') - A^{hx}(t)K_z^{-1} A^{xh}(t'), \\
+    B^{x}(t,t') &= A^{x}(t,t') - A^{xh}(t)K_u^{-1} A^{hx}(t').
+\end{align*}
+Finally denote $a(t)=a(t,t)$ and do so for $A^h$, $A^x$, $A^{hx}$, $b$, $B^h$, and $B^x$ as well.
+
+\subsection{Causal Interdomain Transformation}
+In the case of the causal interdomain transformation, $A^x$ and $A^{hx}$ reduce to
+\begin{align*}
+   A^{hx}(t) &=\int^{t\land t_z^T} k_h(t_u,t-\tau) k_{xs}(\tau, t_z^T) \id{ \tau}, \\
+   A^{x}(t,t')&=\int^{t \land t_z}\!\!\!\!\int^{t'\land t_z^T} k_{sx}(t_z, \tau') k_h(t- \tau,t'-\tau') \\
+    &\phan{=\int^{t \land t_z}\!\!\!\!\int^{t'\land t_z^T}}\, k_{xs}(\tau, t_z^T) \id{\tau'}\id{\tau}.
+\end{align*}
+
+\section{MF Approximation: Computation of $q(u)$ and $q(z)$}
+\label{app:computation_quqz}
+Following \cref{app:moments_f}, we have that
+\begin{align*}
+    &\la \log p(e\cond f) \ra_{p(f\cond K_u^{-1} u, K_z^{-1} z)} \\
+    &\quad= -\frac{n}{2}\log 2 \pi \sigma^2 - \frac{1}{2 \sigma^2} \la e^{2}(t) - 2 \sigma_f u^T A^{hx}(t) e(t) z\\
+    &\quad\phan{=}  + \sigma_f^2 ( b(t) + u^T B^{h}(t) u+ z^T B^{x}(t) z + (u^T A^{hx}(t) z)^2 ) \ra_t
+\end{align*}
+where $\la\,\cdot\,\ra_t$ denotes summation with respect to $t$ over $t_1,\ldots,t_n$.
+It follows that
+\begin{align*}
+    &\log p(K_u^{-1} u)  + \la \log p(e\cond f) \ra_{p(f\cond K_z^{-1}z, K_u^{-1}u)q(K_z^{-1}z)} \\
+    &\quad= -\frac{1}{2}u^T\ll(K_u + \frac{\sigma_f^2}{\sigma^2} \la B^{h}(t) \rr.\\[-3\jot]
+    &\quad\phan{= -\frac{1}{2}u^T}
+        \underbrace{
+            \phan{\ll(K_u + \frac{\sigma_f^2}{\sigma^2} \la \rr. } \!\!\!\!\!
+            \ll. \vphantom{\frac{\sigma_f^2}{\sigma^2} }
+                 + A^{hx}(t)  z z^T A^{xh}(t) \ra_{t,q(K_z^{-1} z)}
+            \rr)
+        }_{\Sigma_u^{-1}}u \\
+    &\quad\phan{=}+ u^T \underbrace{\frac{\sigma_f}{\sigma^2}\la e(t) A^{hx}(t) z\ra_{t,q(K_z^{-1}z)}}_{\Sigma_u^{-1} \mu_u} \\
+    &\quad\phan{=}  + \ll(\vphantom{\frac{\sigma_f^2}{2 \sigma^2}} {-\frac{n}{2}}\log 2 \pi \sigma^2-\frac{1}{2}\log|2 \pi K_u^{-1}|  \rr. \\
+    &\quad\phan{=+}\underbrace{\phan{ \ll(\vphantom{\frac{\sigma_f^2}{2 \sigma^2}}\rr.}- \frac{\la e^2(t)\ra_t}{2 \sigma^2} - \ll.\frac{\sigma_f^2}{2 \sigma^2}\la b(t) - z^T B^{x}(t) z\ra_{t,q(K_z^{-1}z)}\rr)}_{\text{constant independent of $u$}} \\
+    &\quad= \log \underbrace{\mathcal{N}(u; \mu_u, \Sigma_u)}_{q(K_u^{-1}u)}+ \frac{1}{2}\log|2 \pi \Sigma_u| \\
+    &\quad\phan{=}+ \frac{1}{2}\mu_u^T \Sigma_u^{-1}\mu_u  + \text{constant independent of $u$}
+\end{align*}
+and $q(z)$ is derived similarly.
+
+\section{MF Approximation: Saturated ELBO}
+\label{app:saturated_elbo}
+Following \cref{eq:saturated_elbo} and \cref{app:computation_quqz}, we have that
+\begin{align*}
+    &\mathcal{L}^*[q(K_u^{-1} u)] \\
+    &\quad = - \frac{n}{2}\log 2 \pi \sigma^2 + \frac{1}{2}\log|K_z^{-1}||\Sigma_z| + \frac{1}{2}\mu_z^T \Sigma_z^{-1}\mu_z  \\
+    &\quad \phan{=} - \frac{\la e^2(t)\ra_t}{2 \sigma^2}- \frac{\sigma_f^2}{2 \sigma^2}\la b(t) +  u^T B^{h}(t) u \ra_{t,q(K_u^{-1}u)} \\
+    &\quad \phan{=}  + \ll\la \log \frac{p(K_u^{-1}u)}{q(K_u^{-1}u)} \rr\ra_{q(K_u^{-1}u)}.
+\end{align*}
+
+\section{SMF Approximation: Computation of $q(u)$ and $q(z\cond u)$}
+\label{app:computation_quz}
+The mean and variance of $q(z\cond u)$ are similar to that of $q(z)$ in \cref{app:computation_quqz} with only the difference being that the expectation with respect to $q(u)$ is omitted.
+
+To compute $q(u)$, we again follow \cref{app:computation_quqz} and have that
+\begin{align*}
+    \Sigma &= K_z + \frac{\sigma_f^2}{\sigma^2} \la B^x(t) + A^{xh}(t) u u^TA^{hx}(t) \ra_t, \\
+    \mu &= \frac{\sigma_f}{\sigma^2}\la e(t) A^{xh}(t)u\ra_{t}, \\
+    \log q(K_u^{-1} u) &= \log p(K_u^{-1} u)- \frac{n}{2}\log 2 \pi \sigma^2 -\frac{1}{2}\log|K_z||\Sigma|\\
+    &\phan{=}+ \frac{1}{2}\mu^T \Sigma^{-1} \mu- \frac{\la e^2(t)\ra_t}{2 \sigma^2} \\
+    &\phan{=}  - \frac{\sigma_f^2}{2 \sigma^2} \la b(t) + u^T B^h(t)u \ra_t.
+\end{align*}
+
+
+
+\bibliography{bibliography}
+\bibliographystyle{icml2017}
+
+
+% \section{Remarks}
+% For the GPCM it holds that
+% \begin{align*}
+%     \hat{k}_{f\cond h}(\omega) = \int f(t)\exp(- i \omega t)\id{t}=|\hat{h}(\omega)|^2,
+% \end{align*}
+% whereas for the CGCPM it holds that
+% \begin{align*}
+%     \hat{k}_{f\cond h}(\omega)
+%     &= \frac{1}{4}\ll|\ll(\pi \delta(\omega) -i \frac{1}{\pi \omega}\rr)\ast\hat{h}(\omega)\rr|^2 \\
+%     &= \frac{1}{4}\ll|\pi h(\omega) - i (\mathcal{H}\hat{h})(\omega)\rr|^2
+% \end{align*}
+% where $\mathcal{H}$ is the Hilbert transform. Can this be interpreted?
+
+
+\end{document}
+
