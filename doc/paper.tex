@@ -75,7 +75,7 @@
     \icmlsetsymbol{equal}{*}
     \begin{icmlauthorlist}
     \icmlauthor{Wessel P.\ Bruinsma}{invenia}
-    \icmlauthor{Rich E.\ Turner}{cam}
+    \icmlauthor{Richard E.\ Turner}{cam}
     \end{icmlauthorlist}
     \icmlaffiliation{cam}{University of Cambridge, Cambridge, United Kingdom}
     \icmlaffiliation{invenia}{Invenia Labs Limited, Cambridge, United Kingdom}
@@ -118,7 +118,7 @@ We investigate the notion of causality in modelling stationary time series. Exte
 \end{abstract}
 
 \section{Introduction}
-Classically, nature is considered to be \textit{causal}, meaning that at any point in time the output of any realisable system can only depend on past values of the input. We should aim to include this inductive bias---\textit{causality}---in modelling dynamical phenomena, since that would exclude any unrealisable system from the model prior.
+Many natural phenomena are \textit{causal} meaning that at any point in time the output of any realisable system can only depend on past values of the input. We should aim to include this inductive bias---\textit{causality}---in modelling dynamical phenomena, since that would exclude any unrealisable system from the model prior.
 
 A widely-used model for a stationary time series $f:\R \to \R$ is the Gaussian process, which constructs a prior over functions by assuming that any finite collection of function values $f(t_1),\ldots,f(t_n)$ is multivariate-Gaussian distributed. An important modelling decision in using a Gaussian process is the choice of covariance   $k_f(t,t')$ between any two function values $f(t)$ and $f(t')$---$k_f$ is also called the \textit{kernel} of $f$. This choice of kernel entirely\footnote{The mean of the function is assumed to be zero without loss of generality. \cite{Rasmussen:2006:Gaussian_Processes}} determines the nature of $f$. Hence much work has been done in developing flexible kernels \cite{Duvenaud:2014:Automatic_Construction,Wilson:2013:Spectral_Mixture,Tobar:2015:Learning_Stationary,Tobar:2015:Inter-Domain_Inducing}; most notably, \citet{Tobar:2015:Learning_Stationary} present the Gaussian Process Convolution Model (GPCM), which parametrises the kernel with \textit{another} Gaussian process.
 
