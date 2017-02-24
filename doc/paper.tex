@@ -136,7 +136,7 @@ A widely-used model for stationary time series are Gaussian Processes, which pla
 Of particular interest for the current application are GP models that use nonparametric models of the power spectra of the GPs---doubly non-parametric models---as they have the capacity to flexibly model signals with arbitrary spectral complexity. One approach employs a Dirichlet Process Mixture Model for the power spectra \cite{Oliva:2015:Bayesian_Nonparametric_Kernel-Learning}, but it is not clear whether it is possible to build the causality constraint into such a construction. An alternative approach instead induces a nonparametric power spectrum by placing a Gaussian Process prior over the system's impulse response function \cite{Tobar:2015:Learning_Stationary}. Critically, the so-called Gaussian Process Convolution Model (GPCM), does not incorporate a causality constraint---the impulse response in question should be thought of as an acausal spatial response. In this paper we revisit the GPCM and explicitly build in a causality constraint whilst retaining the flexibility of modelling the kernel nonparametrically. In addition to these modelling contributions, we develop enhanced variational inference and learning schemes for the causal and acausal variants of the GPCM---collapsed variational bounds and structured approximating distributions---that significantly improve statistical accuracy. These modelling and inferential contributions are demonstrated on synthetic and real-world signals.
 
 \section{Modelling Causally-Generated Stationary Time Series}
-Consider modelling the stationary time series $f$. Since many dynamical systems in nature can accurately be described by an initial value problem or a linear system, we let $f$ be the solution of a time-invariant linear initial value problem with causal Green's function $h$ and forcing function $x$, or equivalently the system response of a time-invariant linear system with causal impulse response $h$ and excitation $x$. It then holds that
+Consider modelling a stationary time series $f$. Motivated by the fact that many dynamical systems in nature can accurately be described by an initial value problem or a linear system, we let $f$ be the solution of a time-invariant linear initial value problem with causal Green's function $h$ and forcing function $x$, or equivalently the system response of a time-invariant linear system with causal impulse response $h$ and excitation $x$. It then holds that
 \begin{align} \label{eq:model}
     f(t) = \int^t h(t- \tau)x(\tau)\id{\tau}.
 \end{align}
@@ -293,7 +293,10 @@ which are computed in \cref{app:computation_quz}.
 As opposed to \cref{eq:qu,eq:qz}, \cref{eq:qu-smf,eq:qz-smf} are uncoupled, but $q(u)$'s moments are now intractable. We can, however, evaluate $q(u)$. We therefore use elliptical slice sampling (ESS) \cite{Murray:2010:Elliptical_Slice_Sampling} to sample from $q(u)$ and use these samples to approximate $q(f, u, z)$. To help mixing the Markov chain, we initialise the sampler with the MF approximation.
 
 \section{Experiments}
-We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at \url{https://github.com/wesselb/cgpcm}.} The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Since the BNCDF is not available in TensorFlow, we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. We furthermore implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f} and constructs the corresponding matrices afterwards; namely, manually solving these expressions  otherwise would be tedious and error prone.
+We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at
+% \url{https://github.com/wesselb/cgpcm}.
+--- ---
+} The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires evaluation of the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Since the BNCDF is not available in TensorFlow, we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. We furthermore implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f} and constructs the corresponding matrices afterwards---manually solving these expressions would be tedious and error prone.
 
 \subsection{Learning Known Kernels}
 \begin{figure*}[t]
@@ -309,8 +312,16 @@ We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to impl
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_gpcm.pdf}
     CGPCM
+    \begin{tabularx}{\linewidth}{
+            >{\centering}>{\hsize=.43\hsize}X  % ??
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+        }
+        $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
+    \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_cgpcm.pdf}
-    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. Signals normalised to unity power.}
+    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. All signals are normalised to unity power.}
     \label{fig:toy_causal_sample}
 \end{figure*}
 
@@ -327,8 +338,16 @@ We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to impl
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_acausal_sample_gpcm.pdf}
     CGPCM
+    \begin{tabularx}{\linewidth}{
+            >{\centering}>{\hsize=.43\hsize}X  % ??
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+        }
+        $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
+    \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_acausal_sample_cgpcm.pdf}
-    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, kernel $k_{f\cond h}$, and PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. Signals normalised to unity power.}
+    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. All signals are normalised to unity power.}
     \label{fig:toy_acausal_sample}
 \end{figure*}
 
