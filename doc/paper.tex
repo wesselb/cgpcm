@@ -166,9 +166,9 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
 
 \begin{model}[CGCPM (First Formulation)] \label{mod:cgpcm}
     \begin{align*}
-        x &\sim \mathcal{GP}(0,\delta(t-t')), \\
-        h &\sim \mathcal{GP}(0, k_h(t,t')), \\
-        f\cond h, x &= \sigma_f \int^t h(t- \tau)x(\tau)\id{\tau}.
+        &x \sim \mathcal{GP}(0,\delta(t-t')), \;
+        h \sim \mathcal{GP}(0, k_h(t,t')), \\
+        &f\cond h, x = \sigma_f \int^t h(t- \tau)x(\tau)\id{\tau}.
     \end{align*}
 \end{model}
 \begin{model}[CGPCM (Second Formulation)] \label{mod:cgpcm2}
@@ -215,7 +215,7 @@ In the case that $h(0)\neq 0$, we can locally approximate $f$ by a scaled Wiener
     = h^2(0).
 \end{align*}
 
-In summary, the CGPCM models differentiable phenomena if $h(0)=0$ and non-differentiable phenoma if $h(0)\neq 0$. In the latter case $|h(0)|$ quantifies the level of roughness.
+In summary, the CGPCM models differentiable phenomena if $h(0)=0$ and non-differentiable phenomena if $h(0)\neq 0$. In the latter case $|h(0)|$ quantifies the level of roughness. Performing inference for the filter will therefore automatically infer the differentiability of the underlying process from possibly noisy data.
 
 \Cref{fig:interpolation} shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$. Note that the sample appears smooth for $h(0)=0$ and becomes rougher as $|h(0)|$ increases. {\color{red} something about pointyness?}
 
