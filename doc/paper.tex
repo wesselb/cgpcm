@@ -303,7 +303,7 @@ which are computed in \cref{app:computation_quz}.
 As opposed to \cref{eq:qu,eq:qz}, \cref{eq:qu-smf,eq:qz-smf} are uncoupled, but $q(u)$'s moments are now intractable. We can, however, evaluate $q(u)$. We therefore use elliptical slice sampling (ESS) \cite{Murray:2010:Elliptical_Slice_Sampling} to sample from $q(u)$ and use these samples to approximate $q(f, u, z)$. To help mixing the Markov chain, we initialise the sampler with the MF approximation.
 
 \section{Experiments}
-We test the CGPCM by applying it to synthetic and real-world signals. We show that in certain situations the causality constraint provides a useful inductive bias that leads to better predictions.
+We test the CGPCM by applying it to synthetic and real-world signals. We show that in certain situations the causality constraint provides an useful inductive bias that leads to better predictions.
 
 % We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at
 % % \url{https://github.com/wesselb/cgpcm}.
@@ -371,7 +371,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
 
 The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} is that in the former noise is added independently, whereas in the latter noise is part of the process dynamics. Therefore \cref{fig:toy_acausal_sample,fig:toy_causal_sample} indicate that the GPCM and CPGCM can both handle independently added noise, but only the CGPCM fits noisy dynamics.
 
-Finally, note that in nearly every case predictions through the SMF approximation have better calibrated credible regions than predictions through the MF approximation.
+Finally, note that the SMF approximation consistently has better calibrated credible regions compared to the MF approximation. For example, in the filter $h$, kernel $k_{f\cond h}$, PSD of $f \cond h$ of the CGPCM in \cref{fig:toy_causal_sample}, the MF approximation fails to capture the truth in its credible region, whereas the SMF approximation does capture the truth.
 % \subsection{Speech}
 % Coming up.
 
