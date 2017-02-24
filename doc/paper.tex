@@ -149,7 +149,7 @@ In this paper we consider the case that $x$ is white noise; that is, informally 
     k_{f\cond h}(t,t')&= \!\int^t \! \int^{t'}\!h(t- \tau) \vspace{-1mm} h(t'- \tau')
         \mathbb{E}[ x(\tau) x(\tau')]\id{\tau'} \id{\tau} \nonumber \\
     &= \int^{t \land t'} \! h(t - \tau) h(t' - \tau) \id{\tau} \nonumber \\
-    &= \int_0 h(|t - t'| + \tau)h(\tau) \id{\tau} = k_{f\cond h}(t-t')  \label{eq:kernel} 
+    &= \int_0 h(|t - t'| + \tau)h(\tau) \id{\tau} = k_{f\cond h}(t-t')  \label{eq:kernel}
 \end{align}
 where $t \land t'$ denotes the minimum of $t$ and $t'$. The restriction of $x$ to white noise is not overly restrictive since any causal stationary process can be represented with sufficiently rich $h$. An alternative lens through which to view the model is as the continuous-time generalisation of a causal moving-average filter.
 
@@ -302,7 +302,7 @@ In this section we test the CGPCM by applying it to synthetic and real-world sig
 % } The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires evaluation of the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Unfortunately, the BNCDF is not available in TensorFlow; we therefore we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. Moreover, we implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f}; hence we provide no closed-form expression for those integrals.
 
 \subsection{Learning Rough Signals}
-Consider a Gaussian process with a fixed kernel. Then, according to \cref{mod:cgpcm2}'s interpretation, the CGPCM should be able to learn this kernel. We compare the CGPCM and the GPCM.
+In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough isgnals, whereas the GPCM only models smooth signals. We perform two experiments that show the significance of this modelling capability.
 
 \begin{figure*}[t]
     \centering
@@ -384,7 +384,7 @@ The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} i
 % Check out \cref{fig:psd}.
 
 \subsection{Head-Related Impulse Response Estimation}
-The head-related impulse response (HRIR) describes how the reception of sound by the ear depends on the position from which the sound originates. In particular, the received sound is convolved with the HRIR before it is sensed by the ear. Since this is exactly
+The head-related impulse response (HRIR) describes how the reception of sound by the ear depends on the position from which the sound originates. In particular, the received sound is convolved with the HRIR before it is sensed by the ear. We consider the problem of determining the HRIR given some signal sensed by the ear.
 
 \begin{figure*}[t]
     \centering
