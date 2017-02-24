@@ -141,7 +141,7 @@ Consider modelling a stationary time series $f$. Motivated by the fact that many
 \begin{align} \label{eq:model}
     f(t) = \int^t h(t- \tau)x(\tau)\id{\tau}.
 \end{align}
-For parsimony, we denote integration from negative infinity or to positive infinity by omitting the respective limit from the integral throughout.
+For parsimony, we denote integration from negative infinity and to positive infinity by omitting the respective limit from the integral throughout.
 Note that $f(t)$ depends on $x(\tau)$ only for $\tau \le t$; this reveals \cref{eq:model}'s causal nature.
 
 In this paper we consider the case that $x$ is white noise; that is, informally denoted, $x \sim \mathcal{GP}(0,\delta(t-t'))$ where $\delta$ denotes the Dirac delta function. In that case \cref{eq:model} can be interpreted as a Gaussian process with zero mean and kernel
@@ -188,7 +188,7 @@ The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:
         GPCM & CGPCM
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/prior.pdf}
-    \caption{Prior distribution over kernels in the GPCM and CGPCM. Lines correspond to means and gradients correspond to uncertainty.}
+    \caption{Prior distribution over kernels in the GPCM and CGPCM. Lines correspond to means and gradients indicate marginal variance.}
     \label{fig:prior}
 \end{figure}
 \begin{figure}[t]
@@ -197,7 +197,7 @@ The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:
         ~~GPCM & ~~~~~~CGPCM
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/prior_psd.pdf}
-    \caption{Prior distribution over PSDs in the GPCM and CGPCM. The unit on the $y$ axis is decibel. Lines correspond to means and gradients correspond to uncertainty.}
+    \caption{Prior distribution over PSDs in the GPCM and CGPCM. The unit on the $y$ axis is decibel. Lines correspond to means and gradients indicate marginal variance.}
     \label{fig:prior_psd}
 \end{figure}
 
