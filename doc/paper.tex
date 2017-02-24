@@ -73,6 +73,8 @@
 \Crefname{model}{Model}{Models}
 \crefname{equation}{equation}{equations}
 \Crefname{equation}{Equation}{Equations}
+\crefname{figure}{figure}{figures}
+\Crefname{figure}{Figure}{Figures}
 
 \usepackage{icml2017}  % option: accepted
 \icmltitlerunning{Learning Causally-Generated Stationary Time Series}
@@ -294,11 +296,6 @@ As opposed to \cref{eq:qu,eq:qz}, \cref{eq:qu-smf,eq:qz-smf} are uncoupled, but 
 We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at \url{https://github.com/wesselb/cgpcm}.} The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Since the BNCDF is not available in TensorFlow, we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. We furthermore implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f} and constructs the corresponding matrices afterwards; namely, manually solving these expressions  otherwise would be tedious and error prone.
 
 \subsection{Learning Known Kernels}
-
-{\color{red} Experiment.}
-
-\subsection{Speech}
-
 \begin{figure*}[t]
     \centering
     GPCM
@@ -310,10 +307,10 @@ We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to impl
         }
         $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $k_{f\cond h}$
     \end{tabularx}
-    \includegraphics[width=\linewidth, height=3cm]{resources/learning_known_kernels_causal_sample_gpcm_cropped.pdf}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_gpcm.pdf}
     CGPCM
-    \includegraphics[width=\linewidth, height=3cm]{resources/learning_known_kernels_causal_sample_cgpcm_cropped.pdf}
-    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $k_{f\cond h}$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation.}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_cgpcm.pdf}
+    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $k_{f\cond h}$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. Signals normalised to unity power.}
     \label{fig:toy_causal_sample}
 \end{figure*}
 
@@ -328,13 +325,16 @@ We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to impl
         }
         $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $k_{f\cond h}$
     \end{tabularx}
-    \includegraphics[width=\linewidth, height=3cm]{resources/learning_known_kernels_acausal_sample_gpcm_cropped.pdf}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_acausal_sample_gpcm.pdf}
     CGPCM
-    \includegraphics[width=\linewidth, height=3cm]{resources/learning_known_kernels_acausal_sample_cgpcm_cropped.pdf}
-    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, kernel $k_{f\cond h}$, and power spectral density $\log \mathcal{F}\{k_{f\cond h}\}$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation.}
-    \label{fig:toy_scausal_sample}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_acausal_sample_cgpcm.pdf}
+    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, kernel $k_{f\cond h}$, and PSD of $k_{f\cond h}$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. Signals normalised to unity power.}
+    \label{fig:toy_acausal_sample}
 \end{figure*}
 
+Check out \cref{fig:toy_causal_sample,fig:toy_acausal_sample}.
+
+\subsection{Speech}
 
 \subsection{Head-Related Transfer Function}
 The head-related transfer function (HRTF) describes how the reception of sound by the ear depends on the position from which the sound originates.
