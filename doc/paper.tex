@@ -256,9 +256,9 @@ We learn $h$ and $x$ through inducing points \cite{Titsias:2009:Variational_Lear
 \begin{align*}
     T[x](t)=\int r(t- \tau)x(\tau) \id{\tau}
 \end{align*}
-is some interdomain transformation with filter $r$ \cite{Lazaro-Gredilla:2009:Inter-Domain_Gaussian_Processes_for_Sparse,Alvarez:2010:Efficient_Multioutput_Gaussian_Processes_Through,Tobar:2015:Learning_Stationary}. In choosing $r$, we make sure that $s=T[x]$ has power at the majority of frequencies present in the signal that we aim to model. We follow \citet{Tobar:2015:Learning_Stationary} and let $r(t)=\exp(-\omega t^2)$, which fits baseband signals.
+is some interdomain transformation of the white-noise process with filter $r$ \cite{Lazaro-Gredilla:2009:Inter-Domain_Gaussian_Processes_for_Sparse,Alvarez:2010:Efficient_Multioutput_Gaussian_Processes_Through,Tobar:2015:Learning_Stationary}. The inter-domain transformation is necessary because white noise is uncorrelated and so placing inducing points directly in this domain would not be able to capture meaningful structure in the posterior. In choosing $r$, we make sure that $s=T[x]$ has power at the majority of frequencies present in the signal that we aim to model, thereby enabling the inducing variables to capture posterior dependencies in the components of the white noise that pass through the filter and therefore affect the data. We follow \citet{Tobar:2015:Learning_Stationary} and let $r(t)=\exp(-\omega t^2)$, which fits the low frequency components of the posterior.
 
-Specifically, let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond u, z)q(u)q(z)$ of $p(f,u,z\cond e)$ be such that it is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence. Rearranging
+Let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond u, z)q(u)q(z)$ of $p(f,u,z\cond e)$ be such that it is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence. Rearranging
 \begin{align*}
     &\log p(e) - \KL(q(f,u,z)\|p(f,u,z\cond e)) \\
     &\quad= \ll\la \log \frac{p(e\cond f)\cancel{p(f\cond u, z)}p(u)p(z)}{\cancel{p(f\cond u, z)}q(u)q(z)} \rr\ra_{q(f,u,z)} \\
@@ -268,7 +268,7 @@ Specifically, let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond 
 \end{align*}
 shows that we can find $q(u)$ and $q(z)$ through maximising $\mathcal{L}$. Since $\log p(e)\ge\mathcal{L}$, $\mathcal{L}$ is called the \textit{evidence lower bound} (ELBO). Observe that maximisation of $\mathcal{L}$ attempts to explain the data well whilst not diverging too far from the model prior.
 
-To optimise $\mathcal{L}$ with respect to $q(u)$ and $q(z)$ we set their respective variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z)$ to zero; then solving for $q(u)$ and $q(z)$ yields that
+To optimise $\mathcal{L}$ with respect to $q(u)$ and $q(z)$ we set their respective variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z)$ to zero; then solving for $q(u)$ and $q(z)$ yields 
 \begin{align}
     q(u) &\propto p(u) \exp \la \log p(e\cond f) \ra_{p(f\cond u,z)q(z)}, \label{eq:qu} \\
     q(z) &\propto p(z) \exp \la \log p(e\cond f) \ra_{p(f\cond u,z)q(u)}, \label{eq:qz}
@@ -276,7 +276,7 @@ To optimise $\mathcal{L}$ with respect to $q(u)$ and $q(z)$ we set their respect
 which are computed in \cref{app:computation_quqz}.
 \Cref{app:moments_f} shows that the mean and variance of $p(f\cond u, z)$ are respectively linear and quadratic in both $u$ and $z$; therefore, since $p(e\cond f)$ is Gaussian, we can find a stationary point of $\mathcal{L}$ in which both $q(u)$ and $q(z)$ are Gaussian. Hence, to find $q(u)$ and $q(z)$, we can initialise $q(u)$ and $q(z)$ to some Gaussian and either iterate \cref{eq:qu,eq:qz} or maximise $\mathcal{L}$ directly using gradient-based optimisation. In the latter case we can include any hyperparameter in the optimisation.
 
-We can, however, significantly speed up the optimisation by solving for either $q(u)$ or $q(z)$ analytically. Substituting the optimal form of $q(z)$ back in $\mathcal{L}$ yields that
+One of the new contributions of this work is the finding that we can significantly speed up the optimisation by solving for either $q(u)$ or $q(z)$ analytically. Substituting the optimal form of $q(z)$ back in $\mathcal{L}$ yields
 \begin{align}
     &\mathcal{L}^*[q(u)] \nonumber\\
     &\quad=\max_{q(z)} \mathcal{L}[q(u),q(z)]\nonumber\\
@@ -285,16 +285,16 @@ We can, however, significantly speed up the optimisation by solving for either $
 \end{align}
 which is computed in \cref{app:saturated_elbo}. We optimise this saturated lower bound $\mathcal{L}^*$ to yield $q(u)$ and then obtain $q(z)$ through \cref{eq:qz}.
 
-Variational mean-field approaches to inference, like the one just presented, are often computationally efficient, but they are known to suffer from certain biases \cite{MacKay:2002:Information_Theory_Learning,Turner:2011:Two_Problems_With_Variational_Expectation,Murphy:2012:Probabilistic_Perspective}. We further refine the MF approximation to alleviate these biases.
+Variational mean-field approaches to inference, like the one just presented, are often computationally efficient, but they are known to suffer from certain biases \cite{MacKay:2002:Information_Theory_Learning,Turner:2011:Two_Problems_With_Variational_Expectation,Murphy:2012:Probabilistic_Perspective}. We further refine the MF approximation to alleviate these biases, which is the second major improvement to inference and learning provided by this work.
 
 To this end, let the \textit{structured mean-field} (SMF) approximation $q(f,u,z)=p(f\cond u, z)q(u,z)$ of $p(f,u,z\cond e)$ be such that it that is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence. Note that the only assumption underlying the SMF approximation is sufficiency of $u$ and $z$ for respectively $h$ and $s$; hence, the SMF approximation will be close the true posterior in the case that there are sufficiently many $u$ and $z$.
 
-Following an argument similar, we again derive the corresponding ELBO:
+Following a similar argument to the above, we again derive the corresponding ELBO:
 \begin{align*}
     &\mathcal{L}[q(u),q(z\cond u)] \\
     &\quad= \la \log p(e\cond f) \ra_{q(f,u,z)}- \ll\la\log\frac{q(u)q(z\cond u)}{p(u)p(z)}\rr\ra_{q(u)q(z\cond u)}.
 \end{align*}
-Again, setting the variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z\cond u)$ to zero and solving for respectively $q(u)$ and $q(z\cond u)$ yields that
+Again, setting the variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z\cond u)$ to zero and solving for respectively $q(u)$ and $q(z\cond u)$ yields 
 \begin{align}
     q(u) &\propto p(u) \int p(z) \exp\la\log p(e\cond f)\ra_{p(f\cond u, z)}\id{z}, \label{eq:qu-smf} \\
     q(z\cond u) &\propto p(z)\exp\la \log p(e\cond f)\ra_{p(f\cond u, z)}, \label{eq:qz-smf}
