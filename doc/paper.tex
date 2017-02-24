@@ -196,6 +196,7 @@ where $M^{u}=K_u^{-1}uu^T K_u^{-1}-K_u$. Unlike the GPCM, the kernel approximati
 
 
 \subsection{Roughness of Sample Paths}
+\label{subsec:roughness}
 We show that the CGCPM models both differentiable and nondifferentiable phenomena, the latter in various levels of roughness. This modelling capability holds false for the GPCM, whose sample paths are always differentiable.
 
 Let $h$ be fixed and decay to zero at infinity. We claim that $f$'s sample paths are almost surely everywhere differentiable if $h(0)=0$, and almost surely nowhere differentiable if $h(0)\neq 0$. To show this, let
@@ -240,6 +241,7 @@ In summary, the CGPCM models differentiable phenoma if $h(0)=0$ and nondifferent
 
 
 \section{Inference}
+\label{sec:inference}
 Let $y(t)\cond \sim \mathcal{N}(f(t),\sigma^2)$ for all $t$ be a noisy version of $f$. Given some observations $e=(y(t_1),\ldots,y(t_n))$ of $y$, we wish to compute $p(f,h,x\cond e)$.
 
 We learn $h$ and $x$ through inducing points \cite{Titsias:2009:Variational_Learning} $u=(h(t_{u,1}),\ldots,h(t_{u,n_u}))\sim \mathcal{N}(0,K_u)$ and $z=(s(t_{z,1}),\ldots,s(t_{z,n_z}))\sim \mathcal{N}(0,K_z)$ for respectively the processes $h$ and $s=T[x]$ where
@@ -293,37 +295,15 @@ which are computed in \cref{app:computation_quz}.
 As opposed to \cref{eq:qu,eq:qz}, \cref{eq:qu-smf,eq:qz-smf} are uncoupled, but $q(u)$'s moments are now intractable. We can, however, evaluate $q(u)$. We therefore use elliptical slice sampling (ESS) \cite{Murray:2010:Elliptical_Slice_Sampling} to sample from $q(u)$ and use these samples to approximate $q(f, u, z)$. To help mixing the Markov chain, we initialise the sampler with the MF approximation.
 
 \section{Experiments}
-We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at
-% \url{https://github.com/wesselb/cgpcm}.
---- ---
-} The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires evaluation of the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Since the BNCDF is not available in TensorFlow, we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. We furthermore implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f} and constructs the corresponding matrices afterwards---manually solving these expressions would be tedious and error prone.
+In this section we test the CGPCM by applying it to synthetic and real-world signals. We aim to show that in certain situations the causality constraint provides a useful inductive bias that leads to better predictions.
 
-\subsection{Learning Known Kernels}
-\begin{figure*}[t]
-    \centering
-    GPCM
-    \begin{tabularx}{\linewidth}{
-            >{\centering}>{\hsize=.43\hsize}X  % ??
-            >{\centering}>{\hsize=.2\hsize}X
-            >{\centering}>{\hsize=.2\hsize}X
-            >{\centering}>{\hsize=.2\hsize}X
-        }
-        $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
-    \end{tabularx}
-    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_gpcm.pdf}
-    CGPCM
-    \begin{tabularx}{\linewidth}{
-            >{\centering}>{\hsize=.43\hsize}X  % ??
-            >{\centering}>{\hsize=.2\hsize}X
-            >{\centering}>{\hsize=.2\hsize}X
-            >{\centering}>{\hsize=.2\hsize}X
-        }
-        $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
-    \end{tabularx}
-    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_cgpcm.pdf}
-    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. All signals are normalised to unity power.}
-    \label{fig:toy_causal_sample}
-\end{figure*}
+% We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to implement the CGPCM.\footnote{The implementation can be found at
+% % \url{https://github.com/wesselb/cgpcm}.
+% --- ---
+% } The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires evaluation of the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Unfortunately, the BNCDF is not available in TensorFlow; we therefore we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. Moreover, we implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f}; hence we provide no closed-form expression for those integrals.
+
+\subsection{Learning Rough Signals}
+Consider a Gaussian process with a fixed kernel. Then, according to \cref{mod:cgpcm2}'s interpretation, the CGPCM should be able to learn this kernel. We compare the CGPCM and the GPCM.
 
 \begin{figure*}[t]
     \centering
@@ -351,12 +331,62 @@ We used TensorFlow \cite{Abadi:2016:TensorFlow_A_System_for_Large-Scale} to impl
     \label{fig:toy_acausal_sample}
 \end{figure*}
 
-Check out \cref{fig:toy_causal_sample,fig:toy_acausal_sample}.
+\Cref{fig:toy_acausal_sample} shows the results for fitting the GPCM and CGPCM to a noisy random sample from the GPCM. The sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing point for $x$. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed.
 
-\subsection{Speech}
+We make several observations. First, the GPCM and CGPCM appear to both succesfully fit the function $f \cond h$ and the kernel $k_{f\cond h}$. This shows that the CGPCM can indeed learn kernels. Second, the sample from the GPCM appears smooth, which means that the learned filter $h$ for the CGPCM should be nearly zero near zero. A quick inspection of \cref{fig:toy_acausal_sample} verifies that this is indeed the case. Finally, the learned filter $h(t)$ for the GPCM appears uncertain for $t\le 0$. This a direct consequence of the causality contraint: \cref{eq:model} shows that $f\cond h$ does not depend on $h(t)$ for $t \le 0$.
 
-\subsection{Head-Related Impulse Response}
-The head-related impulse response (HRIR) describes how the reception of sound by the ear depends on the position from which the sound originates.
+\begin{figure*}[t]
+    \centering
+    GPCM
+    \begin{tabularx}{\linewidth}{
+            >{\centering}>{\hsize=.43\hsize}X  % ??
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+        }
+        $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
+    \end{tabularx}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_gpcm.pdf}
+    CGPCM
+    \begin{tabularx}{\linewidth}{
+            >{\centering}>{\hsize=.43\hsize}X  % ??
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+            >{\centering}>{\hsize=.2\hsize}X
+        }
+        $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
+    \end{tabularx}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_cgpcm.pdf}
+    \caption{Toy. Here {\color{red}red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. All signals are normalised to unity power.}
+    \label{fig:toy_causal_sample}
+\end{figure*}
+
+\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a noiseless random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise.
+
+Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is more mediocre. Despite roughly getting the correlation structure right, the GPCM mistakes the sample roughness for observation noisy and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully.
+
+The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} is that in the former noise is added independently, whereas in the latter noise is part of the process dynamics. Therefore our experiments indicate that the GPCM and CPGCM can both succesfully handle independently added noise, but only the CGPCM succesfully fits noisy dynamics.
+
+% \subsection{Power Spectral Density Estimation}
+% \begin{figure*}[t]
+%     \centering
+%     \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
+%         GPCM & CGPCM
+%     \end{tabularx}
+%     \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X>{\centering}X>{\centering}X}
+%         $k_{f\cond h}$ & PSD of $f\cond h$ & $k_{f\cond h}$ & PSD of $f \cond h$
+%     \end{tabularx}
+%     % \includegraphics[width=.49\linewidth, height=3cm]{resources/psd_gpcm.pdf}
+%     % \includegraphics[width=.49\linewidth, height=3cm]{resources/psd_cgpcm.pdf}
+%     \caption{PSD. Here {\color{red}red} denotes truth, {\color{blue}blue} denotes quantities learned through the MF approximation, and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. All signals are normalised to unity power.}
+%     \label{fig:psd}
+% \end{figure*}
+
+% Check out \cref{fig:psd}.
+
+\subsection{Head-Related Impulse Response Estimation}
+The head-related impulse response (HRIR) describes how the reception of sound by the ear depends on the position from which the sound originates. In particular, the received sound is convolved with the HRIR before it is sensed by the ear. Since this is exactly
+
 \begin{figure*}[t]
     \centering
     \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
@@ -371,11 +401,13 @@ The head-related impulse response (HRIR) describes how the reception of sound by
     \label{fig:hrir}
 \end{figure*}
 
+Check out \cref{fig:hrir}.
+
 
 \section{Discussion}
-We have presented the CGPCM as a model for causally-generated stationary time series. Inference is performed by finding an initial approximation through a variational MF approach, and then refining this approximation through a variational SMF approach combined with ESS. The GPCM has been validated {\color{red} discussion of results of experiments here.}
+We have presented the CGPCM as a model for causally-generated stationary time series. Inference is performed by finding an initial approximation through a variational MF approach, and then refining this approximation through a variational SMF approach combined with ESS. The GPCM has been validated on synthesis and real-world signals. {\color{red} some here}
 
-In future research on the CGPCM, various directions can be explored: First, the model could be extented to multidimensional input and output spaces by following a construction similar to that by \citet{Bruinsma:2016:GGPCM}. Second, the application of more efficient sparse approximation for $h$ and $x$, such as the tree-structured approximation \cite{Bui:2014:Tree-Structured_Gaussian}, would scale the CGPCM to larger data sets. Third, to deal with signals that are band-limited, but not necessarily baseband, the use of an harmonic interdomain transformation \cite{Tobar:2015:Inter-Domain_Inducing} could be explored.
+Various directions could be explored in future research: First, the model could be extented to multidimensional input and output spaces by following a construction similar to that by \citet{Bruinsma:2016:GGPCM}. Second, the application of more efficient sparse approximation for $h$ and $x$, such as the tree-structured approximation \cite{Bui:2014:Tree-Structured_Gaussian}, would scale the CGPCM to larger data sets. Third, to deal with signals that are band-limited, but not necessarily baseband, the use of an harmonic interdomain transformation \cite{Tobar:2015:Inter-Domain_Inducing} could be explored.
 %??? Fourth, in the low noise case, ESS has a hard time exploring $q(u)$; therefore, in that case, afternative sampling algorithms such as Hamiltonian Monte-Carlo \cite{Neal:2012:MCMC_Using_Hamiltonian_Dynamics} could be used.
 Finally, using an approach similar to that by \citet{Lazaro-Gredilla:2013:Variational_Inference_for_Mahalanobis_Distance}, Bayesian inference in the hyperparameters could be attempted.
 
