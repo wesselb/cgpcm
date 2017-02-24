@@ -178,9 +178,19 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
     \end{align*}
 \end{model}
 
-\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$.
+\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels.
 
 The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:Latent_Force_Models}; however, whereas we let $h$ be free-form and let $x$ be white noise, \citet{Alvarez:2009:Latent_Force_Models} specify $h$ deterministically and let $x$ be free-form.
+
+ \begin{figure}[t]
+    \centering
+    \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
+        GPCM & CGPCM
+    \end{tabularx}
+    \includegraphics[width=\linewidth, height=3cm]{resources/prior.pdf}
+    \caption{Prior distribution over kernels in the GPCM and CGPCM}
+    \label{fig:prior}
+\end{figure}
 
 \subsection{Sampling from the CGPCM}
 Sampling from the CGPCM is challenging because the integrals in \cref{mod:cgpcm,mod:cgpcm2} depend on the entirety of $h$ and $x$. To resolve this issue, we follow \citet{Tobar:2015:Learning_Stationary} and approximate \cref{eq:kernel} using Bayesian quadrature \cite{Minka:2000:Quadrature_GP} by conditioning on finitely many values $u=(h(t_{u,1}),\ldots,h(t_{u,n_u}))\sim \mathcal{N}(0,K_u)$ of $h$, which induces a  distribution over covariance functions. The mean of this distribution is an accurate approximation for $k_{f\cond h}$ if sufficient conditioning values are used,
@@ -394,7 +404,7 @@ We convolve a HRIR from a KEMAR\footnote{See \url{http://sound.media.mit.edu/res
 
 
 \section{Discussion}
-We have presented the CGPCM as a model of causal, spectrally complex dynamical phenomena. Inference in the CGPCM is performed in a two-step procedure: first a collapsed varational MF approach is used to obtain an initial approximation, and then this approximation is refined through a variational SMF approach combined with ESS. The CGPCM has been tested and validated on synthesised and real-world signals and showed promising results. In particular, the CGPCM showed the capability of modelling rough signals without attributing this roughness to observation noise.
+We have presented the CGPCM as a model of causal, spectrally complex dynamical phenomena. Inference in the CGPCM is performed in a two-step procedure: first a collapsed varational MF approach is used to obtain an initial approximation, and then this approximation is refined through a variational SMF approach combined with ESS. The CGPCM has been tested and validated on synthesised and real-world signals and shows encouraging results. In particular, the CGPCM shows the capability of modelling rough signals without attributing this roughness to observation noise.
 
 Various directions could be explored in future research: First, the model could be extented to multidimensional input and output spaces by following a construction similar to that by \citet{Bruinsma:2016:GGPCM}. Second, the application of more efficient sparse approximation for $h$ and $x$, such as the tree-structured approximation \cite{Bui:2014:Tree-Structured_Gaussian}, would scale the CGPCM to larger data sets. Third, to deal with signals that are band-limited, but not necessarily baseband, the use of an harmonic interdomain transformation \cite{Tobar:2015:Inter-Domain_Inducing} could be explored.
 %??? Fourth, in the low noise case, ESS has a hard time exploring $q(u)$; therefore, in that case, afternative sampling algorithms such as Hamiltonian Monte-Carlo \cite{Neal:2012:MCMC_Using_Hamiltonian_Dynamics} could be used.
