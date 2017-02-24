@@ -174,7 +174,7 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
 \begin{model}[CGPCM (Second Formulation)] \label{mod:cgpcm2}
     \begin{align*}
         h &\sim \mathcal{GP}(0, k_h(t,t')), \\
-        f \cond h &\sim \mathcal{GP}(0,  \sigma_f^2\int_0 h(|t-t'|+\tau)h(\tau)\id{\tau}).
+        f \cond h &\sim \mathcal{GP}\left(0,  \sigma_f^2\int_0 h(|t-t'|+\tau)h(\tau)\id{\tau} \right).
     \end{align*}
 \end{model}
 
@@ -183,36 +183,26 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
 The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:Latent_Force_Models}; however, whereas we let $h$ be free-form and let $x$ be white noise, \citet{Alvarez:2009:Latent_Force_Models} specify $h$ deterministically and let $x$ be free-form.
 
 \subsection{Sampling from the CGPCM}
-Sampling from the CGPCM is difficult because the integrals in \cref{mod:cgpcm,mod:cgpcm2} depend on the entirety of $h$ and $x$. To resolve this issue, we follow \citet{Tobar:2015:Learning_Stationary} and approximate \cref{eq:kernel} using quadrature \cite{Minka:2000:Quadrature_GP} by conditioning on finitely many values $u=(h(t_{u,1}),\ldots,h(t_{u,n_u}))\sim \mathcal{N}(0,K_u)$ of $h$:
+Sampling from the CGPCM is challenging because the integrals in \cref{mod:cgpcm,mod:cgpcm2} depend on the entirety of $h$ and $x$. To resolve this issue, we follow \citet{Tobar:2015:Learning_Stationary} and approximate \cref{eq:kernel} using Bayesian quadrature \cite{Minka:2000:Quadrature_GP} by conditioning on finitely many values $u=(h(t_{u,1}),\ldots,h(t_{u,n_u}))\sim \mathcal{N}(0,K_u)$ of $h$ which induces a  distribution over covariance functions. The mean of this distribution is an accurate approximation for $k_{f\cond h}$ if sufficient conditioning values are used,
 \begin{align*}
     k_{f\cond h}(r)
     &\approx \mathbb{E}[k_{f\cond h}(r)\cond u]
     = \int_{0} \mathbb{E}[h(|r| + \tau) h(\tau)\cond u] \id{\tau} \\
     &= \int_0 k_h(|r| + \tau, \tau) \id{\tau} \\
-    &\phan{=}+ \tr M^u \int_{0} k_h(t_u, |r|+ \tau)k_h(\tau, t_u^T) \id{\tau}
+    &\phan{=}+ \mathrm{trace} \left( M^u \int_{0} k_h(t_u, |r|+ \tau)k_h(\tau, t_u^T) \id{\tau} \right)
 \end{align*}
-where $M^{u}=K_u^{-1}uu^T K_u^{-1}-K_u$. Unlike the GPCM, the kernel approximation $\mathbb{E}[k_{f\cond h}(r)\cond u]$ of the CGPCM will not simply be a mixture of Gaussians; it will be a more complicated expression instead.
+where $M^{u}=K_u^{-1}uu^T K_u^{-1}-K_u$. This expression was used to compute the model samples shown in figure 1. %Unlike the GPCM, the kernel approximation $\mathbb{E}[k_{f\cond h}(r)\cond u]$ of the CGPCM will not simply be a mixture of Gaussians; it will be a more complicated expression instead.
 
 
 \subsection{Roughness of Sample Paths}
 \label{subsec:roughness}
-We show that the CGCPM models both differentiable and nondifferentiable phenomena, the latter in various levels of roughness. This modelling capability holds false for the GPCM, whose sample paths are always differentiable.
-
-Let $h$ be fixed and decay to zero at infinity. We claim that $f$'s sample paths are almost surely everywhere differentiable if $h(0)=0$, and almost surely nowhere differentiable if $h(0)\neq 0$. To show this, let
+We now show that the CGCPM can capture both differentiable and non-differentiable phenomena, the latter in various levels of roughness. In this regard, the model is more flexible than the original GPCM whose sample paths are always differentiable. Let $h$ be a fixed filter that decays to zero at infinity. We claim that $f$'s sample paths are almost surely everywhere differentiable if $h(0)=0$, and almost surely nowhere differentiable if $h(0)\neq 0$. To show this, let $g(r) = \int_0 h(r + \tau) h(\tau) \id{\tau}$ so that
 \begin{align*}
-    g(r) = \int_0 h(r + \tau) h(\tau) \id{\tau}
-\end{align*}
-so that
-\begin{align*}
-    k_{f\cond h}(r)
-    &= g(|r|) \\
-    &= g(0) + g'(0)|r| + \frac{1}{2}g''(0)r^2 + \O(|r|^3).
+    k_{f\cond h}(r) = \! g(|r|) \! = \! g(0) \! + \! g'(0)|r| + \frac{1}{2}g''(0)r^2 + \O(|r|^3).
 \end{align*}
 Then, according to theorem 2.6 and example 2.3 in section 2.3.1.2 in \cite{Lindgren:2006:Lectures_on_Stationary_Stochastic_Processes}, $f$'s sample paths are almost surely everywhere differentiable if $g'(0)=0$; otherwise, $f$ is not even mean square differentiable, in which case $f$'s sample paths are almost surely nowhere differentiable, according to theorem 5 in \cite{Cambanis:1973:On_Some_Continuity_and_Differentiability}. Finally, it holds that
 \begin{align*}
-    g'(0)
-    &= \int_0 h'(\tau) h(\tau) \id{\tau} \\
-    &= \ll[ h^2(\tau)\rr]_0 - \int_0 h(\tau) h'(\tau) \id{\tau},
+    g'(0)= \int_0 h'(\tau) h(\tau) \id{\tau} = \ll[ h^2(\tau)\rr]_0 - \int_0 h(\tau) h'(\tau) \id{\tau},
 \end{align*}
 which shows that $g'(0) = -\frac{1}{2} h^2(0)$---we assumed that $h$ decays to zero at infinity. Hence the claim is shown.
 
@@ -225,7 +215,7 @@ In the case that $h(0)\neq 0$, we can locally approximate $f$ by a scaled Wiener
     = h^2(0).
 \end{align*}
 
-In summary, the CGPCM models differentiable phenoma if $h(0)=0$ and nondifferentiable phenoma if $h(0)\neq 0$. In the latter case $|h(0)|$ quantifies the level of roughness.
+In summary, the CGPCM models differentiable phenomena if $h(0)=0$ and non-differentiable phenoma if $h(0)\neq 0$. In the latter case $|h(0)|$ quantifies the level of roughness.
 
 \Cref{fig:interpolation} shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$. Note that the sample appears smooth for $h(0)=0$ and becomes rougher as $|h(0)|$ increases. {\color{red} something about pointyness?}
 
