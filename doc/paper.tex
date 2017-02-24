@@ -227,7 +227,7 @@ In the case that $h(0)\neq 0$, we can locally approximate $f$ by a scaled Wiener
 
 In summary, the CGPCM models differentiable phenoma if $h(0)=0$ and nondifferentiable phenoma if $h(0)\neq 0$. In the latter case $|h(0)|$ quantifies the level of roughness.
 
-\Cref{fig:interpolation} shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$. Note that the sample appears smooth for $h(0)=0$ and becomes rougher as $|h(0)|$ increases.
+\Cref{fig:interpolation} shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$. Note that the sample appears smooth for $h(0)=0$ and becomes rougher as $|h(0)|$ increases. {\color{red} something about pointyness?}
 
 \begin{figure*}[t]
     % \vskip 0.2in
@@ -355,8 +355,21 @@ Check out \cref{fig:toy_causal_sample,fig:toy_acausal_sample}.
 
 \subsection{Speech}
 
-\subsection{Head-Related Transfer Function}
-The head-related transfer function (HRTF) describes how the reception of sound by the ear depends on the position from which the sound originates.
+\subsection{Head-Related Impulse Response}
+The head-related impulse response (HRIR) describes how the reception of sound by the ear depends on the position from which the sound originates.
+\begin{figure*}[t]
+    \centering
+    \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
+        GPCM & CGPCM
+    \end{tabularx}
+    \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X>{\centering}X>{\centering}X}
+        $k_{f\cond h}$ & $h$ & $k_{f\cond h}$ & $h$
+    \end{tabularx}
+    \includegraphics[width=.49\linewidth, height=3cm]{resources/hrtf_gpcm.pdf}
+    \includegraphics[width=.49\linewidth, height=3cm]{resources/hrtf_cgpcm.pdf}
+    \caption{HRIR. Here {\color{red}red} denotes truth, {\color{blue}blue} denotes quantities learned through the MF approximation, and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. All signals are normalised to unity power.}
+    \label{fig:hrir}
+\end{figure*}
 
 
 \section{Discussion}
