@@ -136,32 +136,31 @@ A widely-used model for stationary time series are Gaussian Processes, which pla
 Of particular interest for the current application are GP models that use nonparametric models of the power spectra of the GPs---doubly non-parametric models---as they have the capacity to flexibly model signals with arbitrary spectral complexity. One approach employs a Dirichlet Process Mixture Model for the power spectra \cite{Oliva:2015:Bayesian_Nonparametric_Kernel-Learning}, but it is not clear whether it is possible to build the causality constraint into such a construction. An alternative approach instead induces a nonparametric power spectrum by placing a Gaussian Process prior over the system's impulse response function \cite{Tobar:2015:Learning_Stationary}. Critically, the so-called Gaussian Process Convolution Model (GPCM), does not incorporate a causality constraint---the impulse response in question should be thought of as an acausal spatial response. In this paper we revisit the GPCM and explicitly build in a causality constraint whilst retaining the flexibility of modelling the kernel nonparametrically. In addition to these modelling contributions, we develop enhanced variational inference and learning schemes for the causal and acausal variants of the GPCM---collapsed variational bounds and structured approximating distributions---that significantly improve statistical accuracy. These modelling and inferential contributions are demonstrated on synthetic and real-world signals.
 
 \section{Modelling Causally-Generated Stationary Time Series}
+%
 Consider modelling a stationary time series $f$. Motivated by the fact that many dynamical systems in nature can accurately be described by an initial value problem or a linear system, we let $f$ be the solution of a time-invariant linear initial value problem with causal Green's function $h$ and forcing function $x$, or equivalently the system response of a time-invariant linear system with causal impulse response $h$ and excitation $x$. It then holds that
 \begin{align} \label{eq:model}
     f(t) = \int^t h(t- \tau)x(\tau)\id{\tau}.
 \end{align}
-We denote integration from negative infinity or to positive infinity by omitting the respective limit from the integral.
+For parsimony, we denote integration from negative infinity or to positive infinity by omitting the respective limit from the integral throughout.
 Note that $f(t)$ depends on $x(\tau)$ only for $\tau \le t$; this reveals \cref{eq:model}'s causal nature.
 
 In this paper we consider the case that $x$ is white noise; that is, informally denoted, $x \sim \mathcal{GP}(0,\delta(t-t'))$ where $\delta$ denotes the Dirac delta function. In that case \cref{eq:model} can be interpreted as a Gaussian process with zero mean and kernel
 \begin{align}
-    &k_{f\cond h}(t,t')\nonumber \\
-    &\quad= \int^t h(t- \tau)\int^{t'}h(t'- \tau')
+    k_{f\cond h}(t,t')&= \!\int^t \! \int^{t'}\!h(t- \tau) \vspace{-1mm} h(t'- \tau')
         \mathbb{E}[ x(\tau) x(\tau')]\id{\tau'} \id{\tau} \nonumber \\
-    &\quad= \int^{t \land t'} h(t - \tau) h(t' - \tau) \id{\tau} \nonumber \\
-    &\quad= \int_0 h(|t - t'| + \tau)h(\tau) \id{\tau} \label{eq:kernel} \\
-    &\quad= k_{f\cond h}(t-t') \nonumber
+    &= \int^{t \land t'} \! h(t - \tau) h(t' - \tau) \id{\tau} \nonumber \\
+    &= \int_0 h(|t - t'| + \tau)h(\tau) \id{\tau} = k_{f\cond h}(t-t')  \label{eq:kernel} 
 \end{align}
-where $t \land t'$ denotes the minimum of $t$ and $t'$. Alternatively, \cref{eq:model} can in that case be interpreted as the continuous-time generalisation of a causal moving-average filter.
+where $t \land t'$ denotes the minimum of $t$ and $t'$. The restriction of $x$ to white noise is not overly restrictive since any causal stationary process can be represented with sufficiently rich $h$. An alternative lens through which to view the model is as the continuous-time generalisation of a causal moving-average filter.
 
-Since $h$ consitutes an unknown function, we choose to model it using a Gaussian process; that is, we let $h \sim \mathcal{GP}(0,k_h(t,t'))$. In choosing $k_h(t,t')$, we require that $f$ has finite power, since every real-world signal has so as well. Following \citet{Tobar:2015:Learning_Stationary}, this can be achieved by letting $h$ decay to zero at infinity sufficiently quickly: let $h\cond g = w g$ where $w(t)= \exp(- \alpha t^2)$ and $g \sim \mathcal{GP}(0,k_g(t-t'))$ has finite power; in that case,
+One of the focusses in this work is to develop flexible prior distributions over the filter $h$ that can support essentially arbitrarily complex structure. We therefore choose to model it using a Gaussian process $h \sim \mathcal{GP}(0,k_h(t,t'))$. The covariance function describing the prior over the filter$k_h(t,t')$ should be carefully chosen. One important constraint on the covariance function comes from the fact that every real-world signal $f$ has finite power. This can be satisfied by letting the filter variance decay to zero at infinity sufficiently quickly \citet{Tobar:2015:Learning_Stationary}: let $h\cond g = w g$ where $w(t)= \exp(- \alpha t^2)$ and $g \sim \mathcal{GP}(0,k_g(t-t'))$ has finite power; in that case, % RET there's a question as to whether exponential decay might be more appropriate in the current case
 \begin{align*}
     \mathbb{V}[f(t)]
     &= \int_{0}\exp(-2 \alpha t^2)\mathbb{V}[g(\tau)]\id{\tau} \\
     &\le k_g(0) \int_0 \exp(- 2 \alpha t^2) \id{\tau} < \infty,
 \end{align*}
 which could be infinite otherwise.
-Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated square. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines $k_f$'s length scale and $\gamma$ its flexibility.
+Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated quadratic. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines $k_f$'s length scale and $\gamma$ its flexibility.
 
 Through specifying a prior on $x$ and a prior on $h$ we have specified a prior on $f$. Further including a scale $\sigma_f$ to control $f$'s prior power, we call this prior on $f$ the Causal Gaussian Process Convolution Model (CGPCM). To recapitulate, the CGPCM is formulated as follows:
 
