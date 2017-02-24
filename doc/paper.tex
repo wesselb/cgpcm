@@ -258,7 +258,7 @@ We learn $h$ and $x$ through inducing points \cite{Titsias:2009:Variational_Lear
 \end{align*}
 is some interdomain transformation of the white-noise process with filter $r$ \cite{Lazaro-Gredilla:2009:Inter-Domain_Gaussian_Processes_for_Sparse,Alvarez:2010:Efficient_Multioutput_Gaussian_Processes_Through,Tobar:2015:Learning_Stationary}. The inter-domain transformation is necessary because white noise is uncorrelated and so placing inducing points directly in this domain would not be able to capture meaningful structure in the posterior. In choosing $r$, we make sure that $s=T[x]$ has power at the majority of frequencies present in the signal that we aim to model, thereby enabling the inducing variables to capture posterior dependencies in the components of the white noise that pass through the filter and therefore affect the data. We follow \citet{Tobar:2015:Learning_Stationary} and let $r(t)=\exp(-\omega t^2)$, which fits the low frequency components of the posterior.
 
-Let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond u, z)q(u)q(z)$ of $p(f,u,z\cond e)$ be such that it is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence. Rearranging
+Let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond u, z)q(u)q(z)$ of $p(f,u,z\cond e)$ be such that it is closest to $p(f,u,z\cond e)$ in Kullback-Leibler divergence. Contrary to the formulation of \citet{Tobar:2015:Learning_Stationary}, we have analytically integrated out $h$ and $x$ in $p(f\cond u, z)=\int p(f, h, x\cond u, z)\id{h}\id{x}$ prior to performing inference. It is indeed the case that $p(f\cond u, z)$ is intractable, but its first two moment can actually be computed, and only those we need in formulating our inference scheme. Rearranging
 \begin{align*}
     &\log p(e) - \KL(q(f,u,z)\|p(f,u,z\cond e)) \\
     &\quad= \ll\la \log \frac{p(e\cond f)\cancel{p(f\cond u, z)}p(u)p(z)}{\cancel{p(f\cond u, z)}q(u)q(z)} \rr\ra_{q(f,u,z)} \\
@@ -268,7 +268,7 @@ Let the \textit{mean-field} (MF) approximation $q(f,u,z)=p(f\cond u, z)q(u)q(z)$
 \end{align*}
 shows that we can find $q(u)$ and $q(z)$ through maximising $\mathcal{L}$. Since $\log p(e)\ge\mathcal{L}$, $\mathcal{L}$ is called the \textit{evidence lower bound} (ELBO). Observe that maximisation of $\mathcal{L}$ attempts to explain the data well whilst not diverging too far from the model prior.
 
-To optimise $\mathcal{L}$ with respect to $q(u)$ and $q(z)$ we set their respective variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z)$ to zero; then solving for $q(u)$ and $q(z)$ yields 
+To optimise $\mathcal{L}$ with respect to $q(u)$ and $q(z)$ we set their respective variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z)$ to zero; then solving for $q(u)$ and $q(z)$ yields
 \begin{align}
     q(u) &\propto p(u) \exp \la \log p(e\cond f) \ra_{p(f\cond u,z)q(z)}, \label{eq:qu} \\
     q(z) &\propto p(z) \exp \la \log p(e\cond f) \ra_{p(f\cond u,z)q(u)}, \label{eq:qz}
@@ -294,7 +294,7 @@ Following a similar argument to the above, we again derive the corresponding ELB
     &\mathcal{L}[q(u),q(z\cond u)] \\
     &\quad= \la \log p(e\cond f) \ra_{q(f,u,z)}- \ll\la\log\frac{q(u)q(z\cond u)}{p(u)p(z)}\rr\ra_{q(u)q(z\cond u)}.
 \end{align*}
-Again, setting the variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z\cond u)$ to zero and solving for respectively $q(u)$ and $q(z\cond u)$ yields 
+Again, setting the variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \mathcal{L} / \delta q(z\cond u)$ to zero and solving for respectively $q(u)$ and $q(z\cond u)$ yields
 \begin{align}
     q(u) &\propto p(u) \int p(z) \exp\la\log p(e\cond f)\ra_{p(f\cond u, z)}\id{z}, \label{eq:qu-smf} \\
     q(z\cond u) &\propto p(z)\exp\la \log p(e\cond f)\ra_{p(f\cond u, z)}, \label{eq:qz-smf}
@@ -339,7 +339,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
     \label{fig:toy_acausal_sample}
 \end{figure*}
 
-\Cref{fig:toy_acausal_sample} shows the results for fitting the GPCM and CGPCM to a noisy random sample from the GPCM. We make several observations. First, the GPCM and CGPCM appear to both succesfully fit the function $f \cond h$ and the kernel $k_{f\cond h}$. This shows that the CGPCM can indeed learn kernels. Second, the sample from the GPCM appears smooth, which means that the learned filter $h$ for the CGPCM should be nearly zero near zero. A quick inspection of \cref{fig:toy_acausal_sample} verifies that this is indeed the case. Finally, the learned filter $h(t)$ for the GPCM appears uncertain for $t\le 0$. This a direct consequence of the causality contraint: \cref{eq:model} shows that $f\cond h$ does not depend on $h(t)$ for $t \le 0$.
+\Cref{fig:toy_acausal_sample} shows the results for fitting the GPCM and CGPCM to a noisy random sample from the GPCM. We make several observations. First, the GPCM and CGPCM appear to both succesfully fit the function $f \cond h$ and the kernel $k_{f\cond h}$. This shows that the CGPCM can indeed learn kernels. Second, the sample from the GPCM appears smooth, which means that the learned filter $h$ for the CGPCM should be nearly zero near zero. A quick inspection of \cref{fig:toy_acausal_sample} verifies that this is indeed the case. Finally, the learned filter $h(t)$ for the CGPCM appears uncertain for $t\le 0$. This a direct consequence of the causality contraint: \cref{eq:model} shows that $f\cond h$ does not depend on $h(t)$ for $t \le 0$.
 
 \begin{figure*}[t]
     \centering
@@ -371,7 +371,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
 
 The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} is that in the former noise is added independently, whereas in the latter noise is part of the process dynamics. Therefore \cref{fig:toy_acausal_sample,fig:toy_causal_sample} indicate that the GPCM and CPGCM can both handle independently added noise, but only the CGPCM fits noisy dynamics.
 
-Finally, note that the SMF approximation consistently has better calibrated credible regions compared to the MF approximation. For example, in the filter $h$, kernel $k_{f\cond h}$, PSD of $f \cond h$ of the CGPCM in \cref{fig:toy_causal_sample}, the MF approximation fails to capture the truth in its credible region, whereas the SMF approximation does capture the truth.
+Finally, note that the SMF approximation consistently has better calibrated credible regions compared to the MF approximation. For example, the MF approximation fails to capture the truth in its credible region for the filter $h$, kernel $k_{f\cond h}$, and PSD of $f \cond h$ of the CGPCM in \cref{fig:toy_causal_sample}; in contrast, the SMF approximation does capture the truth.
 % \subsection{Speech}
 % Coming up.
 
