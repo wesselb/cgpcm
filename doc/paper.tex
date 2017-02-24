@@ -24,7 +24,7 @@
 \usepackage{tikz}
 
 % Break in equations...
-% \allowdisplaybreaks
+\allowdisplaybreaks
 
 % Commonly used sets
 \newcommand{\Z}{\mathbb{Z}}   % Integers
@@ -178,18 +178,28 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
     \end{align*}
 \end{model}
 
-\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels.
+\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels, and \cref{fig:prior_psd} visualises the corresponding prior over PSDs. Note that in \cref{fig:prior_psd} the prior for the GPCM has a low-pass structure, whereas that for the CGPCM decays more slowly.
 
 The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:Latent_Force_Models}; however, whereas we let $h$ be free-form and let $x$ be white noise, \citet{Alvarez:2009:Latent_Force_Models} specify $h$ deterministically and let $x$ be free-form.
 
- \begin{figure}[t]
+\begin{figure}[t]
     \centering
     \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
         GPCM & CGPCM
     \end{tabularx}
-    \includegraphics[width=\linewidth, height=3cm]{resources/prior.pdf}
-    \caption{Prior distribution over kernels in the GPCM and CGPCM}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/prior.pdf}
+    \caption{Prior distribution over kernels in the GPCM and CGPCM. Lines correspond to means and gradients correspond to uncertainty.}
     \label{fig:prior}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
+        GPCM & CGPCM
+    \end{tabularx}
+    \includegraphics[width=\linewidth, height=3cm]{resources/cropped/prior_psd.pdf}
+    \caption{Prior distribution over PSDs in the GPCM and CGPCM. Lines correspond to means and gradients correspond to uncertainty.}
+    \label{fig:prior_psd}
 \end{figure}
 
 \subsection{Sampling from the CGPCM}
@@ -230,9 +240,9 @@ In summary, the CGPCM models differentiable phenomena if $h(0)=0$ and non-differ
 \Cref{fig:interpolation} shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$. Note that the sample appears smooth for $h(0)=0$ and becomes rougher as $|h(0)|$ increases.
 
 \begin{figure*}[t]
-    % \vskip 0.2in
+    \vskip 0.1in
     \centering
-    \includegraphics[width=\linewidth]{resources/interpolation.pdf}
+    \includegraphics[width=\linewidth]{resources/cropped/interpolation.pdf}
     \caption{Generative process of the CGPCM. Shows the filter $h$, the kernel $k_{f\cond h}$, and a sample $f\cond h \sim \mathcal{GP}(0,k_{f\cond h}(t-t'))$ while the filter is interpolated from one that satisfies $h(0)=0$ to one that satisfies $|h(0)|>0$.}
     \label{fig:interpolation}
     % \vskip -0.2in
@@ -358,7 +368,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
     \label{fig:toy_causal_sample}
 \end{figure*}
 
-\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a \textit{noiseless} random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise. Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is mediocre. Despite roughly getting the correlation structure right, the GPCM mistakes the sample roughness for observation noise and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully.
+\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a \textit{noiseless} random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise. Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is mediocre. Despite roughly getting the correlation structure right, the GPCM mistakes the sample roughness for observation noise and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully; this is consistent with the priors depicted in \cref{fig:prior_psd}.
 
 The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} is that in the former noise is added independently, whereas in the latter noise is part of the process dynamics. Therefore \cref{fig:toy_acausal_sample,fig:toy_causal_sample} indicate that the GPCM and CPGCM can both handle independently added noise, but only the CGPCM fits noisy dynamics.
 
