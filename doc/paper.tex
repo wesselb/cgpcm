@@ -392,7 +392,7 @@ Finally, note that the SMF approximation consistently has better calibrated cred
 % Check out \cref{fig:psd}.
 
 \subsection{Head-Related Impulse Response Estimation}
-The head-related impulse response (HRIR) describes how the ear's reception of sound depends on the direction from which the sound comes. Specifically, the received sound is convolved with the HRIR before it is sensed by the ear, and the HRIR depends on the direction from which the sound comes. We consider the problem of inferring the HRIR after some sound has been sensed. Suppose that the sound is background noise and can be modelled by white noise. Then assuming a Gaussian process prior over the HRIR recovers the CGPCM exactly; therefore, in that case, we can infer the HRIR via inferring the filter $h$ in the CGPCM.
+The head-related impulse response (HRIR) describes how sounds entering the ear canal are filtered by the outer ear. The form of the filter depends on the location of the sound source. The filter introduces complex spectral cues into the sounds that are used by the brain to infer source location. We consider the problem of inferring the HRIR from an incoming sound pressure waveform. Suppose that the sound is background noise and can be modelled by white noise. Then assuming a Gaussian process prior over the HRIR we recover the CGPCM exactly; in other words, we can infer the HRIR via inferring the filter $h$ in the CGPCM.
 
 \begin{figure*}[t]
     \centering
@@ -408,7 +408,7 @@ The head-related impulse response (HRIR) describes how the ear's reception of so
     \label{fig:hrir}
 \end{figure*}
 
-We convolve a HRIR from a KEMAR\footnote{See \url{http://sound.media.mit.edu/resources/KEMAR.html}.} dummy head microphone with white noise to simulate the signal that would have been sensed by the ear. \Cref{fig:hrir} shows the results of fitting the GPCM and CGPCM to the resulting signal. Despite the fact that both models correctly infer the kernel $k_{f \cond h}$, only the CGPCM is able to provide a good prediction for the HRIR. This shows that the inductive bias built in by the causality constraint in fact does help when dealing with causal phenomena.
+We convolve a HRIR from a KEMAR\footnote{See \url{http://sound.media.mit.edu/resources/KEMAR.html}.} dummy head microphone with white noise to simulate the signal that would have been sensed by the ear. \Cref{fig:hrir} shows the results of fitting the GPCM and CGPCM to the resulting signal. Despite the fact that both models correctly infer the kernel $k_{f \cond h}$, only the CGPCM is able to provide a good prediction for the HRIR. This shows that the inductive bias built in by the causality constraint does in fact help when dealing with causal phenomena.
 
 
 \section{Discussion}
