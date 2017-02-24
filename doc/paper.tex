@@ -160,7 +160,7 @@ One of the focusses in this work is to develop flexible prior distributions over
     &\le k_g(0) \int_0 \exp(- 2 \alpha t^2) \id{\tau} < \infty,
 \end{align*}
 which could be infinite otherwise.
-Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated quadratic. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines the typical temporal extent of the filter and $\gamma$ the typical time-scale over which it varies. These assumptions also serve to make inference well-posed; without them, any shifted version of the filter results in an identical statistical model for the data meaning the model is unidentifiable.
+Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated quadratic. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines the typical temporal extent of the filter and $\gamma$ the typical time-scale over which it varies. These assumptions also serve to make inference well-posed; without them, any shifted version of the filter results in an identical statistical model for the data, meaning that the model is unidentifiable.
 
 The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Further including a scale $\sigma_f$ to control $f$'s prior power, we call this prior on $f$ the Causal Gaussian Process Convolution Model (CGPCM). To recapitulate, the CGPCM is formulated as follows:
 
@@ -178,7 +178,7 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
     \end{align*}
 \end{model}
 
-\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels, and \cref{fig:prior_psd} visualises the corresponding prior over PSDs. Note that the prior over PSDs for the GPCM confidently has a low-pass structure, whereas that for the CGPCM has support for more slowly decaying spectra.
+\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density, is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels, and \cref{fig:prior_psd} visualises the corresponding prior over PSDs. Note that the prior over PSDs for the GPCM confidently has a low-pass structure, whereas that for the CGPCM has support for more slowly decaying spectra.
 
 The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:Latent_Force_Models}; however, whereas we let $h$ be free-form and let $x$ be white noise, \citet{Alvarez:2009:Latent_Force_Models} specify $h$ deterministically and let $x$ be free-form.
 
@@ -335,7 +335,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
         $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_acausal_sample_cgpcm.pdf}
-    \caption{Predictions of the GPCM and CGPCM after learning a noisy random sample from the GPCM. The sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing points for $x$; inducing points are indicated by black dots in the figure. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed. All signals are normalised to unity power. {\color{red}Red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and the PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. For any learned quantity it holds that lines correspond to means and areas correpond to 95\% central credible regions.}
+    \caption{Predictions of the GPCM and CGPCM after learning a noisy random sample from the GPCM. The learned sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing points for $x$; inducing points are indicated by black dots in the figure. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed. All signals are normalised to unity power. {\color{red}Red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and the PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. For any learned quantity it holds that lines correspond to means and areas correpond to 95\% central credible regions.}
     \label{fig:toy_acausal_sample}
 \end{figure*}
 
@@ -363,7 +363,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
         $f\cond h$ & $h$ & $k_{f\cond h}$ & PSD of $f\cond h$
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/learning_known_kernels_causal_sample_cgpcm.pdf}
-    \caption{Predictions of the GPCM and CGPCM after learning a noiseless random sample from the CGPCM. The sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing points for $x$; inducing points are indicated by black dots in the figure. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed. All signals are normalised to unity power. {\color{red}Red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and the PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. For any learned quantity it holds that lines correspond to means and areas correpond to 95\% central credible regions.}
+    \caption{Predictions of the GPCM and CGPCM after learning a noiseless random sample from the CGPCM. The learned sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing points for $x$; inducing points are indicated by black dots in the figure. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed. All signals are normalised to unity power. {\color{red}Red} denotes truth; {\color{darkgreen}green} denotes observations, the emperical autocorrelation, and the periodogram for respectively the function $f\cond h$, the kernel $k_{f\cond h}$, and the PSD of $f\cond h$; {\color{blue}blue} denotes quantities learned through the MF approximation; and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. For any learned quantity it holds that lines correspond to means and areas correpond to 95\% central credible regions.}
     \label{fig:toy_causal_sample}
 \end{figure*}
 
@@ -404,7 +404,7 @@ The head-related impulse response (HRIR) describes how the ear's reception of so
     \end{tabularx}
     \includegraphics[width=.49\linewidth, height=3cm]{resources/hrtf_gpcm.pdf}
     \includegraphics[width=.49\linewidth, height=3cm]{resources/hrtf_cgpcm.pdf}
-    \caption{Predictions of the GPCM and CGPCM after learning a HRIR convolved with white noise. The sample consists of 500 data points. We used 101 evenly-spaced inducing points for $h$ and 150 evenly-spaced inducing points for $x$; inducing points are indicated by black dots in the figure. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed. All signals are normalised to unity power. {\color{red}Red} denotes truth, {\color{blue}blue} denotes quantities learned through the MF approximation, and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. For any learned quantity it holds that lines correspond to means and areas correpond to 95\% central credible regions.}
+    \caption{Predictions of the GPCM and CGPCM after learning a HRIR convolved with white noise. The learned sample consists of 500 data points. We used 101 evenly-spaced inducing points for $h$ and 150 evenly-spaced inducing points for $x$; inducing points are indicated by black dots in the figure. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed. All signals are normalised to unity power. {\color{red}Red} denotes truth, {\color{blue}blue} denotes quantities learned through the MF approximation, and {\color{mycyan}cyan} denotes quantities learned through the SMF approximation. For any learned quantity it holds that lines correspond to means and areas correpond to 95\% central credible regions.}
     \label{fig:hrir}
 \end{figure*}
 
@@ -477,7 +477,8 @@ Following \cref{app:moments_f}, we have that
 \begin{align*}
     &\la \log p(e\cond f) \ra_{p(f\cond K_u^{-1} u, K_z^{-1} z)} \\
     &\quad= -\frac{n}{2}\log 2 \pi \sigma^2 - \frac{1}{2 \sigma^2} \la e^{2}(t) - 2 \sigma_f u^T A^{hx}(t) e(t) z\\
-    &\quad\phan{=}  + \sigma_f^2 ( b(t) + u^T B^{h}(t) u+ z^T B^{x}(t) z + (u^T A^{hx}(t) z)^2 ) \ra_t
+    &\quad\phan{=}  + \sigma_f^2 ( b(t) + u^T B^{h}(t) u+ z^T B^{x}(t) z \\
+    &\quad\phan{=}  + (u^T A^{hx}(t) z)^2 ) \ra_t
 \end{align*}
 where $\la\,\cdot\,\ra_t$ denotes summation with respect to $t$ over $t_1,\ldots,t_n$.
 It follows that
