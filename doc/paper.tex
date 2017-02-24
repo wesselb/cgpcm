@@ -178,7 +178,7 @@ The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Fur
     \end{align*}
 \end{model}
 
-\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels, and \cref{fig:prior_psd} visualises the corresponding prior over PSDs. Note that in \cref{fig:prior_psd} the prior for the GPCM has a low-pass structure, whereas that for the CGPCM decays more slowly.
+\Cref{mod:cgpcm2} reveals the CGCPM as a Gaussian process in which the kernel, or equivalently the power spectral density (PSD), is modelled nonparametrically. \Cref{fig:interpolation} illustrates the generative process of the CGPCM: First, a filter $h$ is generated. Then, the kernel $k_{f\cond h}$ is constructed. Finally, a sample $f\cond h$ is drawn from $\mathcal{GP}(0,k_{f \cond h}(t-t'))$. \Cref{fig:prior} visualises the corresponding prior over kernels, and \cref{fig:prior_psd} visualises the corresponding prior over PSDs. Note that the prior over PSDs for the GPCM has a confident low-pass structure, whereas that for the CGPCM has support for more slowly decaying spectra.
 
 The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:Latent_Force_Models}; however, whereas we let $h$ be free-form and let $x$ be white noise, \citet{Alvarez:2009:Latent_Force_Models} specify $h$ deterministically and let $x$ be free-form.
 
@@ -195,10 +195,10 @@ The CPGCM is similar to the latent force model presented by \citet{Alvarez:2009:
 \begin{figure}[t]
     \centering
     \begin{tabularx}{\linewidth}{>{\centering}X>{\centering}X}
-        GPCM & CGPCM
+        ~~GPCM & ~~~~~~CGPCM
     \end{tabularx}
     \includegraphics[width=\linewidth, height=3cm]{resources/cropped/prior_psd.pdf}
-    \caption{Prior distribution over PSDs in the GPCM and CGPCM. Lines correspond to means and gradients correspond to uncertainty.}
+    \caption{Prior distribution over PSDs in the GPCM and CGPCM. The unit on the $y$ axis is decibel. Lines correspond to means and gradients correspond to uncertainty.}
     \label{fig:prior_psd}
 \end{figure}
 
@@ -374,7 +374,7 @@ The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} i
 
 Finally, note that predictions through the SMF approximation consistently give better-calibrated credible regions than predictions through the MF approximation. We will further investigate issue in the following experiment.
 
-\subsection{Speech Modelling}
+\subsection{Speech}
 Coming up.
 
 % \begin{figure*}[t]
