@@ -367,7 +367,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
     \label{fig:toy_causal_sample}
 \end{figure*}
 
-\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a \textit{noiseless} random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise. Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is mediocre. Despite roughly getting the correlation structure right, the GPCM mistakes the sample roughness for observation noise and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully; this is consistent with the priors depicted in \cref{fig:prior_psd}.
+\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a \textit{noiseless} random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise. Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is mediocre. Despite approximately capturing the correlation structure, the GPCM mistakes the sample roughness for observation noise and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully; this is consistent with the priors depicted in \cref{fig:prior_psd}.
 
 The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} is that in the former noise is added independently, whereas in the latter noise is part of the process dynamics. Therefore \cref{fig:toy_acausal_sample,fig:toy_causal_sample} indicate that the GPCM and CPGCM can both handle independently added noise, but only the CGPCM fits noisy dynamics.
 
@@ -392,7 +392,7 @@ Finally, note that the SMF approximation consistently has better calibrated cred
 % Check out \cref{fig:psd}.
 
 \subsection{Head-Related Impulse Response Estimation}
-The head-related impulse response (HRIR) describes how the ear's reception of sound depends on the direction from which the sound comes. Specifically, the received sound is convolved with the HRIR before it is sensed by the ear, and the HRIR depends on the direction from which the sound comes. We consider the problem of inferring the HRIR after some sound has been sensed. Suppose that the sound is background noise and can be modelled by white noise. Then assuming a Gaussian process prior over the HRIR recovers the CGPCM exactly; therefore, in that case, we can infer the HRIR via inferring the filter $h$ in the CGPCM.
+The head-related impulse response (HRIR) describes how sounds entering the ear canal are filtered by the outer ear. The form of the filter depends on the location of the sound source. The filter introduces complex spectral cues into the sounds that are used by the brain to infer source location. We consider the problem of inferring the HRIR from an incoming sound pressure waveform. Suppose that the sound is background noise and can be modelled by white noise. Then assuming a Gaussian process prior over the HRIR we recover the CGPCM exactly; in other words, we can infer the HRIR via inferring the filter $h$ in the CGPCM.
 
 \begin{figure*}[t]
     \centering
@@ -408,7 +408,7 @@ The head-related impulse response (HRIR) describes how the ear's reception of so
     \label{fig:hrir}
 \end{figure*}
 
-We convolve a HRIR from a KEMAR\footnote{See \url{http://sound.media.mit.edu/resources/KEMAR.html}.} dummy head microphone with white noise to simulate the signal that would have been sensed by the ear. \Cref{fig:hrir} shows the results of fitting the GPCM and CGPCM to the resulting signal. Despite the fact that both models correctly infer the kernel $k_{f \cond h}$, only the CGPCM is able to provide a good prediction for the HRIR. This shows that the inductive bias built in by the causality constraint in fact does help when dealing with causal phenomena.
+We convolve a HRIR from a KEMAR\footnote{See \url{http://sound.media.mit.edu/resources/KEMAR.html}.} dummy head microphone with white noise to simulate the signal that would have been sensed by the ear. \Cref{fig:hrir} shows the results of fitting the GPCM and CGPCM to the resulting signal. Despite the fact that both models correctly infer the kernel $k_{f \cond h}$, only the CGPCM is able to provide a good prediction for the HRIR. This shows that the inductive bias built in by the causality constraint does in fact help when dealing with causal phenomena.
 
 
 \section{Discussion}
