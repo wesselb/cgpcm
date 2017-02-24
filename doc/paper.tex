@@ -302,7 +302,7 @@ In this section we test the CGPCM by applying it to synthetic and real-world sig
 % } The main issue in implementing the CGPCM is that computation of the matrices in \cref{app:moments_f} requires evaluation of the bivariate normal cumulative density function (BNCDF) \cite{Genz:2004:Numerical_Computation_of_Rectangular_Bivariate}. Unfortunately, the BNCDF is not available in TensorFlow; we therefore we used the implementation of the BNCDF from the R package \texttt{pbivnorm}\footnote{See \url{https://github.com/brentonk/pbivnorm}.} to implement the BNCDF and its gradient in TensorFlow. Moreover, we implementated an algorithm that symbolically solves the integrals in \cref{app:moments_f}; hence we provide no closed-form expression for those integrals.
 
 \subsection{Learning Rough Signals}
-In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough isgnals, whereas the GPCM only models smooth signals. We perform two experiments that show the significance of this modelling capability.
+In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough signals, whereas the GPCM only models smooth signals. We perform two experiments that show the significance of this modelling capability.
 
 \begin{figure*}[t]
     \centering
@@ -330,7 +330,7 @@ In \cref{subsec:roughness} we showed that the CGPCM models both smooth and rough
     \label{fig:toy_acausal_sample}
 \end{figure*}
 
-\Cref{fig:toy_acausal_sample} shows the results for fitting the GPCM and CGPCM to a noisy random sample from the GPCM. The sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing point for $x$. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed.
+\Cref{fig:toy_acausal_sample} shows the results for fitting the GPCM and CGPCM to a noisy random sample from the GPCM. The sample consists of 300 data points. We used 51 evenly-spaced inducing points for $h$ and 80 evenly-spaced inducing points for $x$. All parameters were initialised randomly and the procedure from \cref{sec:inference} was followed.
 
 We make several observations. First, the GPCM and CGPCM appear to both succesfully fit the function $f \cond h$ and the kernel $k_{f\cond h}$. This shows that the CGPCM can indeed learn kernels. Second, the sample from the GPCM appears smooth, which means that the learned filter $h$ for the CGPCM should be nearly zero near zero. A quick inspection of \cref{fig:toy_acausal_sample} verifies that this is indeed the case. Finally, the learned filter $h(t)$ for the GPCM appears uncertain for $t\le 0$. This a direct consequence of the causality contraint: \cref{eq:model} shows that $f\cond h$ does not depend on $h(t)$ for $t \le 0$.
 
@@ -360,9 +360,9 @@ We make several observations. First, the GPCM and CGPCM appear to both succesful
     \label{fig:toy_causal_sample}
 \end{figure*}
 
-\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a noiseless random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise.
+\Cref{fig:toy_causal_sample} shows the results for fitting the GPCM and CGPCM to instead a \textit{noiseless} random sample from the CGPCM. Since the drawn filter $h$ satisfies $|h(0)|>0$, the sample is rough and thus appears noisy. The challenge for the models is to not mistake this sample roughness for observation noise.
 
-Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is more mediocre. Despite roughly getting the correlation structure right, the GPCM mistakes the sample roughness for observation noisy and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully.
+Observe that the CGPCM fits the filter $h$ and kernel $k_{f \cond h}$ well, whereas GPCM's fit is more mediocre. Despite roughly getting the correlation structure right, the GPCM mistakes the sample roughness for observation noise and provides a poor fit of the function $f\cond h$. The CGPCM, on the other hand, correctly recognises the sample roughness and provides an excellent fit of $f \cond h$. This discrepancy is explained by inspecting the fit of the PSD: the GPCM is unable to fit the higher frequencies in the sample, whereas the CGPCM does so succesfully.
 
 The key difference between \cref{fig:toy_acausal_sample,fig:toy_causal_sample} is that in the former noise is added independently, whereas in the latter noise is part of the process dynamics. Therefore our experiments indicate that the GPCM and CPGCM can both succesfully handle independently added noise, but only the CGPCM succesfully fits noisy dynamics.
 
@@ -404,7 +404,7 @@ Check out \cref{fig:hrir}.
 
 
 \section{Discussion}
-We have presented the CGPCM as a model for causally-generated stationary time series. Inference is performed by finding an initial approximation through a variational MF approach, and then refining this approximation through a variational SMF approach combined with ESS. The GPCM has been validated on synthesis and real-world signals. {\color{red} some here}
+We have presented the CGPCM as a model for causally-generated stationary time series. Inference in the CGPCM is performed by finding an initial approximation through a variational MF approach, and then refining this approximation through a variational SMF approach combined with ESS. The GPCM has been validated on synthesis and real-world signals. {\color{red} some here}
 
 Various directions could be explored in future research: First, the model could be extented to multidimensional input and output spaces by following a construction similar to that by \citet{Bruinsma:2016:GGPCM}. Second, the application of more efficient sparse approximation for $h$ and $x$, such as the tree-structured approximation \cite{Bui:2014:Tree-Structured_Gaussian}, would scale the CGPCM to larger data sets. Third, to deal with signals that are band-limited, but not necessarily baseband, the use of an harmonic interdomain transformation \cite{Tobar:2015:Inter-Domain_Inducing} could be explored.
 %??? Fourth, in the low noise case, ESS has a hard time exploring $q(u)$; therefore, in that case, afternative sampling algorithms such as Hamiltonian Monte-Carlo \cite{Neal:2012:MCMC_Using_Hamiltonian_Dynamics} could be used.
