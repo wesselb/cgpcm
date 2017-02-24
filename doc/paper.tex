@@ -160,9 +160,9 @@ One of the focusses in this work is to develop flexible prior distributions over
     &\le k_g(0) \int_0 \exp(- 2 \alpha t^2) \id{\tau} < \infty,
 \end{align*}
 which could be infinite otherwise.
-Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated quadratic. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines $k_f$'s length scale and $\gamma$ its flexibility.
+Equivalently, we let $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}))k_g(t-t')$. To retain flexibility in the prior on $h$, we let $k_g$ be an exponentiated quadratic. We thus have that $k_h(t,t')=\exp(- \alpha (t^2 + t^{\prime 2}) - \gamma(t-t')^2)$. Note that $\alpha$ determines the typical temporal extent of the filter and $\gamma$ the typical time-scale over which it varies. These assumptions also serve to make inference well-posed; without them, any shifted version of the filter results in an identical statistical model for the data meaning the model is unidentifiable.
 
-Through specifying a prior on $x$ and a prior on $h$ we have specified a prior on $f$. Further including a scale $\sigma_f$ to control $f$'s prior power, we call this prior on $f$ the Causal Gaussian Process Convolution Model (CGPCM). To recapitulate, the CGPCM is formulated as follows:
+The prior distributions over $x$ and $h$ induce a prior distribution on $f$. Further including a scale $\sigma_f$ to control $f$'s prior power, we call this prior on $f$ the Causal Gaussian Process Convolution Model (CGPCM). To recapitulate, the CGPCM is formulated as follows:
 
 \begin{model}[CGCPM (First Formulation)] \label{mod:cgpcm}
     \begin{align*}
