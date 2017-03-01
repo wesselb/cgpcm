@@ -1,4 +1,5 @@
-from core.utils import *
+from core.tfutil import *
+from core.util import *
 import operator
 
 if __name__ == '__main__':
@@ -27,33 +28,60 @@ def var(x, power=1):
     return Poly(Term(1., Factor(x, power)))
 
 
+def kh_constructor(alpha, gamma):
+    """
+    Create a function that calls `kh` for some given hyperparameters.
+    :param alpha: kernel decay parameter :math:`\\alpha`
+    :param gamma: kernel length scale parameter :math:`\\gamma`
+    :return: constructor
+    """
+
+    def constructor(x, y):
+        return kh(alpha, gamma, x, y)
+
+    return constructor
+
+
 def kh(alpha, gamma, x, y):
     """
     Kernel of :math:`h` process.
 
-    :param alpha: :math:`\\alpha`
-    :param gamma: :math:`\\gamma`
+    :param alpha: kernel decay parameter :math:`\\alpha`
+    :param gamma: kernel length scale parameter :math:`\\gamma`
     :param x: first variable
     :param y: second variable
     :return: exponentiated quadratic
     """
-    return ExpQ(-const(alpha) * (x ** 2 + y ** 2)
-                - const(gamma) * (x - y) ** 2)
+    return EQ(-const(alpha) * (x ** 2 + y ** 2)
+              - const(gamma) * (x - y) ** 2)
 
 
-def kxs(omega, t1, t2):
+def kxs_constructor(omega):
+    """
+    Create a function that calls `kxs` for some given hyperparameter.
+    :param omega: kernel length scale parameter :math:`\\omega`
+    :return: constructor
+    """
+
+    def constructor(x, y):
+        return kxs(omega, x, y)
+
+    return constructor
+
+
+def kxs(omega, x, y):
     """
     Kernel between :math:`s` and :math:`x` processes.
 
-    :param omega: :math:`\\omega`
+    :param omega: kernel length scale parameter :math:`\\omega`
     :param x: first variable
     :param y: second variable
     :return: exponentiated quadratic
     """
-    return ExpQ(-const(omega) * (t1 - t2) ** 2)
+    return EQ(-const(omega) * (x - y) ** 2)
 
 
-class Factor:
+class Factor(object):
     """
     Variable raised to some power.
 
@@ -77,7 +105,7 @@ class Factor:
         """
         Evaluate factor.
 
-        :param var_map: variable mapping
+        :param \*\*var_map: variable mapping
         :return: evaluated variable
         """
         return var_map[self._var] ** self._power
@@ -102,12 +130,12 @@ class Factor:
         return hash(self._var) + hash(self._power)
 
 
-class Term:
+class Term(object):
     """
     Product of a constant and multiple `Factor` objects.
 
     :param const: constant
-    :param *factors: factors
+    :param \*factors: factors
     """
 
     def __init__(self, const, *factors):
@@ -146,7 +174,7 @@ class Term:
         :param factor: factor to exclude
         :return: term
         """
-        if not factor in self._factors:
+        if factor not in self._factors:
             raise RuntimeError('factor must be contained in term')
         return Term(self._const, *(self._factors - {factor}))
 
@@ -154,7 +182,7 @@ class Term:
         """
         Evaluate term.
 
-        :param **var_map: variable mapping
+        :param \*\*var_map: variable mapping
         :return: evaluated term
         """
         return reduce(operator.mul,
@@ -225,11 +253,11 @@ class Term:
                reduce(operator.add, map(hash, self._factors), 0)
 
 
-class Poly:
+class Poly(object):
     """
     Sum of several `Term` objects.
 
-    :param *terms: terms
+    :param \*terms: terms
     """
 
     def __init__(self, *terms):
@@ -268,7 +296,7 @@ class Poly:
         """
         Evaluate polynomial.
 
-        :param **var_map: variable mapping
+        :param var_map: variable mapping
         :return: evaluated polynomial
         """
         return reduce(operator.add,
@@ -328,10 +356,10 @@ class Poly:
     def __pow__(self, power, modulo=None):
         if type(power) != int or power < 0:
             raise RuntimeError('can only raise to nonnegative integers')
-        return reduce(operator.mul, [self for i in range(power)], 1)
+        return reduce(operator.mul, [self] * power, 1)
 
 
-class ExpQ:
+class EQ(object):
     """
     A constant multiplied by an exponentiated polynomial.
 
@@ -359,13 +387,13 @@ class ExpQ:
         :param poly: polynomial
         :return: exponentiated quadratic form after substitution
         """
-        return ExpQ(self._poly.substitute(var, poly), self._const)
+        return EQ(self._poly.substitute(var, poly), self._const)
 
     def eval(self, **var_map):
         """
         Evaluate exponentiated quadratic form.
 
-        :param **var_map: variable mapping
+        :param \*\*var_map: variable mapping
         :return: evaluated exponentiated quadratic form
         """
         return tf.squeeze(self.const * tf.exp(self.poly.eval(**var_map)))
@@ -375,8 +403,8 @@ class ExpQ:
         Integrate over a subset of the variables from :math:`-\\infty` to
         :math:`\\infty` and evaluate the result.
 
-        :param *vars: variable names
-        :param **var_map: variable mapping
+        :param \*vars: variable names
+        :param \*\*var_map: variable mapping
         :return: result
         """
         eq = self
@@ -389,8 +417,8 @@ class ExpQ:
         Integrate over a subset of the variables from :math:`-\\infty` to
         :math:`0` and evaluate the result.
 
-        :param *vars: variable names
-        :param **var_map: variable mapping
+        :param \*vars: variable names
+        :param \*\*var_map: variable mapping
         :return: result
         """
         if len(vars) == 1:
@@ -407,9 +435,9 @@ class ExpQ:
         `np.inf`. Any infinite lower limit corresponds to negative infinity,
         and any infinite upper limit corresponds to positive infinity.
 
-        :param *vars_and_lims: triples containing the variable names, lower
+        :param \*vars_and_lims: triples containing the variable names, lower
                                limits, and upper limits
-        :param **var_map: variable mapping
+        :param \*\*var_map: variable mapping
         :return: result
         """
         # Filter doubly infinite limits
@@ -450,15 +478,15 @@ class ExpQ:
         :param poly: polynomial to shift by
         :return: exponentiated quadratic form
         """
-        return ExpQ(self._poly.substitute(var_name, var(var_name) + poly),
-                    self._const)
+        return EQ(self._poly.substitute(var_name, var(var_name) + poly),
+                  self._const)
 
     def __mul__(self, other):
-        return ExpQ(self.poly + other.poly,
-                    self.const * other.const)
+        return EQ(self.poly + other.poly,
+                  self.const * other.const)
 
     def __neg__(self):
-        return ExpQ(self.poly, -self.const)
+        return EQ(self.poly, -self.const)
 
     def _integrate(self, var):
         a = self._poly.collect(Factor(var, 2))
@@ -467,8 +495,8 @@ class ExpQ:
         if not a.is_constant():
             raise ValueError('quadratic coefficient must be constant')
         a = a.eval()
-        return ExpQ(Poly(Term(-.25 / a)) * b ** 2 + c,
-                    self._const * (-np.pi / a) ** .5)
+        return EQ(Poly(Term(-.25 / a)) * b ** 2 + c,
+                  self._const * (-np.pi / a) ** .5)
 
     def _integrate_half1(self, var, **var_map):
         a = self._poly.collect(Factor(var, 2))
@@ -541,12 +569,12 @@ if __name__ == '__main__':
 
     t1, t2, t3 = var('t1'), var('t2'), var('t3')
 
-    eq = ExpQ(- const(1) * t1 ** 2
-              - const(2) * t2 ** 2
-              - const(.5) * t1 * t2
-              - const(2) * t1 * t3
-              + const(3) * t2
-              + const(4))
+    eq = EQ(- const(1) * t1 ** 2
+            - const(2) * t2 ** 2
+            - const(.5) * t1 * t2
+            - const(2) * t1 * t3
+            + const(3) * t2
+            + const(4))
     var_map = {'t3': tf.constant(np.eye(2))}
     print sess.run(eq.integrate_half('t1', 't2', **var_map))
     print 'Mathematica\'s NIntegrate: 55.8181 and 11.7677'
@@ -556,8 +584,8 @@ if __name__ == '__main__':
                                     **var_map))
     print 'Mathematica\'s NIntegrate: 318.354 and 217.392'
 
-    eq = ExpQ(const(-1) * t1 ** 2
-              + const(-.5) * t1
-              + const(4.))
+    eq = EQ(const(-1) * t1 ** 2
+            + const(-.5) * t1
+            + const(4.))
     print sess.run(eq.integrate_half('t1'))
     print 'Mathematica\'s NIntegrate: 65.7397'

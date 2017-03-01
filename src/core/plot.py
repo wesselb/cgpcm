@@ -2,15 +2,20 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
 import abc
 import warnings
-import itertools
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     import matplotlib.pyplot as plt
 
 
-def to_rbga(color):
-    """ Convert `color` to a tuple `(red, blue, green, alpha)`. """
-    return mpl.colors.colorConverter.to_rgba(color, alpha=1.0)
+def to_rbga(color, alpha=1.0):
+    """
+    Convert `color` to a tuple `(red, blue, green, alpha)`.
+
+    :param color: color to convert
+    :param alpha: alpha
+    :return: converter color
+    """
+    return mpl.colors.colorConverter.to_rgba(color, alpha=alpha)
 
 
 # Mapping for values from strings
@@ -41,7 +46,7 @@ def dict_map(source, mapping):
     return result
 
 
-class Plotter:
+class Plotter(object):
     """
     Sane and consistent configuration of plots.
 
@@ -55,14 +60,14 @@ class Plotter:
                'grid_style': '--',
                'font_family': 'Adobe Caslon Pro',
                'font_size': 11,
-               'fig_size': (8, 6),
                'legend_color': '0.95',
+               'legend_location': 'upper right',
                'line_color': 'undefined',
-               'marker_style': 'None',
                'line_width': 1,
                'line_style': '-',
                'colorbar_shrink': 0.8,
                'colorbar_aspect': 20,
+               'marker_style': 'None',
                'marker_color': 'undefined',
                'marker_size': 5,
                'surface_rstride': 1,
@@ -72,45 +77,21 @@ class Plotter:
                'cmap': mpl.cm.coolwarm,
                'fill_alpha': 0.25,
                'fill_color': 'undefined',
-               'label': 'undefined'
-               }
+               'label': 'undefined',
+               'figure_size': (8, 6),
+               'figure_toolbar': 'None',  # None | toolbar2
+               'figure_autolayout': True}
 
     def __init__(self, **kw_args):
-        self._generate_abbrevs()
-        self._config.update(self._deabbrev(kw_args))
         self._config_global()
         self.plt = plt
         self._first = True
         self.plots = []
 
-    def _abbrev(self, xs, pref=''):
-        prefs = set([pref + x[len(pref)] for x in xs])
-        prefixed = [(x, list(set(filter(lambda y: y.startswith(x), xs))))
-                    for x in prefs]
-        abbrevs = {}
-        for pref, els in prefixed:
-            if len(els) == 1 and len(pref) >= 2:
-                abbrevs[pref] = els[0]
-            else:
-                abbrevs.update(self._abbrev(els, pref=pref))
-        return abbrevs
-
-    def _generate_abbrevs(self):
-        self._abbrevs = {}
-        depths = {}
-        for key in self._config.keys():
-            words = key.split('_')
-            depth = len(words)
-            if depth not in depths:
-                depths[depth] = [[] for i in range(depth)]
-            for i in range(depth):
-                depths[depth][i].append(words[i])
-        self._abbrevs = {}
-        for depth, words in depths.items():
-            pairs = [x.items() for x in map(self._abbrev, words)]
-            for abbrevs in itertools.product(*pairs):
-                glued = ['_'.join(x) for x in zip(*abbrevs)]
-                self._abbrevs[glued[0]] = glued[1]
+    def _map(self, mapping, kw_args):
+        config = dict(self._config)
+        config.update(kw_args)
+        return dict_map(config, mapping)
 
     def figure(self, *args, **kw_args):
         self._first = False
@@ -119,23 +100,19 @@ class Plotter:
         return self
 
     def _config_global(self):
-        mpl.rcParams.update({#'toolbar': 'None',
-                             'figure.autolayout': True})
-        mpl.rc('font', family=self._config['font_family'],
+        mapping = {'toolbar': 'toolbar',
+                   'figure.autolayout': 'figure_autolayout'}
+        mpl.rcParams.update(**self._map(mapping, {}))
+        mpl.rc('font',
+               family=self._config['font_family'],
                size=self._config['font_size'])
         return self
 
-    def _deabbrev(self, kw_args):
-        return {self._abbrevs[k] if k in self._abbrevs else k: v
-                for k, v in kw_args.items()}
-
     def _config_figure(self, *args, **kw_args):
-        config = dict(self._config)
-        config.update(self._deabbrev(kw_args))
-        self.fig = plt.figure(*args,
-                              facecolor='white',
-                              edgecolor='white',
-                              figsize=config['fig_size'])
+        mapping = {'facecolor': 'val:white',
+                   'edgecolor': 'val:white',
+                   'figsize': 'figure_size'}
+        self.fig = plt.figure(*args, **self._map(mapping, kw_args))
         return self
 
     @abc.abstractmethod
@@ -147,15 +124,16 @@ class Plotter:
         return self
 
     def save(self, fn, *args, **kw_args):
-        # Save, and ignore warnings
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             self.fig.savefig(fn, *args, **kw_args)
         return self
 
-    def show_legend(self):
-        self.leg = self.ax.legend(loc='upper right')
-        self.leg.get_frame().set_color(self._config['legend_color'])
+    def show_legend(self, **kw_args):
+        config = self._map({'legend_color': 'legend_color',
+                            'legend_location': 'legend_location'}, kw_args)
+        self.leg = self.ax.legend(loc=config['legend_location'])
+        self.leg.get_frame().set_color(config['legend_color'])
         return self
 
     def title(self, *args, **kw_args):
@@ -197,15 +175,15 @@ class Plotter:
             self.figure()
             self._first = False
 
-    def hide(self, x=False, y=False, z=False):
+    def hide_ticks(self, x=False, y=False, z=False):
         if x:
-            self.ax.xaxis.set_visible(False)
+            self.ax.xaxis.set_ticks([])
             self.ax.xaxis.set_ticklabels([])
         if y:
-            self.ax.yaxis.set_visible(False)
+            self.ax.yaxis.set_ticks([])
             self.ax.yaxis.set_ticklabels([])
         if z:
-            self.ax.zaxis.set_visible(False)
+            self.ax.zaxis.set_ticks([])
             self.ax.zaxis.set_ticklabels([])
 
 
@@ -242,8 +220,6 @@ class Plotter2D(Plotter):
 
     def plot(self, *args, **kw_args):
         self._check_first_figure()
-        config = dict(self._config)
-        config.update(self._deabbrev(kw_args))
         mapping = {'linewidth': 'line_width',
                    'linestyle': 'line_style',
                    'color': 'line_color',
@@ -252,19 +228,17 @@ class Plotter2D(Plotter):
                    'markeredgecolor': 'marker_color',
                    'markersize': 'marker_size',
                    'label': 'label'}
-        p = plt.plot(*args, **dict_map(config, mapping))
+        p = plt.plot(*args, **self._map(mapping, kw_args))
         self.plots.append(p)
         return self
 
     def fill(self, x, y1, y2, *args, **kw_args):
         self._check_first_figure()
-        config = dict(self._config)
-        config.update(self._deabbrev(kw_args))
         mapping = {'alpha': 'fill_alpha',
                    'edgecolor': 'val:none',
                    'facecolor': 'fill_color',
                    'interpolate': 'val:True'}
-        p = plt.fill_between(x, y1, y2, *args, **dict_map(config, mapping))
+        p = plt.fill_between(x, y1, y2, *args, **self._map(mapping, kw_args))
         self.plots.append(p)
         return self
 
@@ -299,24 +273,21 @@ class Plotter3D(Plotter):
         return self
 
     def show_colorbar(self, obj, **kw_args):
-        config = {'shrink': self._config['colorbar_shrink'],
-                  'aspect': self._config['colorbar_aspect']}
-        config.update(self._deabbrev(kw_args))
-        self.cb = self.fig.colorbar(obj, **config)
+        mapping = {'shrink': self._config['colorbar_shrink'],
+                   'aspect': self._config['colorbar_aspect']}
+        self.cb = self.fig.colorbar(obj, **self._map(mapping, kw_args))
         self.cb.outline.set_linewidth(self._config['axes_width'])
         self.cb.ax.tick_params(right='off')
         return self
 
     def plot_surface(self, *args, **kw_args):
         self._check_first_figure()
-        config = dict(self._config)
-        config.update(self._deabbrev(kw_args))
         mapping = {'rstride': 'surface_rstride',
                    'cstride': 'surface_cstride',
                    'cmap': 'cmap',
                    'linewidth': 'surface_line_width',
                    'antialiased': 'surface_antialiased'}
-        self.ax.plot_surface(*args, **dict_map(config, mapping))
+        self.ax.plot_surface(*args, **self._map(mapping, kw_args))
         return self
 
     def view(self, elevation, azimuth):

@@ -14,6 +14,8 @@ class ESS(object):
     :param x_init: initial state
     """
 
+    _min_theta = 1e-10
+
     def __init__(self, log_lik, sample_prior, x_init=None):
         self._log_lik = log_lik
         self._sample_prior = sample_prior
@@ -81,7 +83,7 @@ class ESS(object):
         :return: new state
         """
         self._draw_proposal(theta_l, theta_u)
-        theta_violation = abs(self._theta) < 1e-10
+        theta_violation = abs(self._theta) < self._min_theta
         if self._log_lik_x_proposed > u or theta_violation:
             # Proposal accepted
             if theta_violation:
@@ -120,6 +122,7 @@ class ESS(object):
                 eta = (time() - start) / (i + 1) * (num - i - 1)
                 time_attempt = 1000 * (end_it - start_it) / attempts
                 print 'ESS:'
+                print '  burning:      {}'.format('yes' if discard else 'no')
                 print '  iteration:    {:d}/{:d}'.format(i + 1, num)
                 print '  time left:    {:.0f} sec'.format(eta)
                 print '  attempts:     {}'.format(attempts)

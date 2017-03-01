@@ -1,16 +1,14 @@
-import numpy as np
-import tensorflow as tf
-
-from core.utils import *
+from core.tfutil import *
 
 
-class Normal:
+class Normal(object):
     """
     Normal distribution.
 
     :param variance: variance
     :param mean: mean
     """
+
     def __init__(self, variance, mean=None):
         self.dims = shape(variance)[-1]
         if mean is None:
@@ -73,13 +71,14 @@ class Normal:
         return mul(tf.cholesky(self.variance), sample) + self.mean
 
 
-class Uniform:
+class Uniform(object):
     """
     Uniform distribution.
 
     :param lb: lower bound
     :param ub: upper bound
     """
+
     def __init__(self, lb, ub):
         self.lb = lb
         self.ub = ub
@@ -91,4 +90,3 @@ class Uniform:
         :return: sample
         """
         return self.lb + (self.ub - self.lb) * tf.random_uniform([])
-

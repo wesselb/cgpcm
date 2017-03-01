@@ -1,60 +1,57 @@
-import scipy.stats
+import util
+import eq
+from par import Parametrisable
+from dist import Normal
+from kernel import DEQ
+from sample import ESS
+from tfutil import *
+from util import *
 
-from core import expq as expq
-from core.dist import Normal
-from core.kernel import DEQ
-from core.samplers import ESS
-import core.utils as utils
-from core.utils import *
 
-
-class GPCM:
+class GPCM(Parametrisable):
     """
-    Gaussian Process Convolution Model.
+    Causal Gaussian Process Convolution Model.
     """
 
-    def __init__(self, pars, th, tx, t, y, sess):
-        self.th, self.tx = th, tx
-        self.nh, self.nx = shape(th)[0], shape(tx)[0]
-        self.pars = pars
-        self.t = t
-        self.y = y
-        self.sess = sess
+    _required_pars = ['t', 'y', 'sess',
+                      'th', 'tx',
+                      's2', 's2_f', 'alpha', 'gamma', 'omega',
+                      'causal', 'causal_id']
+
+    def __init__(self, **kw_args):
+        Parametrisable.__init__(self, **kw_args)
+        self.nh, self.nx = shape(self.th)[0], shape(self.tx)[0]
+        self._precomputed = False
         self._init_kernels()
+        self._init_var_map()
+        self._init_vars()
+        self._init_expressions()
 
-        self.var_map = {'th1': expand_dims(th, 2, 3),
-                        'th2': expand_dims(th, 3, 2),
-                        'tx1': expand_dims(tx, 4, 1),
-                        'tx2': expand_dims(tx, 5, 0)}
-        self.kh = lambda t1, t2: expq.kh(pars['alpha'], pars['gamma'], t1, t2)
-        self.kxs = lambda t1, t2: expq.kxs(pars['omega'], t1, t2)
+    def _init_expressions(self):
+        kh = eq.kh_constructor(self.alpha, self.gamma)
+        kxs = eq.kxs_constructor(self.omega)
+        self.expq_a = kh(self.t1 - self.tau, self.t2 - self.tau)
+        self.expq_Ahh = kh(self.t1 - self.tau, self.th1) \
+                        * kh(self.th2, self.t2 - self.tau)
+        self.expq_Axx = kh(self.t1 - self.tau1, self.t2 - self.tau2) \
+                        * kxs(self.tau1, self.tx1) \
+                        * kxs(self.tx2, self.tau2)
+        self.expq_Ahx = kh(self.t1 - self.tau, self.th1) \
+                        * kxs(self.tau, self.tx1)
 
-        # Some variables
-        self.tau1 = expq.var('tau1')
-        self.tau2 = expq.var('tau2')
-        self.tau = expq.var('tau')
-        self.t1 = expq.var('t1')
-        self.t2 = expq.var('t2')
-        self.th1 = expq.var('th1')
-        self.th2 = expq.var('th2')
-        self.tx1 = expq.var('tx1')
-        self.tx2 = expq.var('tx2')
-        self.min_t1_t2 = expq.var('min_t1_t2')
-        self.min_t1_0 = expq.var('min_t1_0')
-        self.min_t1_tx1 = expq.var('min_t1_tx1')
-        self.min_t1_tx2 = expq.var('min_t1_tx2')
+    def _init_vars(self):
+        for var in ['tau1', 'tau2', 'tau', 't1', 't2', 'th1', 'th2',
+                    'tx1', 'tx2', 'min_t1_t2', 'min_t1_0',
+                    'min_t1_tx1', 'min_t1_tx2']:
+            setattr(self, var, eq.var(var))
 
-        # Some expressions
-        self.expq_a = self.kh(self.t1 - self.tau, self.t2 - self.tau)
-        self.expq_Ahh = self.kh(self.t1 - self.tau, self.th1) \
-                        * self.kh(self.th2, self.t2 - self.tau)
-        self.expq_Axx = self.kh(self.t1 - self.tau1, self.t2 - self.tau2) \
-                        * self.kxs(self.tau1, self.tx1) \
-                        * self.kxs(self.tx2, self.tau2)
-        self.expq_Ahx = self.kh(self.t1 - self.tau, self.th1) \
-                        * self.kxs(self.tau, self.tx1)
+    def _init_var_map(self):
+        self.var_map = {'th1': expand_dims(self.th, 2, 3),
+                        'th2': expand_dims(self.th, 3, 2),
+                        'tx1': expand_dims(self.tx, 4, 1),
+                        'tx2': expand_dims(self.tx, 5, 0)}
 
-    def generate_var_map(self, t):
+    def _generate_var_map(self, t):
         var_map = self.var_map
         var_map['t1'] = expand_dims(t, 0, 5)
         var_map['t2'] = expand_dims(t, 1, 4)
@@ -64,104 +61,104 @@ class GPCM:
         var_map['min_t1_tx2'] = tf.minimum(var_map['t1'], var_map['tx2'])
         return var_map
 
-    def _int_tau(self, t, expq, t1, t2, upper):
-        return expq.substitute('t1', t1).substitute('t2', t2) \
+    def _int_tau(self, t, exp, t1, t2, upper):
+        return exp.substitute('t1', t1).substitute('t2', t2) \
             .integrate_box(('tau', -inf, upper),
-                           **self.generate_var_map(t))
+                           **self._generate_var_map(t))
 
-    def _int_tau2(self, t, expq, t1, t2, upper1, upper2):
-        return expq.substitute('t1', t1).substitute('t2', t2) \
+    def _int_tau2(self, t, exp, t1, t2, upper1, upper2):
+        return exp.substitute('t1', t1).substitute('t2', t2) \
             .integrate_box(('tau1', -inf, upper1),
                            ('tau2', -inf, upper2),
-                           **self.generate_var_map(t))
+                           **self._generate_var_map(t))
 
-    def a(self, t, causal):
+    def _a(self, t):
         return self._int_tau(t, self.expq_a, self.t1, self.t2,
-                             upper=self.min_t1_t2 if causal else inf)
+                             upper=self.min_t1_t2 if self.causal else inf)
 
-    def a_diag(self, t, causal):
+    def _a_diag(self, t):
         return self._int_tau(t, self.expq_a, self.t1, self.t1,
-                             upper=self.t1 if causal else inf)
+                             upper=self.t1 if self.causal else inf)
 
-    def a_center(self, t, causal):
-        return self._int_tau(t, self.expq_a, self.t1, expq.const(0),
-                             upper=self.min_t1_0 if causal else inf)
+    def _a_center(self, t):
+        return self._int_tau(t, self.expq_a, self.t1, eq.const(0),
+                             upper=self.min_t1_0 if self.causal else inf)
 
-    def Axx_diag(self, t, causal, causal_id):
-        upper1 = (self.min_t1_tx1 if causal_id else self.t1) if causal else inf
-        upper2 = (self.min_t1_tx2 if causal_id else self.t1) if causal else inf
+    def _Axx_diag(self, t):
+        if self.causal:
+            if self.causal_id:
+                upper1 = self.min_t1_tx1
+                upper2 = self.min_t1_tx2
+            else:
+                upper1 = self.t1
+                upper2 = self.t2
+        else:
+            upper1 = inf
+            upper2 = inf
         return self._int_tau2(t, self.expq_Axx, self.t1, self.t1,
                               upper1=upper1, upper2=upper2)
 
-    def Ahh(self, t, causal):
+    def _Ahh(self, t):
         return self._int_tau(t, self.expq_Ahh, self.t1, self.t2,
-                             upper=self.min_t1_t2 if causal else inf)
+                             upper=self.min_t1_t2 if self.causal else inf)
 
-    def Ahh_diag(self, t, causal):
+    def _Ahh_diag(self, t):
         return self._int_tau(t, self.expq_Ahh, self.t1, self.t1,
-                             upper=self.t1 if causal else inf)
+                             upper=self.t1 if self.causal else inf)
 
-    def Ahh_center(self, t, causal):
-        return self._int_tau(t, self.expq_Ahh, self.t1, expq.const(0),
-                             upper=self.min_t1_0 if causal else inf)
+    def _Ahh_center(self, t):
+        return self._int_tau(t, self.expq_Ahh, self.t1, eq.const(0),
+                             upper=self.min_t1_0 if self.causal else inf)
 
-    def Ahx(self, t, causal, causal_id):
+    def _Ahx(self, t):
         # Variable t2 is not present in Ahx
-        upper = (self.min_t1_tx1 if causal_id else self.t1) if causal else inf
+        if self.causal:
+            if self.causal_id:
+                upper = self.min_t1_tx1
+            else:
+                upper = self.t1
+        else:
+            upper = inf
         return self._int_tau(t, self.expq_Ahx, self.t1, self.t2, upper=upper)
 
-    def run(self, *args, **kw_args):
+    def _run(self, *args, **kw_args):
         return self.sess.run(*args, **kw_args)
 
-    def preconstruct(self, causal, causal_id):
+    def _construct(self):
         # Some frequently accessed quantities
         self.n = shape(self.t)[0]
-        self.s2 = self.pars['s2']
-        self.s2_f = self.pars['s2_f']
         self.sum_y2 = sum(self.y ** 2)
-        self.mats = self.construct_model_matrices(self.t,
-                                                  self.y,
-                                                  causal,
-                                                  causal_id)
-
+        self.mats = self._construct_model_matrices(self.t, self.y)
         # Precompute stuff that is not going to change
-        self.sum_y2 = self.run(self.sum_y2)
+        self.sum_y2 = self._run(self.sum_y2)
 
     def _init_kernels(self):
-        self.kernel_h = DEQ({'alpha': self.pars['alpha'],
-                             'gamma': self.pars['gamma'],
-                             's2': 1.})
-        self.Kh = reg(self.kernel_h(self.th[:, None]))
-        self.Lh = tf.cholesky(self.Kh)
+        # Stuff related to h
+        self.kernel_h = DEQ(s2=self.s2, alpha=self.alpha, gamma=self.gamma)
+        kh = reg(self.kernel_h(self.th[:, None]))
+        self.Lh = tf.cholesky(kh)
         self.iKh = cholinv(self.Lh)
         self.h_prior = Normal(self.iKh)
-
-        self.kernel_x = DEQ({'alpha': 0,
-                             'gamma': .5 * self.pars['omega'],
-                             's2': (.5 * np.pi / self.pars['omega']) ** .5})
+        # Stuff related to x
+        self.kernel_x = DEQ(s2=(.5 * np.pi / self.pars['omega']) ** .5,
+                            alpha=0,
+                            gamma=.5 * self.pars['omega'])
         self.Kx = reg(self.kernel_x(self.tx[:, None]))
         self.Lx = tf.cholesky(self.Kx)
         self.iKx = cholinv(self.Lx)
         self.x_prior = Normal(self.iKx)
-
         # Precompute stuff that is not going to change
-        self.Kx, self.Lx, self.iKx = self.run([self.Kx, self.Lx, self.iKx])
+        self.Kx, self.Lx, self.iKx = self._run([self.Kx, self.Lx, self.iKx])
 
-    def construct_model_matrices(self,
-                                 t,
-                                 y,
-                                 causal,
-                                 causal_id):
+    def _construct_model_matrices(self, t, y):
         n = shape(t)[0]
         iKx_t = tile(self.iKx, n)
         iKh_t = tile(self.iKh, n)
         mats = dict()
-        mats['a'] = self.a_diag(t, causal)[0]  # Not per data point
-        mats['Axx'] = self.Axx_diag(t, causal, causal_id)
-        mats['Ahh'] = self.Ahh_diag(t, causal)[0, :, :]  # Also not per data
-        # point
-        mats['Ahx'] = self.Ahx(t, causal, causal_id)
-
+        mats['a'] = self._a_diag(t)[0]  # Not per data point
+        mats['Axx'] = self._Axx_diag(t)
+        mats['Ahh'] = self._Ahh_diag(t)[0, :, :]  # Also not per data point
+        mats['Ahx'] = self._Ahx(t)
         mats['sum_a'] = n * mats['a']
         mats['sum_Axx'] = sum(mats['Axx'], 0)
         mats['sum_Ahh'] = n * mats['Ahh']
@@ -191,110 +188,157 @@ class GPCM:
                            - sum(mul3(mats['Ahx'],
                                       iKx_t,
                                       mats['Ahx'], adj_c=True), 0))
-
         return mats
 
-    def precompute(self):
-        self.mats_ops = dict(self.mats)
-        self.mats = {k: self.run(v) for k, v in self.mats.items()}
+    def precompute(self, recompute=False):
+        """
+        Precompute matrices.
+
+        :param recompute: boolean that indicates whether to recompute matrices
+                          if they are already precomputed
+        """
+        if recompute and self._precomputed:
+            self.undo_precompute()
+        if not self._precomputed:
+            self.mats_symbolic = dict(self.mats)
+            self.mats = {k: self._run(v) for k, v in self.mats.items()}
 
     def undo_precompute(self):
-        if hasattr(self, 'mats_ops'):
-            self.mats = self.mats_ops
+        """
+        Revert precomputation of matrices.
+        """
+        if self._precomputed:
+            self.mats = self.mats_symbolic
+            self._precomputed = False
 
 
 class AKM(GPCM):
-    def __init__(self, *args, **kw_args):
-        GPCM.__init__(self, *args, **kw_args)
+    """
+    Approximate Kernel Model.
+    """
+    _required_pars = ['sess',
+                      'th',
+                      's2', 's2_f', 'alpha', 'gamma',
+                      'causal', 'causal_id']
 
-    def prior_kernel(self, t, causal, iters=1000, psd=False):
+    def prior_kernel(self, t, iters=1000, psd=False, granularity=2.5):
+        """
+        Prior distribution over kernels or PSDs.
+
+        :param t: point to evaluate kernel at
+        :param iters: number of Monte-Carlo iterations
+        :param psd: compute PSD instead
+        :param granularity: delta probability at which to generate contours of
+                            marginal probability
+        :return: mean, list of lower bounds, and list of upper bounds
+        """
         n = shape(t)[0]
-        Ahh = self.Ahh_center(t, causal)
-        a = self.a_center(t, causal)
-        # Precompute
-        Ahh, a = self.run([Ahh, a])
+        Ahh, a = self._run([self._Ahh_center(t),
+                            self._a_center(t)])
 
         h = self.h_prior.sample()
         k = (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
         if psd:
-            ks = np.concatenate([utils.psd(self.run(k), axis=0)
+            ks = np.concatenate([util.psd(self._run(k), axis=0)
                                  for i in range(iters)], axis=1)
         else:
-            ks = np.concatenate([self.run(k) for i in range(iters)], axis=1)
-
-        gran = 2.5
-        percentiles = np.arange(gran, 50 - gran, gran)
+            ks = np.concatenate([self._run(k) for i in range(iters)], axis=1)
 
         mu = np.mean(ks, axis=1)
         lowers, uppers = [], []
-        for perc in percentiles:
+        for perc in np.arange(granularity, 50 - granularity, granularity):
             lowers.append(np.percentile(ks, perc, axis=1))
             uppers.append(np.percentile(ks, 100 - perc, axis=1))
+
         return mu, lowers, uppers
 
+    def sample_h(self):
+        """
+        Sample filter.
+        """
+        self.h_draw = self._run(self.h_prior.sample())
 
-    def generate_sample(self, t, tk):
-        self.sample = {'h': self.run(self.h_prior.sample()),
-                       'e': self.run(randn([shape(t)[0], 1])),
-                       't': t,
-                       'tk': tk}
+    def sample_f(self, t):
+        """
+        Sample function
 
-    def construct_sample(self, causal, mean=False):
-        h, e = self.sample['h'], self.sample['e']
-        t, tk = self.sample['t'], self.sample['tk']
-        nk = shape(tk)[0]
-        n = shape(t)[0]
-        # Kernel function
-        Ahh_k = self.Ahh_center(tk, causal)
-        a_k = self.a_center(tk, causal)
-        if mean:
-            k = a_k
-        else:
-            k = a_k + trmul(tile(outer(h) - self.iKh, nk), Ahh_k)
-        # Kernel matrix
-        Ahh = self.Ahh(t, causal)
-        a = self.a(t, causal)
-        if mean:
-            K = reg(a)
-        else:
-            K = reg(a + trmul(tile(outer(h) - self.iKh, [n, n]), Ahh))
-        # Function
-        f = tf.squeeze(mul(tf.cholesky(K), e))
-        return self.run([k, f, K])
+        :param t: points to evaluate process at
+        """
+        self.t = t
+        self.e_draw = self._run(randn([shape(t)[0], 1]))
 
-    def construct_filter(self, t):
-        h = mul(self.Kh, self.sample['h'])
+    def sample(self, t):
+        """
+        Sample filter and function.
+
+        :param t: points to evaluate function at
+        """
+        self.sample_h()
+        self.sample_f(t)
+
+    def f(self):
+        """
+        Construct function
+
+        :return: function
+        """
+        n = shape(self.t)[0]
+        Ahh = self._Ahh(self.t)
+        a = self._a(self.t)
+        K = reg(a + trmul(tile(outer(self.h_draw) - self.iKh, [n, n]), Ahh))
+        f = tf.squeeze(mul(tf.cholesky(K), self.e_draw))
+        return self._run(f)
+
+    def h(self, t, assert_positive_at_index=None):
+        """
+        Construct filter.
+
+        :param t: points to evaluate process at
+        :param assert_positive_at_index: index at which to assert that the
+                                         process is positive
+        :return: filter
+        """
         Kfu = self.kernel_h(t, self.th[:, None])
-        h = self.run(mul(Kfu, tf.cholesky_solve(self.Lh, h)))
-        # Assume t is symmetric around zero
-        return h * np.sign(h[(shape(t)[0] - 1) / 2])
+        h = self._run(mul(Kfu, self.h_draw))
 
-    def construct_kernel(self, causal):
-        h, e = self.sample['h'], self.sample['e']
-        t, tk = self.sample['t'], self.sample['tk']
-        nk = shape(tk)[0]
-        Ahh_k = self.Ahh_center(tk, causal)
-        a_k = self.a_center(tk, causal)
-        k = a_k + trmul(tile(outer(h) - self.iKh, nk), Ahh_k)
-        return self.run(k)
+        # Set h to correct sign
+        if assert_positive_at_index is None:
+            assert_positive_at_index = (shape(h)[0] - 1) / 2
+        h = h * np.sign(h[assert_positive_at_index])
+
+        return h
+
+    def k(self, t):
+        """
+        Construct the kernel.
+
+        :param t: points to evaluate kernel at
+        :return: kernel
+        """
+        nk = shape(t)[0]
+        Ahh_k = self._Ahh_center(t)
+        a_k = self._a_center(t)
+        k = a_k + trmul(tile(outer(self.h_draw) - self.iKh, nk), Ahh_k)
+        return self._run(k)
 
 
 class VGPCM(GPCM):
-    def __init__(self, *args, **kw_args):
-        self.causal = kw_args['causal']
-        self.causal_id = kw_args['causal_id']
-        del kw_args['causal']
-        del kw_args['causal_id']
-        GPCM.__init__(self, *args, **kw_args)
-        self.preconstruct(self.causal, self.causal_id)
+    """
+    Variational inference in the CGPCM.
+    """
+
+    def __init__(self, **kw_args):
+        GPCM.__init__(self, **kw_args)
+        self._construct()
         self._init_inducing_points()
 
     def _init_inducing_points(self):
         mean_init = tf.Variable(self.h_prior.sample(), name='muh')
         var_init = tf.Variable(tf.cholesky(self.h_prior.variance), name='Sh')
+        tf.initialize_variables([mean_init, var_init])
         self.h = Normal(mul(var_init, var_init, adj_a=True), mean_init)
 
-    def q_z_natural(self, h_mean, h_m2):
+    def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
                                              adj_a=True)
         S = self.mats['sum_Bxx'] + sum(mul3(self.mats['Ahx'],
@@ -303,12 +347,19 @@ class VGPCM(GPCM):
         return mu, self.Kx + self.s2_f / self.s2 * S
 
     def elbo(self, smf=False):
+        """
+        Construct the ELBO.
+
+        :param smf: stochastic approximation of SMF approximation via
+                    reparametrisation
+        :return: ELBO
+        """
         if smf:
             # Stochastic approximation via reparametrisation
             h_samp = self.h.sample()
-            mu, S = self.q_z_natural(h_samp, outer(h_samp))
+            mu, S = self._qz_natural(h_samp, outer(h_samp))
         else:
-            mu, S = self.q_z_natural(self.h.mean, self.h.m2)
+            mu, S = self._qz_natural(self.h.mean, self.h.m2)
         L = tf.cholesky(reg(S))
 
         elbo = (-self.n * tf.log(2 * np.pi * self.s2)
@@ -321,35 +372,36 @@ class VGPCM(GPCM):
                                                  self.h.m2))) / 2. \
                - self.h.kl(self.h_prior)
 
-        return tf.Print(elbo, [smf, self.s2, self.s2_f, self.pars['gamma'],
-                               self.pars['omega']])
+        return tf.Print(elbo,
+                        [self.s2, self.s2_f, self.pars['gamma']],
+                        message='s2, s2_f, gamma = ')
 
-    def predict_k(self,
-                  t,
-                  samples_h=None,
-                  iters=200,
-                  percentiles=True,
-                  psd=False):
+    def predict_k(self, t, samples_h=200, psd=False):
+        """
+        Predict kernel.
+
+        :param t: points to predict kernel at
+        :param samples_h: samples in Monte-Carlo estimation
+        :param psd: predict PSD instead
+        :return: predicted kernel
+        """
         n = shape(t)[0]
-        Ahh = self.Ahh_center(t, self.causal)
-        a = self.a_center(t, self.causal)
+        Ahh, a = self._run([self._Ahh_center(t),
+                            self._a_center(t)])
 
-        # Precompute
-        Ahh, a = self.run([Ahh, a])
-
-        if samples_h is None:
+        if is_numeric(samples_h):
             h = self.h.sample()
-            samples_h = [self.run(h) for i in range(iters)]
+            samples_h = [self._run(h) for i in range(samples_h)]
 
         # Compute via MC
-        h = ph(shape(self.h.sample()))
+        h = placeholder(shape(self.h.sample()))
         k = (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
-        samples_k = [self.run(k, feed_dict={h: sample_h})
+        samples_k = [self._run(k, feed_dict={h: sample_h})
                      for sample_h in samples_h]
 
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [utils.psd(x / max(x) / len(x), axis=0)
+            samples = [util.psd(x / max(x) / len(x), axis=0)
                        for x in samples_k]
         else:
             samples = samples_k
@@ -357,81 +409,70 @@ class VGPCM(GPCM):
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
-        if percentiles:
-            lower = np.percentile(samples,
-                                  100 * scipy.stats.norm.cdf(-2),
-                                  axis=1)
-            upper = np.percentile(samples,
-                                  100 * scipy.stats.norm.cdf(2),
-                                  axis=1)
-        else:
-            lower = mu - 2 * std
-            upper = mu + 2 * std
+        lower = np.percentile(samples, lower_perc, axis=1)
+        upper = np.percentile(samples, upper_perc, axis=1)
+
         if psd:
             return mu, lower, upper, std
         else:
-            s2_f = self.run(self.s2_f)
+            s2_f = self._run(self.s2_f)
             return s2_f * mu, s2_f * lower, s2_f * upper, s2_f * std
 
-    def predict_h(self, t, samples_h=None, iters=50, percentiles=True, offset=0):
-        if samples_h is None:
+    def predict_h(self, t, samples_h=200, assert_positive_at_index=None):
+        """
+        Predict filter.
+
+        :param t: point to predict filter at
+        :param samples_h: samples in Monte-Carlo estimation
+        :param assert_positive_at_index: index at which to assert that
+                                         the filter is positive
+        :return: predicted filter
+        """
+        if is_numeric(samples_h):
             h = self.h.sample()
-            samples_h = [self.run(h) for i in range(iters)]
+            samples_h = [self._run(h) for i in range(samples_h)]
 
-        h = ph(shape(self.h.sample()))
-
-        # Transform samples back into h space
-        h_transformed = mul(self.Kh, h)
-        samples_h = [self.run(h_transformed, feed_dict={h: sample_h})
-                     for sample_h in samples_h]
-
-        # Sign samples the right way, assuming that th is symmetric around zero
-        i_zero = (self.nh - 1 + offset) / 2
-        samples_h = [sample_h * np.sign(sample_h[i_zero])
-                     for sample_h in samples_h]
-
+        h = placeholder(shape(self.h.sample()))
         Kfu = self.kernel_h(t, self.th[:, None])
-        mu = mul(Kfu, tf.cholesky_solve(self.Lh, h))
-        samples = np.concatenate([self.run(mu, feed_dict={h: sample_h})
+        mu = mul(Kfu, h)
+        samples = np.concatenate([self._run(mu, feed_dict={h: sample_h})
                                   for sample_h in samples_h], axis=1)
+
+        # Set samples to correct sign
+        if assert_positive_at_index is None:
+            assert_positive_at_index = (shape(samples[0])[0] - 1) / 2
+        samples = [sample * np.sign(sample[assert_positive_at_index])
+                   for sample in samples]
 
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
-        if percentiles:
-            lower = np.percentile(samples,
-                                  100 * scipy.stats.norm.cdf(-2),
-                                  axis=1)
-            upper = np.percentile(samples,
-                                  100 * scipy.stats.norm.cdf(2),
-                                  axis=1)
-        else:
-            lower = mu - 2 * std
-            upper = mu + 2 * std
+        lower = np.percentile(samples, lower_perc, axis=1)
+        upper = np.percentile(samples, upper_perc, axis=1)
         return mu, lower, upper, std
 
-    def predict_f(self, t, samples_h=None, iters=50, smf=False):
+    def predict_f(self, t, samples_h=50, smf=False):
+        """
+        Predict function.
+
+        :param t: point at which to predict function
+        :param samples_h: samples in Monte-Carlo estimation
+        :param smf: boolean that indicates whether to use the SMF approximation
+        :return: predicted function
+        """
         n = shape(t)[0]
-        mats = self.construct_model_matrices(t,
-                                             None,
-                                             causal=self.causal,
-                                             causal_id=self.causal_id)
+        mats = self._construct_model_matrices(t, None)
+        mats = {k: self._run(mats[k]) for k in ['a', 'Ahh', 'Ahx', 'Axx']}
 
-        # Precompute
-        mats = {k: self.run(mats[k]) for k in ['a',
-                                               'Ahh',
-                                               'Ahx',
-                                               'Axx']}
-
-        if samples_h is None:
+        if is_numeric(samples_h):
             h = self.h.sample()
-            samples_h = [self.run(h) for i in range(iters)]
+            samples_h = [self._run(h) for i in range(samples_h)]
 
         # Construct optimal q(z|u) or q(z)
         h = tf.placeholder(config.dtype, shape(self.h.sample()))
         if smf:
-            mu, S = self.q_z_natural(h, outer(h))
+            mu, S = self._qz_natural(h, outer(h))
         else:
-            mu, S = self.q_z_natural(self.h.mean, self.h.m2)
+            mu, S = self._qz_natural(self.h.mean, self.h.m2)
         L = tf.cholesky(S)
         x = Normal(cholinv(L), tf.cholesky_solve(L, mu))
 
@@ -452,20 +493,28 @@ class VGPCM(GPCM):
         var = m2 - mu ** 2
 
         # Compute via MC
-        samples = [self.run([mu, var], feed_dict={h: sample_h})
+        samples = [self._run([mu, var], feed_dict={h: sample_h})
                    for sample_h in samples_h]
         samples_mu, samples_var = zip(*samples)
         mu = np.mean(np.concatenate(samples_mu, axis=1), axis=1)
         var = np.mean(np.concatenate(samples_var, axis=1), axis=1)
 
-        s2_f = self.run(self.s2_f)
+        s2_f = self._run(self.s2_f)
         mu *= np.sqrt(s2_f)
         var *= s2_f
-        return mu, mu - 2 * np.sqrt(var), mu + 2 * np.sqrt(var), var ** .5
+        return mu, mu - 2 * var ** .5, mu + 2 * var ** .5, var ** .5
 
     def sample(self, iters=200, burn=50, display=False):
-        h = tf.placeholder(config.dtype, shape(self.h_prior.sample()))
-        mu, S = self.q_z_natural(h, outer(h))
+        """
+        Sample from the posterior over filters.
+
+        :param iters: number of samples
+        :param burn: number of samples to burn
+        :param display: boolean that indicates whether to display progress
+        :return: samples
+        """
+        h = placeholder(shape(self.h_prior.sample()))
+        mu, S = self._qz_natural(h, outer(h))
         L = tf.cholesky(S)
 
         prior_sample = self.h_prior.sample()
@@ -474,8 +523,8 @@ class VGPCM(GPCM):
                              - .5 * self.s2_f / self.s2
                              * mul3(h, self.mats['sum_Bhh'], h, adj_a=True))
 
-        ess = ESS(lambda x: self.run(log_lik, feed_dict={h: x}),
-                  lambda: self.run(prior_sample))
-        ess.move(self.run(self.h.mean))
+        ess = ESS(lambda x: self._run(log_lik, feed_dict={h: x}),
+                  lambda: self._run(prior_sample))
+        ess.move(self._run(self.h.mean))
         ess.sample(burn, display=display)
         return ess.sample(iters, display=display)

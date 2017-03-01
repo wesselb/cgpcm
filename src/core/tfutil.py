@@ -1,37 +1,47 @@
 import tensorflow as tf
 import numpy as np
-import colorsys
-import scipy.stats
 import tensorflow.contrib.distributions as tf_dists
 from tensorflow.python.client import timeline
 from tensorflow.python.framework import ops
+
+import config
 
 from rpy2.robjects import r
 from rpy2.robjects.packages import importr
 import rpy2.robjects.numpy2ri
 
-import config
-
 rpy2.robjects.numpy2ri.activate()
 importr("pbivnorm")
 
-lower_perc = 100 * scipy.stats.norm.cdf(-2)
-upper_perc = 100 * scipy.stats.norm.cdf(2)
 
-inf = np.inf
-
-
-def pw_dists2(x, y):
+def pw_dists2(x, y, output_norms=False):
     """
     Compute pairwise distances between the rows of `x` and `y`.
 
     :param x: first set of features
     :param y: second set of features
-    :return: squared distances, norms of `x`, and norms of `y`
+    :param output_norms: boolean that indicates whether to also output the
+                         norms of `x` and `y`
+    :return: squared distances, further outputs norms of `x` and norms of `y`
+             if `output_norms` is set to `True`
     """
     norms2_x = tf.reduce_sum(x ** 2, reduction_indices=[1])[:, None]
     norms2_y = tf.reduce_sum(y ** 2, reduction_indices=[1])[None, :]
-    return norms2_x - 2 * mul(x, y, adj_b=True) + norms2_y, norms2_x, norms2_y
+    if output_norms:
+        return norms2_x - 2 * mul(x, y, adj_b=True) + norms2_y, norms2_x, \
+               norms2_y
+    else:
+        return norms2_x - 2 * mul(x, y, adj_b=True) + norms2_y
+
+
+def ctransp(x):
+    """
+    Batch conjugate transpose a tensor.
+
+    :param x: tensor
+    :return: tensor where the last two dimensions are conjugate transposed
+    """
+    return tf.conj(transp(x))
 
 
 def transp(x):
@@ -159,10 +169,10 @@ def trisolve3(a, b, c, lower_a=True, lower_c=True, adj_a=False, adj_c=False):
     :return: :math:`A^{-1}BC^{-1}`
     """
     return trisolve(a,
-                    transp(trisolve(c,
-                                    transp(b),
-                                    lower_a=lower_c,
-                                    adj_a=not adj_c)),
+                    ctransp(trisolve(c,
+                                     ctransp(b),
+                                     lower_a=lower_c,
+                                     adj_a=not adj_c)),
                     lower_a=lower_a,
                     adj_a=adj_a)
 
@@ -202,8 +212,8 @@ def trmul(a, b, adj_a=False, adj_b=False):
     :param adj_b: boolean whether to adjoint `b`
     :return: :math:`\operatorname{tr}(A^TB)`.
     """
-    a = transp(a) if adj_a else a
-    b = transp(b) if adj_b else b
+    a = ctransp(a) if adj_a else a
+    b = ctransp(b) if adj_b else b
     return tf.reduce_sum(a * b, [-2, -1])
 
 
@@ -320,6 +330,13 @@ def get_var(name, offset=0):
         return vars[0]
 
 
+def placeholder(*args, **kw_args):
+    """
+    Alias for `tf.placeholder`.
+    """
+    return tf.placeholder(config.dtype, *args, **kw_args)
+
+
 def reg(x, diag=None):
     """
     Regularise a matrix.
@@ -333,13 +350,6 @@ def reg(x, diag=None):
     return x + diag * eye(shape(x)[-1])
 
 
-def vlinspace(*args, **kw_args):
-    """
-    Alias for `np.linspace`, but returns a vector instead.
-    """
-    return np.array([np.linspace(*args, **kw_args)]).T
-
-
 def var_pos(init_value, name=None):
     """
     Construct a TensorFlow variable that is constrained to be positive.
@@ -351,7 +361,7 @@ def var_pos(init_value, name=None):
     return tf.exp(tf.Variable(tf.log(init_value), name=name))
 
 
-class SessionDecoratorDebug:
+class SessionDecoratorDebug(object):
     """
     Decorator to add debugging functionality.
 
@@ -368,13 +378,14 @@ class SessionDecoratorDebug:
         Alias for `tf.Session.run`.
         """
         if 'debug' in kw_args:
+            if kw_args['debug']:
+                kw_args['options'] = self.run_options
+                kw_args['run_metadata'] = self.run_metadata
             del kw_args['debug']
-            kw_args['options'] = self.run_options
-            kw_args['run_metadata'] = self.run_metadata
-        return self.sess.run(*args, **kw_args)
+        return self.sess._run(*args, **kw_args)
 
     def report(self, fn='debug.ctl'):
-        """G
+        """
         Write debugging report. Open in 'chrome://tracing'.
 
         :param fn: file name to write to
@@ -389,34 +400,6 @@ class SessionDecoratorDebug:
         Alias for `tf.Session.as_default`.
         """
         return self.sess.as_default()
-
-
-def ph(*args, **kw_args):
-    """
-    Alias for `tf.placeholder`.
-    """
-    return tf.placeholder(config.dtype, *args, **kw_args)
-
-
-mlab_available = False
-
-
-def _mvn_cdf(x, mu, var):
-    """
-    Multivariate normal CDF.
-
-    :param x: matrix where rows correspond to points
-    :param mu: mean as a row vector
-    :param var: variance
-    :return: CDF evaluated at the rows of `x`
-    """
-    global mlab_available
-    if mlab_available is False:
-        print 'Loading interface with MATLAB...'
-        global mlab
-        from mlabwrap import mlab
-        mlab_available = True
-    return np.squeeze(mlab.mvncdf(x, mu, var))
 
 
 def _bvn_cdf(x, mu, var):
@@ -479,6 +462,7 @@ def bvn_cdf2(x, rho, name=None):
 
     :param x: matrix where rows correspond to points
     :param rho: correlation
+    :param name: name of operation
     :return: CDF evaluated at the rows of `x`
     """
     with ops.name_scope(name, 'bvn_cdf2', [x]) as name:
@@ -506,65 +490,6 @@ def py_func(*args, **kw_args):
         return tf.py_func(*args, **kw_args)
 
 
-def is_numeric(x):
-    """
-    Check if a variable is numeric.
-
-    :param x: variable
-    :return: boolean indicating whether `x` is numeric
-    """
-    try:
-        float(x)
-        return True
-    except ValueError:
-        return False
-    except AttributeError:
-        return False
-
-
-def items_dict_sorted(d):
-    """
-    Get the items in a dictionary sorted by their keys.
-
-    :param d: dictionary
-    :returns: items of dictionary sorted by their keys
-    """
-    return sorted(d.items(), key=lambda tup: tup[0])
-
-
-def length_scale(ls):
-    """
-    Construct constant from length scale.
-
-    :param ls: length scale
-    :return: constant
-    """
-    return .5 / ls ** 2
-
-
-def color_range(num, saturation=1.0, value=1.0):
-    """
-    Generate a range of colors that span hue.
-
-    :param num: num of colors in the range
-    :param saturation: saturation
-    :param value: value
-    :return: list of RGB colors
-    """
-    hsvs = [(x * 1.0 / num, saturation, value) for x in range(num)]
-    return map(lambda x: colorsys.hsv_to_rgb(*x), hsvs)
-
-
-def is_inf(x):
-    """
-    Check if a variable is infinite.
-
-    :param x: variable to check
-    :return: boolean whether `x` is infinite
-    """
-    return is_numeric(x) and np.isinf(x)
-
-
 def initialise_uninitialised_variables(sess):
     """
     Initialise uninitialised variables.
@@ -574,67 +499,3 @@ def initialise_uninitialised_variables(sess):
     for var in tf.global_variables():
         if not sess.run(tf.is_variable_initialized(var)):
             sess.run(tf.variables_initializer([var]))
-
-
-def fft(*args, **kw_args):
-    """
-    Alias for `np.fft.fft` which afterwards applies `np.fft.fftshift`.
-    """
-    return np.fft.fftshift(np.fft.fft(*args, **kw_args))
-
-
-def fft_freq(*args, **kw_args):
-    """
-    Alias for `np.fft.fft_freq` which afterwards applies `np.fft.fftshift`.
-    """
-    return np.fft.fftshift(np.fft.fftfreq(*args, **kw_args))
-
-
-def psd(*args, **kw_args):
-    """
-    Similar to `np.fft.fft`, but computes the PSD in dB instead.
-    """
-    return 10 * np.log10(np.abs(fft(*args, **kw_args)))
-
-
-def zero_pad(x, num, axis=0):
-    """
-    Zero pad an array.
-
-    :param x: array
-    :param axis: axis to zero pad along
-    :param num: number of zeros
-    :return: zero-padded array
-    """
-    zeros = np.zeros(num)
-    if axis > 0:
-        for i in range(axis - 1):
-            zeros = np.expand_dims(zeros, 0)
-    return np.concatenate((zeros, x, zeros), axis=axis)
-
-
-def smse(x, y):
-    """
-    Compute standardised mean squared error of `x` with respect to `y`.
-
-    :param x: predictions
-    :param y: references
-    :return: standardised mean squared error
-    """
-    y_mean = np.mean(y)
-    y_var = np.mean((y - y_mean) ** 2)
-    mse = np.mean((x - y) ** 2)
-    return mse / y_var
-
-
-def mll(mu, std, y):
-    """
-    Compute mean log loss.
-
-    :param mu: mean of predictions
-    :param std: marginal standard deviations of prediction
-    :param y: references
-    :return: mean log loss
-    """
-    return .5 * np.mean(np.log(2 * np.pi * std ** 2)
-                        + (mu - y) ** 2 / std ** 2)
