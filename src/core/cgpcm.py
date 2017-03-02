@@ -403,7 +403,7 @@ class VCGPCM(CGPCM):
     def _init_inducing_points(self):
         mean_init = tf.Variable(self.h_prior.sample(), name='muh')
         var_init = tf.Variable(tf.cholesky(self.h_prior.variance), name='Sh')
-        tf.initialize_variables([mean_init, var_init])
+        tf.variables_initializer([mean_init, var_init])
         self.h = Normal(mul(var_init, var_init, adj_a=True), mean_init)
 
     def _qz_natural(self, h_mean, h_m2):

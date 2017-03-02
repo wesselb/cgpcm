@@ -25,8 +25,8 @@ def pw_dists2(x, y, output_norms=False):
     :return: squared distances, further outputs norms of `x` and norms of `y`
              if `output_norms` is set to `True`
     """
-    norms2_x = tf.reduce_sum(x ** 2, reduction_indices=[1])[:, None]
-    norms2_y = tf.reduce_sum(y ** 2, reduction_indices=[1])[None, :]
+    norms2_x = tf.reduce_sum(x ** 2, axis=[1])[:, None]
+    norms2_y = tf.reduce_sum(y ** 2, axis=[1])[None, :]
     if output_norms:
         return norms2_x - 2 * mul(x, y, adj_b=True) + norms2_y, norms2_x, \
                norms2_y
@@ -144,7 +144,7 @@ def mul(a, b, adj_a=False, adj_b=False):
     """
     Alias for `tf.batch_matmul`.
     """
-    return tf.batch_matmul(a, b, adj_x=adj_a, adj_y=adj_b)
+    return tf.matmul(a, b, adj_x=adj_a, adj_y=adj_b)
 
 
 def trisolve(a, b, lower_a=True, adj_a=False):
