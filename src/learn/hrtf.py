@@ -4,9 +4,9 @@ import pickle
 import scipy.io.wavfile as wav
 import scipy.io as sio
 
-from core.gpcm import VGPCM
-from core.plotter import Plotter2D
-from core.utils import *
+from core.cgpcm import VCGPCM
+from core.plot import Plotter2D
+from core.tfutil import *
 
 
 def normalise_energy(x, dt, causal, i_mid=None):
@@ -78,7 +78,7 @@ if do_train:
     tk = np.linspace(-k_stretch * 2 * k_len, k_stretch * 2 * k_len, nk)[:,
          None]
 
-    h = wav.read('R-10e355a.wav')[1].astype(float)
+    h = wav.read('KEMAR_R10e355a.wav')[1].astype(float)
     x = np.random.randn(1000)
     y = np.convolve(x, h)
     y = (y - np.mean(y)) / np.std(y, ddof=1)  # Normalise
@@ -102,14 +102,14 @@ if do_train:
     # t_sample = np.concatenate((t[:imp_region[0]], t[imp_region[1] - 1:]))
 
     print 'Constructing model...'
-    mod = VGPCM(pars,
-                tf.constant(th[:, 0]),
-                tf.constant(tx[:, 0]),
-                t_sample,
-                y_sample,
-                sess,
-                causal=causal,
-                causal_id=False)
+    mod = VCGPCM(pars,
+                 tf.constant(th[:, 0]),
+                 tf.constant(tx[:, 0]),
+                 t_sample,
+                 y_sample,
+                 sess,
+                 causal=causal,
+                 causal_id=False)
     initialise_uninitialised_variables(sess)
     #
     # if train_iters_pre == 0 and train_iters == 0:

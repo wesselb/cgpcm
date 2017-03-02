@@ -3,9 +3,9 @@ from tensorflow.contrib.opt.python.training.external_optimizer import \
 import pickle
 import scipy.io as sio
 
-from core.gpcm import VGPCM
-from core.plotter import Plotter2D
-from core.utils import *
+from core.cgpcm import VCGPCM
+from core.plot import Plotter2D
+from core.tfutil import *
 
 
 def normalise_energy(x, dt, causal):
@@ -77,7 +77,7 @@ if do_train:
     tk = np.linspace(-k_stretch * 2 * k_len, k_stretch * 2 * k_len, nk)[:,
          None]
 
-    audio = sio.loadmat('audioWS.mat')['audio']
+    audio = sio.loadmat('TIMIT_unknown.mat')['audio']
     margin = 0
     y = audio[
         11499 + margin:11499 + margin + m].squeeze()  # Section from paper
@@ -95,14 +95,14 @@ if do_train:
     t_sample = t[choice]
 
     print 'Constructing model...'
-    mod = VGPCM(pars,
-                tf.constant(th[:, 0]),
-                tf.constant(tx[:, 0]),
-                t_sample,
-                y_sample,
-                sess,
-                causal=causal,
-                causal_id=False)
+    mod = VCGPCM(pars,
+                 tf.constant(th[:, 0]),
+                 tf.constant(tx[:, 0]),
+                 t_sample,
+                 y_sample,
+                 sess,
+                 causal=causal,
+                 causal_id=False)
     initialise_uninitialised_variables(sess)
 
     if train_iters_pre == 0 and train_iters == 0:

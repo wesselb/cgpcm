@@ -2,9 +2,9 @@ from tensorflow.contrib.opt.python.training.external_optimizer import \
     ScipyOptimizerInterface as SciPyOpt
 import pickle
 
-from core.gpcm import AKM, VGPCM
-from core.plotter import Plotter2D
-from core.utils import *
+from core.cgpcm import AKM, VCGPCM
+from core.plot import Plotter2D
+from core.tfutil import *
 
 
 def normalise_energy(x, dt, causal):
@@ -117,14 +117,14 @@ if do_train:
     akm.sample['h'] = h_samp
 
     if test_kernel:
-        k = akm.construct_kernel(causal=causal_sample)
+        k = akm.k(causal=causal_sample)
         p = Plotter2D()
         p.plot(tk, k)
         p.show()
 
-    k_true, y, _ = akm.construct_sample(causal=causal_sample)
+    k_true, y, _ = akm.f(causal=causal_sample)
     k_true, y = normalise(k_true[:, None]), y[:, None]
-    h_true = normalise_energy(akm.construct_filter(tf.constant(tk)),
+    h_true = normalise_energy(akm.h(tf.constant(tk)),
                               dt=tk[1, 0] - tk[0, 0], causal=causal_sample)
     y_noisy = y + np.random.randn(n, 1) * np.sqrt(noise)
 
@@ -139,14 +139,14 @@ if do_train:
     t_sample = t[choice, 0]
 
     print 'Constructing model...'
-    mod = VGPCM(pars,
-                tf.constant(th[:, 0]),
-                tf.constant(tx[:, 0]),
-                t_sample,
-                y_sample,
-                sess,
-                causal=causal,
-                causal_id=False)
+    mod = VCGPCM(pars,
+                 tf.constant(th[:, 0]),
+                 tf.constant(tx[:, 0]),
+                 t_sample,
+                 y_sample,
+                 sess,
+                 causal=causal,
+                 causal_id=False)
     initialise_uninitialised_variables(sess)
 
     if init_at_optimal_mean:
