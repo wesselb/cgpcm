@@ -1,18 +1,14 @@
 import os
-import subprocess as sp
-import sqlite3
-import datetime
-
 
 documentation = [
     {'package': 'core',
      'title': 'Core Modules',
      'description': 'Important modules that make up the system',
      'subpackages': []},
-     {'package': 'learn',
-      'title': 'Learning Tasks',
-      'description': 'Scripts to perform learning tasks',
-      'subpackages': []}
+    # {'package': 'learn',
+    #  'title': 'Learning Tasks',
+    #  'description': 'Scripts to perform learning tasks',
+    #  'subpackages': []}
 ]
 
 
@@ -25,7 +21,7 @@ def walk_dir(dir_path):
     """
     files = []
     for file in os.listdir(dir_path):
-        if file.startswith('.'):
+        if file == '.' or file == '..':
             continue
         file_path = os.path.join(dir_path, file)
         if os.path.isfile(file_path):
@@ -49,7 +45,7 @@ line2 = '-' * 100
 line3 = '^' * 100
 
 template_index = '''
-GGPCM Documentation
+CGPCM Documentation
 {line1:s}
 
 .. toctree::
@@ -98,8 +94,7 @@ Outcome
 '''
 
 
-
-class Documentation:
+class Documentation(object):
     """
     Generator of documentation source.
     """
@@ -144,12 +139,14 @@ class Documentation:
     def _render_package(self, package):
         # Gather the packages and the subpackages to be included
         packages = [package['package']] \
-                  + map(lambda x: '{}.{}'.format(package['package'], x),
-                        package['subpackages'])
+                   + map(lambda x: '{}.{}'.format(package['package'], x),
+                         package['subpackages'])
+
         # Extract all modules
         paths = map(self._import_to_path, packages)
         modules = sum(map(lambda x: self._files_to_modules(walk_dir(x)),
                           paths), [])
+
         # Render the modules
         return template_package.format(
             description=package['description'],

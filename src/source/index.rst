@@ -1,12 +1,11 @@
 
-GGPCM Documentation
+CGPCM Documentation
 ====================================================================================================
 
 .. toctree::
    :maxdepth: 2
 
    core
-   learn
 
 
 Indices and Tables

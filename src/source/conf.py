@@ -55,7 +55,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'GGPCM'
+project = u'CGPCM'
 copyright = u'Wessel Bruinsma'
 author = u'Wessel Bruinsma'
 
@@ -126,7 +126,7 @@ todo_include_todos = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'agogo'
+html_theme = 'haiku'
 
 def setup(app):
     app.add_stylesheet('custom.css')
