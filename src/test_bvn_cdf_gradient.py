@@ -1,4 +1,4 @@
-from core.utils import *
+from core.tfutil import *
 
 
 with tf.Session() as sess:

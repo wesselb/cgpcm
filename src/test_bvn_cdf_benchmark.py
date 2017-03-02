@@ -1,4 +1,4 @@
-from core.utils import _mvn_cdf, _bvn_cdf
+from core.tfutil import _mvn_cdf, _bvn_cdf
 import numpy as np
 from time import time
 
