@@ -8,12 +8,80 @@ from tfutil import *
 from util import *
 
 
-class GPCM(Parametrisable):
+def cgpcm_pars(sess,
+               t,
+               y,
+               nx,
+               nh,
+               k_len,
+               k_wiggles,
+               causal,
+               causal_id=False):
+    """
+    Create parameters for the CGPCM.
+
+    :param sess: TensorFlow session
+    :param t: times
+    :param y: observations
+    :param nx: number of inducing points for noise
+    :param nh: number of inducing points for filter
+    :param k_len: length of kernel
+    :param k_wiggles: number of wiggles in kernel
+    :param causal: boolean that indicates whether the model is causal
+    :param causal_id: boolean that indicates whether the interdomain
+                      transformation is causal
+    :return: parameters
+    """
+    # Equal prior power
+    if causal:
+        k_len *= 2
+
+    # Hyperparameters
+    alpha = length_scale(k_len)
+    gamma = length_scale(float(k_len) / k_wiggles)
+
+    # Hyperparameter for x and inducing points for x
+    if nx > 0:
+        omega = length_scale((max(t) - min(t)) / nx)
+        tx = np.linspace(min(t), max(t), nx)
+
+    # Make sure of an odd number of inducing points for h, so as to have one
+    # at zero
+    if nh % 2 == 0:
+        nh += 1
+
+    # Inducing points for h
+    if causal:
+        th = np.linspace(0, 2 * k_len, nh)
+        dth = th[1] - th[0]
+        th -= dth * 3
+    else:
+        th = np.linspace(-2 * k_len, 2 * k_len, nh)
+
+    pars = {'sess': sess,
+            't': tf.constant(t),
+            'y': tf.constant(y),
+            'th': tf.constant(th),
+            's2': var_pos(to_float(1e-4), 's2'),
+            's2_f': var_pos(to_float(1), 's2_f'),
+            'alpha': var_pos(to_float(alpha), 'alpha'),
+            'gamma': var_pos(to_float(gamma), 'gamma'),
+            'causal': causal,
+            'causal_id': causal_id}
+    if nx > 0:
+        pars['tx'] = tf.constant(tx)
+        pars['omega'] = var_pos(to_float(omega), 'omega')
+
+    initialise_uninitialised_variables(sess)
+    return pars
+
+
+class CGPCM(Parametrisable):
     """
     Causal Gaussian Process Convolution Model.
     """
 
-    _required_pars = ['t', 'y', 'sess',
+    _required_pars = ['sess', 't', 'y',
                       'th', 'tx',
                       's2', 's2_f', 'alpha', 'gamma', 'omega',
                       'causal', 'causal_id']
@@ -30,17 +98,17 @@ class GPCM(Parametrisable):
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
         kxs = eq.kxs_constructor(self.omega)
-        self.expq_a = kh(self.t1 - self.tau, self.t2 - self.tau)
-        self.expq_Ahh = kh(self.t1 - self.tau, self.th1) \
-                        * kh(self.th2, self.t2 - self.tau)
+        self.expq_a = kh(self.t1 - self.tau1, self.t2 - self.tau1)
+        self.expq_Ahh = kh(self.t1 - self.tau1, self.th1) \
+                        * kh(self.th2, self.t2 - self.tau1)
         self.expq_Axx = kh(self.t1 - self.tau1, self.t2 - self.tau2) \
                         * kxs(self.tau1, self.tx1) \
                         * kxs(self.tx2, self.tau2)
-        self.expq_Ahx = kh(self.t1 - self.tau, self.th1) \
-                        * kxs(self.tau, self.tx1)
+        self.expq_Ahx = kh(self.t1 - self.tau1, self.th1) \
+                        * kxs(self.tau1, self.tx1)
 
     def _init_vars(self):
-        for var in ['tau1', 'tau2', 'tau', 't1', 't2', 'th1', 'th2',
+        for var in ['tau1', 'tau2', 't1', 't2', 'th1', 'th2',
                     'tx1', 'tx2', 'min_t1_t2', 'min_t1_0',
                     'min_t1_tx1', 'min_t1_tx2']:
             setattr(self, var, eq.var(var))
@@ -63,7 +131,7 @@ class GPCM(Parametrisable):
 
     def _int_tau(self, t, exp, t1, t2, upper):
         return exp.substitute('t1', t1).substitute('t2', t2) \
-            .integrate_box(('tau', -inf, upper),
+            .integrate_box(('tau1', -inf, upper),
                            **self._generate_var_map(t))
 
     def _int_tau2(self, t, exp, t1, t2, upper1, upper2):
@@ -140,9 +208,9 @@ class GPCM(Parametrisable):
         self.iKh = cholinv(self.Lh)
         self.h_prior = Normal(self.iKh)
         # Stuff related to x
-        self.kernel_x = DEQ(s2=(.5 * np.pi / self.pars['omega']) ** .5,
+        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5,
                             alpha=0,
-                            gamma=.5 * self.pars['omega'])
+                            gamma=.5 * self.omega)
         self.Kx = reg(self.kernel_x(self.tx[:, None]))
         self.Lx = tf.cholesky(self.Kx)
         self.iKx = cholinv(self.Lx)
@@ -212,7 +280,7 @@ class GPCM(Parametrisable):
             self._precomputed = False
 
 
-class AKM(GPCM):
+class AKM(CGPCM):
     """
     Approximate Kernel Model.
     """
@@ -322,13 +390,13 @@ class AKM(GPCM):
         return self._run(k)
 
 
-class VGPCM(GPCM):
+class VCGPCM(CGPCM):
     """
     Variational inference in the CGPCM.
     """
 
     def __init__(self, **kw_args):
-        GPCM.__init__(self, **kw_args)
+        CGPCM.__init__(self, **kw_args)
         self._construct()
         self._init_inducing_points()
 
@@ -373,7 +441,7 @@ class VGPCM(GPCM):
                - self.h.kl(self.h_prior)
 
         return tf.Print(elbo,
-                        [self.s2, self.s2_f, self.pars['gamma']],
+                        [self.s2, self.s2_f, self.gamma],
                         message='s2, s2_f, gamma = ')
 
     def predict_k(self, t, samples_h=200, psd=False):

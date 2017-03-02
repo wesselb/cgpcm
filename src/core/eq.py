@@ -2,10 +2,6 @@ from core.tfutil import *
 from core.util import *
 import operator
 
-if __name__ == '__main__':
-    # For debugging convenience
-    sess = tf.Session()
-
 
 def const(x):
     """
@@ -31,6 +27,7 @@ def var(x, power=1):
 def kh_constructor(alpha, gamma):
     """
     Create a function that calls `kh` for some given hyperparameters.
+
     :param alpha: kernel decay parameter :math:`\\alpha`
     :param gamma: kernel length scale parameter :math:`\\gamma`
     :return: constructor
@@ -59,6 +56,7 @@ def kh(alpha, gamma, x, y):
 def kxs_constructor(omega):
     """
     Create a function that calls `kxs` for some given hyperparameter.
+
     :param omega: kernel length scale parameter :math:`\\omega`
     :return: constructor
     """
@@ -562,30 +560,3 @@ class EQ(object):
             return str(self._const)
         else:
             return '{} exp({})'.format(self._const, str(self._poly))
-
-
-if __name__ == '__main__':
-    # Small test case. Probably should use units tests.
-
-    t1, t2, t3 = var('t1'), var('t2'), var('t3')
-
-    eq = EQ(- const(1) * t1 ** 2
-            - const(2) * t2 ** 2
-            - const(.5) * t1 * t2
-            - const(2) * t1 * t3
-            + const(3) * t2
-            + const(4))
-    var_map = {'t3': tf.constant(np.eye(2))}
-    print sess.run(eq.integrate_half('t1', 't2', **var_map))
-    print 'Mathematica\'s NIntegrate: 55.8181 and 11.7677'
-
-    print sess.run(eq.integrate_box(('t1', const(-1), const(2)),
-                                    ('t2', t3, const(3)),
-                                    **var_map))
-    print 'Mathematica\'s NIntegrate: 318.354 and 217.392'
-
-    eq = EQ(const(-1) * t1 ** 2
-            + const(-.5) * t1
-            + const(4.))
-    print sess.run(eq.integrate_half('t1'))
-    print 'Mathematica\'s NIntegrate: 65.7397'

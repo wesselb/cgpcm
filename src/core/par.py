@@ -17,3 +17,5 @@ class Parametrisable(object):
         # Set parameters
         for k, v in pars.items():
             setattr(self, k, v)
+
+        self._pars = pars

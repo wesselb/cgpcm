@@ -51,6 +51,8 @@ def is_numeric(x):
     try:
         float(x)
         return True
+    except TypeError:
+        return False
     except ValueError:
         return False
     except AttributeError:
@@ -126,3 +128,14 @@ def vlinspace(*args, **kw_args):
     Alias for `np.linspace`, but returns a vector instead.
     """
     return np.array([np.linspace(*args, **kw_args)]).T
+
+
+def nearest_index(xs, y):
+    """
+    Get the index of the element in `xs` that is nearest to `y`.
+
+    :param xs: list
+    :param y: element
+    :return: index of element in `xs` that is nearest to `y`
+    """
+    return np.argmin(np.abs(xs - y))
