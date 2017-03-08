@@ -82,10 +82,10 @@ if compute:
         ks.append(mod.k(tk))
         fs.append(mod.f())
         hs.append(mod.h(th, assert_positive_at_index=120))
-    with open('output/interpolation_data', 'w') as f:
+    with open('output/interpolation_data.pickle', 'w') as f:
         pickle.dump((ks, fs, hs), f)
 else:
-    with open('output/interpolation_data') as f:
+    with open('output/interpolation_data.pickle') as f:
         ks, fs, hs = pickle.load(f)
 
 print 'Plotting...'
