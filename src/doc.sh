@@ -7,8 +7,7 @@ function title {
 title "Generating documentation source"
 python generate_doc_source.py
 title "Building documentation"
-# latexpdf
-make clean html
+make clean html  # latexpdf
 
 if [ "$1" = "open" ]; then
     open build/html/index.html

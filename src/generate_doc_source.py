@@ -25,7 +25,7 @@ def walk_dir(dir_path):
             continue
         file_path = os.path.join(dir_path, file)
         if os.path.isfile(file_path):
-            files += [file_path]
+            files.append(file_path)
     return files
 
 
@@ -159,5 +159,4 @@ class Documentation(object):
         )
 
 
-doc = Documentation()
-doc.generate()
+Documentation().generate()
