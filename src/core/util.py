@@ -1,6 +1,8 @@
 import colorsys
 import scipy.stats
 import numpy as np
+import tensorflow as tf
+from tfutil import shape
 
 # Some handy constants
 lower_perc = 100 * scipy.stats.norm.cdf(-2)
@@ -82,7 +84,7 @@ def psd(*args, **kw_args):
 
 def zero_pad(x, num, axis=0):
     """
-    Zero pad an array.
+    Zero pad a vector.
 
     :param x: array
     :param axis: axis to zero pad along
@@ -90,9 +92,13 @@ def zero_pad(x, num, axis=0):
     :return: zero-padded array
     """
     zeros = np.zeros(num)
-    if axis > 0:
-        for i in range(axis - 1):
-            zeros = np.expand_dims(zeros, 0)
+    dims = len(shape(x))
+    add_before = max(axis, 0)
+    add_after = max(dims - axis - 1, 0)
+    for i in range(add_before):
+        zeros = np.expand_dims(zeros, 0)
+    for i in range(add_after):
+        zeros = np.expand_dims(zeros, -1)
     return np.concatenate((zeros, x, zeros), axis=axis)
 
 
@@ -139,3 +145,30 @@ def nearest_index(xs, y):
     :return: index of element in `xs` that is nearest to `y`
     """
     return np.argmin(np.abs(xs - y))
+
+
+def seed(number=2147483647):
+    """
+    Seed TensorFlow and numpy.
+
+    :param number: number to seed with
+    """
+    tf.set_random_seed(number)
+    np.random.seed(number)
+
+
+def dict2(d=None, **kw_args):
+    """
+    Dictionary constructor that can simultaneously copy a dictionary and modify
+    certain fields according to `**kw_args`.
+
+    :param d: dictionary
+    :param \*\*kw_args: keyword arguments
+    :return: dictionary
+    """
+    if d is None:
+        d = {}
+    else:
+        d = dict(d)
+    d.update(kw_args)
+    return d

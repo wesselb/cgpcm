@@ -1,22 +1,17 @@
 import util
 import eq
+import data
 from par import Parametrisable
 from dist import Normal
 from kernel import DEQ
 from sample import ESS
+from learn import Progress
 from tfutil import *
 from util import *
 
 
-def cgpcm_pars(sess,
-               t,
-               y,
-               nx,
-               nh,
-               k_len,
-               k_wiggles,
-               causal,
-               causal_id=False):
+def cgpcm_pars(sess, t, y, nx, nh, k_len, k_wiggles, causal, causal_id=False,
+               name_vars=False):
     """
     Create parameters for the CGPCM.
 
@@ -27,18 +22,29 @@ def cgpcm_pars(sess,
     :param nh: number of inducing points for filter
     :param k_len: length of kernel
     :param k_wiggles: number of wiggles in kernel
-    :param causal: boolean that indicates whether the model is causal
-    :param causal_id: boolean that indicates whether the interdomain
-                      transformation is causal
+    :param causal: causal model
+    :param causal_id: causal interdomain transformation
+    :param name_vars: name the variables
     :return: parameters
     """
-    # Equal prior power
+    # Config
+    noise_init = 1e-4
+    k_stretch = 3
+    causal_extra_points = 3
+
+    # Adjust kernel length so that prior power is equal
     if causal:
         k_len *= 2
 
     # Hyperparameters
     alpha = length_scale(k_len)
     gamma = length_scale(float(k_len) / k_wiggles)
+
+    # Unity prior power
+    if causal:
+        s2_f = (8 * alpha / np.pi) ** .5
+    else:
+        s2_f = (2 * alpha / np.pi) ** .5
 
     # Hyperparameter for x and inducing points for x
     if nx > 0:
@@ -47,30 +53,41 @@ def cgpcm_pars(sess,
 
     # Make sure of an odd number of inducing points for h, so as to have one
     # at zero
-    if nh % 2 == 0:
+    if not causal and nh % 2 == 0:
         nh += 1
 
     # Inducing points for h
     if causal:
-        th = np.linspace(0, 2 * k_len, nh)
+        th = np.linspace(0, k_stretch * k_len, nh)
         dth = th[1] - th[0]
-        th -= dth * 3
+        # Extra inducing points to account for value and derivatives at zero
+        th -= dth * causal_extra_points
     else:
-        th = np.linspace(-2 * k_len, 2 * k_len, nh)
+        th = np.linspace(-k_stretch * k_len, k_stretch * k_len, nh)
 
     pars = {'sess': sess,
-            't': tf.constant(t),
-            'y': tf.constant(y),
-            'th': tf.constant(th),
-            's2': var_pos(to_float(1e-4), 's2'),
-            's2_f': var_pos(to_float(1), 's2_f'),
-            'alpha': var_pos(to_float(alpha), 'alpha'),
-            'gamma': var_pos(to_float(gamma), 'gamma'),
+            't': constant(t),
+            'y': constant(y),
+            'th': constant(th),
+            's2': var_pos(to_float(noise_init), 's2' if name_vars else None),
+            's2_f': var_pos(to_float(s2_f), 's2_f' if name_vars else None),
+            'alpha': var_pos(to_float(alpha), 'alpha' if name_vars else None),
+            'gamma': var_pos(to_float(gamma), 'gamma' if name_vars else None),
             'causal': causal,
             'causal_id': causal_id}
     if nx > 0:
-        pars['tx'] = tf.constant(tx)
-        pars['omega'] = var_pos(to_float(omega), 'omega')
+        pars['tx'] = constant(tx)
+        pars['omega'] = var_pos(to_float(omega),
+                                'omega' if name_vars else None)
+    else:
+        pars['tx'] = constant([])
+        pars['omega'] = var_pos(to_float(np.nan),
+                                'omega' if name_vars else None)
+
+    # Finally set other helpful quantities
+    pars['k_len'] = k_len
+    pars['k_wiggles'] = k_wiggles
+    pars['nh'] = shape(th)[0]
 
     initialise_uninitialised_variables(sess)
     return pars
@@ -88,12 +105,22 @@ class CGPCM(Parametrisable):
 
     def __init__(self, **kw_args):
         Parametrisable.__init__(self, **kw_args)
-        self.nh, self.nx = shape(self.th)[0], shape(self.tx)[0]
         self._precomputed = False
         self._init_kernels()
         self._init_var_map()
         self._init_vars()
         self._init_expressions()
+
+    @classmethod
+    def from_pars_config(cls, **kw_args):
+        """
+        Generate parameters by `cgpcm_pars` for some configuration of
+        `cgpcm_pars`.
+
+        :param \*\*kw_args: configuration of `cgpcm_pars`
+        :return: CGPCM instance
+        """
+        return cls(**cgpcm_pars(**kw_args))
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
@@ -159,7 +186,7 @@ class CGPCM(Parametrisable):
                 upper2 = self.min_t1_tx2
             else:
                 upper1 = self.t1
-                upper2 = self.t2
+                upper2 = self.t1
         else:
             upper1 = inf
             upper2 = inf
@@ -179,7 +206,6 @@ class CGPCM(Parametrisable):
                              upper=self.min_t1_0 if self.causal else inf)
 
     def _Ahx(self, t):
-        # Variable t2 is not present in Ahx
         if self.causal:
             if self.causal_id:
                 upper = self.min_t1_tx1
@@ -187,6 +213,7 @@ class CGPCM(Parametrisable):
                 upper = self.t1
         else:
             upper = inf
+        # Variable t2 is not present in Ahx, so substitution can be anything
         return self._int_tau(t, self.expq_Ahx, self.t1, self.t2, upper=upper)
 
     def _run(self, *args, **kw_args):
@@ -197,24 +224,27 @@ class CGPCM(Parametrisable):
         self.n = shape(self.t)[0]
         self.sum_y2 = sum(self.y ** 2)
         self.mats = self._construct_model_matrices(self.t, self.y)
+
         # Precompute stuff that is not going to change
         self.sum_y2 = self._run(self.sum_y2)
 
     def _init_kernels(self):
         # Stuff related to h
-        self.kernel_h = DEQ(s2=self.s2, alpha=self.alpha, gamma=self.gamma)
-        kh = reg(self.kernel_h(self.th[:, None]))
+        self.kernel_h = DEQ(s2=1., alpha=self.alpha, gamma=self.gamma)
+        kh = reg(self.kernel_h(self.th))
         self.Lh = tf.cholesky(kh)
         self.iKh = cholinv(self.Lh)
         self.h_prior = Normal(self.iKh)
+
         # Stuff related to x
         self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5,
                             alpha=0,
                             gamma=.5 * self.omega)
-        self.Kx = reg(self.kernel_x(self.tx[:, None]))
+        self.Kx = reg(self.kernel_x(self.tx))
         self.Lx = tf.cholesky(self.Kx)
         self.iKx = cholinv(self.Lx)
         self.x_prior = Normal(self.iKx)
+
         # Precompute stuff that is not going to change
         self.Kx, self.Lx, self.iKx = self._run([self.Kx, self.Lx, self.iKx])
 
@@ -262,7 +292,7 @@ class CGPCM(Parametrisable):
         """
         Precompute matrices.
 
-        :param recompute: boolean that indicates whether to recompute matrices
+        :param recompute: recompute matrices
                           if they are already precomputed
         """
         if recompute and self._precomputed:
@@ -289,13 +319,14 @@ class AKM(CGPCM):
                       's2', 's2_f', 'alpha', 'gamma',
                       'causal', 'causal_id']
 
-    def prior_kernel(self, t, iters=1000, psd=False, granularity=2.5):
+    def k_prior(self, t, iters=1000, psd=False, granularity=1, psd_pad=1000):
         """
         Prior distribution over kernels or PSDs.
 
         :param t: point to evaluate kernel at
         :param iters: number of Monte-Carlo iterations
         :param psd: compute PSD instead
+        :param psd_pad: zero padding in the case of PSD
         :param granularity: delta probability at which to generate contours of
                             marginal probability
         :return: mean, list of lower bounds, and list of upper bounds
@@ -305,26 +336,30 @@ class AKM(CGPCM):
                             self._a_center(t)])
 
         h = self.h_prior.sample()
-        k = (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
+        k = self.s2_f * (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
+        samples = [self._run(k) for i in range(iters)]
         if psd:
-            ks = np.concatenate([util.psd(self._run(k), axis=0)
-                                 for i in range(iters)], axis=1)
-        else:
-            ks = np.concatenate([self._run(k) for i in range(iters)], axis=1)
+            samples = [util.psd(zero_pad(x, psd_pad), axis=0) for x in samples]
+        samples = np.concatenate(samples, axis=1)
 
-        mu = np.mean(ks, axis=1)
+        mu = np.mean(samples, axis=1)
         lowers, uppers = [], []
         for perc in np.arange(granularity, 50 - granularity, granularity):
-            lowers.append(np.percentile(ks, perc, axis=1))
-            uppers.append(np.percentile(ks, 100 - perc, axis=1))
+            lowers.append(np.percentile(samples, perc, axis=1))
+            uppers.append(np.percentile(samples, 100 - perc, axis=1))
 
         return mu, lowers, uppers
 
-    def sample_h(self):
+    def sample_h(self, h=None):
         """
         Sample filter.
+
+        :param h: draw for filter, note the parametrisation of the filter
         """
-        self.h_draw = self._run(self.h_prior.sample())
+        if h is None:
+            self.h_draw = self._run(self.h_prior.sample())
+        else:
+            self.h_draw = h
 
     def sample_f(self, t):
         """
@@ -335,18 +370,19 @@ class AKM(CGPCM):
         self.t = t
         self.e_draw = self._run(randn([shape(t)[0], 1]))
 
-    def sample(self, t):
+    def sample(self, t, h=None):
         """
         Sample filter and function.
 
         :param t: points to evaluate function at
+        :param h: draw for filter, not the parametrisation of the filter
         """
-        self.sample_h()
+        self.sample_h(h)
         self.sample_f(t)
 
     def f(self):
         """
-        Construct function
+        Construct function.
 
         :return: function
         """
@@ -354,7 +390,7 @@ class AKM(CGPCM):
         Ahh = self._Ahh(self.t)
         a = self._a(self.t)
         K = reg(a + trmul(tile(outer(self.h_draw) - self.iKh, [n, n]), Ahh))
-        f = tf.squeeze(mul(tf.cholesky(K), self.e_draw))
+        f = self.s2_f ** .5 * tf.squeeze(mul(tf.cholesky(K), self.e_draw))
         return self._run(f)
 
     def h(self, t, assert_positive_at_index=None):
@@ -366,12 +402,12 @@ class AKM(CGPCM):
                                          process is positive
         :return: filter
         """
-        Kfu = self.kernel_h(t, self.th[:, None])
-        h = self._run(mul(Kfu, self.h_draw))
+        Kfu = self.kernel_h(t, self.th)
+        h = self._run(tf.squeeze(mul(Kfu, self.h_draw)))
 
         # Set h to correct sign
         if assert_positive_at_index is None:
-            assert_positive_at_index = (shape(h)[0] - 1) / 2
+            assert_positive_at_index = nearest_index(t, 0)
         h = h * np.sign(h[assert_positive_at_index])
 
         return h
@@ -387,7 +423,7 @@ class AKM(CGPCM):
         Ahh_k = self._Ahh_center(t)
         a_k = self._a_center(t)
         k = a_k + trmul(tile(outer(self.h_draw) - self.iKh, nk), Ahh_k)
-        return self._run(k)
+        return self._run(self.s2_f * k)
 
 
 class VCGPCM(CGPCM):
@@ -402,7 +438,7 @@ class VCGPCM(CGPCM):
 
     def _init_inducing_points(self):
         mean_init = tf.Variable(self.h_prior.sample(), name='muh')
-        var_init = tf.Variable(tf.cholesky(self.h_prior.variance), name='Sh')
+        var_init = tf.Variable(tf.cholesky(self.h_prior.var), name='Sh')
         tf.variables_initializer([mean_init, var_init])
         self.h = Normal(mul(var_init, var_init, adj_a=True), mean_init)
 
@@ -439,18 +475,26 @@ class VCGPCM(CGPCM):
                                          + trmul(self.mats['sum_Bhh'],
                                                  self.h.m2))) / 2. \
                - self.h.kl(self.h_prior)
+        return elbo
 
-        return tf.Print(elbo,
-                        [self.s2, self.s2_f, self.gamma],
-                        message='s2, s2_f, gamma = ')
+    def _mc(self, objective, placeholder, samples,
+            name='Monte-Carlo estimation'):
+        progress = Progress(name=name, iters=len(samples))
+        estimates = []
+        for sample in samples:
+            progress()
+            estimates.append(self._run(objective,
+                                       feed_dict={placeholder: sample}))
+        return estimates
 
-    def predict_k(self, t, samples_h=200, psd=False):
+    def predict_k(self, t, samples_h=200, psd=False, normalise=True):
         """
         Predict kernel.
 
         :param t: points to predict kernel at
         :param samples_h: samples in Monte-Carlo estimation
         :param psd: predict PSD instead
+        :param normalise: normalise prediction
         :return: predicted kernel
         """
         n = shape(t)[0]
@@ -463,30 +507,27 @@ class VCGPCM(CGPCM):
 
         # Compute via MC
         h = placeholder(shape(self.h.sample()))
-        k = (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
-        samples_k = [self._run(k, feed_dict={h: sample_h})
-                     for sample_h in samples_h]
+        k = self.s2_f * (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
+        samples = self._mc(k, h, samples_h,
+                           'kernel prediction using Monte-Carlo')
+
+        # Check whether to normalise predictions
+        if normalise:
+            samples = [sample / max(sample) for sample in samples]
 
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [util.psd(x / max(x) / len(x), axis=0)
-                       for x in samples_k]
-        else:
-            samples = samples_k
+            samples = [util.psd(sample, axis=0) for sample in samples]
 
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
+        return mu, lower, upper, std
 
-        if psd:
-            return mu, lower, upper, std
-        else:
-            s2_f = self._run(self.s2_f)
-            return s2_f * mu, s2_f * lower, s2_f * upper, s2_f * std
-
-    def predict_h(self, t, samples_h=200, assert_positive_at_index=None):
+    def predict_h(self, t, samples_h=200, assert_positive_at_index=None,
+                  normalise=True):
         """
         Predict filter.
 
@@ -494,6 +535,7 @@ class VCGPCM(CGPCM):
         :param samples_h: samples in Monte-Carlo estimation
         :param assert_positive_at_index: index at which to assert that
                                          the filter is positive
+        :param normalise: normalise prediction
         :return: predicted filter
         """
         if is_numeric(samples_h):
@@ -501,30 +543,45 @@ class VCGPCM(CGPCM):
             samples_h = [self._run(h) for i in range(samples_h)]
 
         h = placeholder(shape(self.h.sample()))
-        Kfu = self.kernel_h(t, self.th[:, None])
+        Kfu = self.kernel_h(t, self.th)
         mu = mul(Kfu, h)
-        samples = np.concatenate([self._run(mu, feed_dict={h: sample_h})
-                                  for sample_h in samples_h], axis=1)
+        samples = self._mc(mu, h, samples_h,
+                           'filter prediction using Monte-Carlo')
 
         # Set samples to correct sign
         if assert_positive_at_index is None:
-            assert_positive_at_index = (shape(samples[0])[0] - 1) / 2
+            assert_positive_at_index = nearest_index(t, 0)
         samples = [sample * np.sign(sample[assert_positive_at_index])
                    for sample in samples]
 
+        samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
+
+        # Check whether to normalise prediction
+        if normalise:
+            if self.causal:
+                scale = data.Data(t, mu).energy_causal ** .5
+            else:
+                scale = data.Data(t, mu).energy ** .5
+            mu /= scale
+            lower /= scale
+            upper /= scale
+            std /= scale
+
         return mu, lower, upper, std
 
-    def predict_f(self, t, samples_h=50, smf=False):
+    def predict_f(self, t, samples_h=50):
         """
         Predict function.
 
+        The SMF approximation will be used if and only if `samples_h` is
+        provided.
+
         :param t: point at which to predict function
         :param samples_h: samples in Monte-Carlo estimation
-        :param smf: boolean that indicates whether to use the SMF approximation
         :return: predicted function
         """
         n = shape(t)[0]
@@ -534,6 +591,9 @@ class VCGPCM(CGPCM):
         if is_numeric(samples_h):
             h = self.h.sample()
             samples_h = [self._run(h) for i in range(samples_h)]
+            smf = False
+        else:
+            smf = True
 
         # Construct optimal q(z|u) or q(z)
         h = tf.placeholder(config.dtype, shape(self.h.sample()))
@@ -561,8 +621,8 @@ class VCGPCM(CGPCM):
         var = m2 - mu ** 2
 
         # Compute via MC
-        samples = [self._run([mu, var], feed_dict={h: sample_h})
-                   for sample_h in samples_h]
+        samples = self._mc([mu, var], h, samples_h,
+                           'function prediction using Monte-Carlo')
         samples_mu, samples_var = zip(*samples)
         mu = np.mean(np.concatenate(samples_mu, axis=1), axis=1)
         var = np.mean(np.concatenate(samples_var, axis=1), axis=1)
@@ -572,15 +632,16 @@ class VCGPCM(CGPCM):
         var *= s2_f
         return mu, mu - 2 * var ** .5, mu + 2 * var ** .5, var ** .5
 
-    def sample(self, iters=200, burn=50, display=False):
+    def sample(self, iters=200, burn=None):
         """
         Sample from the posterior over filters.
 
         :param iters: number of samples
         :param burn: number of samples to burn
-        :param display: boolean that indicates whether to display progress
         :return: samples
         """
+        if burn is None:
+            burn = iters
         h = placeholder(shape(self.h_prior.sample()))
         mu, S = self._qz_natural(h, outer(h))
         L = tf.cholesky(S)
@@ -594,5 +655,5 @@ class VCGPCM(CGPCM):
         ess = ESS(lambda x: self._run(log_lik, feed_dict={h: x}),
                   lambda: self._run(prior_sample))
         ess.move(self._run(self.h.mean))
-        ess.sample(burn, display=display)
-        return ess.sample(iters, display=display)
+        ess.sample(burn)
+        return ess.sample(iters)

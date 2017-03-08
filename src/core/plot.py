@@ -52,23 +52,23 @@ class Plotter(object):
 
     :param \*\*kw_args: configuration adjustments
     """
-    _config = {'axes_color': 'black',
+    _config = {'axes_colour': 'black',
                'axes_width': 1,
                'axes_labelpad': 8,
-               'grid_color': '0.8',
+               'grid_colour': '0.8',
                'grid_width': .5,
                'grid_style': '--',
                'font_family': 'Adobe Caslon Pro',
                'font_size': 11,
-               'legend_color': '0.95',
+               'legend_colour': '0.95',
                'legend_location': 'upper right',
-               'line_color': 'undefined',
+               'line_colour': 'undefined',
                'line_width': 1,
                'line_style': '-',
-               'colorbar_shrink': 0.8,
-               'colorbar_aspect': 20,
+               'colourbar_shrink': 0.8,
+               'colourbar_aspect': 20,
                'marker_style': 'None',
-               'marker_color': 'undefined',
+               'marker_colour': 'undefined',
                'marker_size': 5,
                'surface_rstride': 1,
                'surface_cstride': 1,
@@ -76,13 +76,14 @@ class Plotter(object):
                'surface_line_width': 0,
                'cmap': mpl.cm.coolwarm,
                'fill_alpha': 0.25,
-               'fill_color': 'undefined',
+               'fill_colour': 'undefined',
                'label': 'undefined',
                'figure_size': (8, 6),
-               'figure_toolbar': 'None',  # None | toolbar2
+               'figure_toolbar': 'toolbar2',  # None | toolbar2
                'figure_autolayout': True}
 
     def __init__(self, **kw_args):
+        self._config.update(kw_args)
         self._config_global()
         self.plt = plt
         self._first = True
@@ -100,7 +101,7 @@ class Plotter(object):
         return self
 
     def _config_global(self):
-        mapping = {'toolbar': 'toolbar',
+        mapping = {'toolbar': 'figure_toolbar',
                    'figure.autolayout': 'figure_autolayout'}
         mpl.rcParams.update(**self._map(mapping, {}))
         mpl.rc('font',
@@ -130,10 +131,10 @@ class Plotter(object):
         return self
 
     def show_legend(self, **kw_args):
-        config = self._map({'legend_color': 'legend_color',
+        config = self._map({'legend_colour': 'legend_colour',
                             'legend_location': 'legend_location'}, kw_args)
         self.leg = self.ax.legend(loc=config['legend_location'])
-        self.leg.get_frame().set_color(config['legend_color'])
+        self.leg.get_frame().set_color(config['legend_colour'])
         return self
 
     def title(self, *args, **kw_args):
@@ -200,21 +201,21 @@ class Plotter2D(Plotter):
         self.ax = plt.gca()
         self.ax.spines['top'].set_visible(False)
         self.ax.spines['right'].set_visible(False)
-        self.ax.spines['left'].set_color(self._config['axes_color'])
-        self.ax.spines['bottom'].set_color(self._config['axes_color'])
+        self.ax.spines['left'].set_color(self._config['axes_colour'])
+        self.ax.spines['bottom'].set_color(self._config['axes_colour'])
         plt.grid(which='major',
                  linestyle=self._config['grid_style'],
-                 color=self._config['grid_color'],
+                 color=self._config['grid_colour'],
                  linewidth=self._config['grid_width'])
         self.ax.set_axisbelow(True)
         return self
 
     def _config_ticks(self):
         self.ax.xaxis.set_tick_params(width=1,
-                                      color=self._config['axes_color'],
+                                      color=self._config['axes_colour'],
                                       right='off')
         self.ax.yaxis.set_tick_params(width=1,
-                                      color=self._config['axes_color'],
+                                      color=self._config['axes_colour'],
                                       top='off')
         return self
 
@@ -222,10 +223,10 @@ class Plotter2D(Plotter):
         self._check_first_figure()
         mapping = {'linewidth': 'line_width',
                    'linestyle': 'line_style',
-                   'color': 'line_color',
+                   'color': 'line_colour',
                    'marker': 'marker_style',
-                   'markerfacecolor': 'marker_color',
-                   'markeredgecolor': 'marker_color',
+                   'markerfacecolor': 'marker_colour',
+                   'markeredgecolor': 'marker_colour',
                    'markersize': 'marker_size',
                    'label': 'label'}
         p = plt.plot(*args, **self._map(mapping, kw_args))
@@ -236,7 +237,7 @@ class Plotter2D(Plotter):
         self._check_first_figure()
         mapping = {'alpha': 'fill_alpha',
                    'edgecolor': 'val:none',
-                   'facecolor': 'fill_color',
+                   'facecolor': 'fill_colour',
                    'interpolate': 'val:True'}
         p = plt.fill_between(x, y1, y2, *args, **self._map(mapping, kw_args))
         self.plots.append(p)
@@ -256,9 +257,9 @@ class Plotter3D(Plotter):
         self.ax = plt.gca(projection='3d')
         for ax in [self.ax.w_xaxis, self.ax.w_yaxis, self.ax.w_zaxis]:
             ax.set_pane_color(to_rbga('white'))
-            ax.line.set_color(self._config['axes_color'])
+            ax.line.set_color(self._config['axes_colour'])
             ax.line.set_lw(self._config['axes_width'])
-            ax._axinfo['grid']['color'] = to_rbga(self._config['grid_color'])
+            ax._axinfo['grid']['color'] = to_rbga(self._config['grid_colour'])
             ax.gridlines.set_lw(self._config['grid_width'])
         return self
 
@@ -267,14 +268,14 @@ class Plotter3D(Plotter):
             ax.labelpad = self._config['axes_labelpad']
             ax._axinfo['tick']['inward_factor'] = 0
             ax._axinfo['tick']['outward_factor'] = 0.2
-            ax.majorTicks[0].tick1line.set_color(self._config['axes_color'])
+            ax.majorTicks[0].tick1line.set_color(self._config['axes_colour'])
             ax.majorTicks[0].tick1line.set_linewidth(
                 self._config['axes_width'])
         return self
 
-    def show_colorbar(self, obj, **kw_args):
-        mapping = {'shrink': self._config['colorbar_shrink'],
-                   'aspect': self._config['colorbar_aspect']}
+    def show_colourbar(self, obj, **kw_args):
+        mapping = {'shrink': self._config['colourbar_shrink'],
+                   'aspect': self._config['colourbar_aspect']}
         self.cb = self.fig.colorbar(obj, **self._map(mapping, kw_args))
         self.cb.outline.set_linewidth(self._config['axes_width'])
         self.cb.ax.tick_params(right='off')

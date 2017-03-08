@@ -5,17 +5,17 @@ class Normal(object):
     """
     Normal distribution.
 
-    :param variance: variance
+    :param var: variance
     :param mean: mean
     """
 
-    def __init__(self, variance, mean=None):
-        self.dims = shape(variance)[-1]
+    def __init__(self, var, mean=None):
+        self.dims = shape(var)[-1]
         if mean is None:
             self.mean = zeros([self.dims, 1])
         else:
             self.mean = mean
-        self.variance = variance
+        self.var = var
 
     @property
     def m2(self):
@@ -24,7 +24,7 @@ class Normal(object):
 
         :return: second moment
         """
-        return self.variance + outer(self.mean)
+        return self.var + outer(self.mean)
 
     def log_pdf(self, x):
         """
@@ -37,7 +37,7 @@ class Normal(object):
             raise RuntimeError('Dimensionality of data points does not match '
                                'distribution')
         n = shape(x)[0]  # Number of data points
-        chol = tf.cholesky(self.variance)
+        chol = tf.cholesky(self.var)
         y = trisolve(chol, tf.transpose(x) - self.mean)
         return -(log_det(chol) + n * to_float(self.dims) * log_2_pi()
                  + tf.reduce_sum(y * y)) / 2.
@@ -52,8 +52,8 @@ class Normal(object):
         if self.dims != other.dims:
             raise RuntimeError('KL divergence can only be computed between '
                                'distributions of the same dimensionality')
-        chol_self = tf.cholesky(self.variance)
-        chol_other = tf.cholesky(other.variance)
+        chol_self = tf.cholesky(self.var)
+        chol_other = tf.cholesky(other.var)
         mu_diff_part = tf.reduce_sum(trisolve(chol_other,
                                               other.mean - self.mean) ** 2)
         trace_part = tf.reduce_sum(trisolve(chol_other, chol_self) ** 2)
@@ -68,7 +68,7 @@ class Normal(object):
         :return: sample
         """
         sample = randn([self.dims, num])
-        return mul(tf.cholesky(self.variance), sample) + self.mean
+        return mul(tf.cholesky(self.var), sample) + self.mean
 
 
 class Uniform(object):

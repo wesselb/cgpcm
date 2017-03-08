@@ -2,6 +2,8 @@ import numpy.random as rng
 import numpy as np
 from time import time
 
+from learn import Progress
+
 
 class ESS(object):
     """
@@ -96,17 +98,22 @@ class ESS(object):
             else:
                 return self._draw((self._theta, theta_u), u, attempts + 1)
 
-    def sample(self, num=1, discard=False, display=False):
+    def sample(self, num=1):
         """
         Generate samples from the target distribution.
 
         :param num: number of samples
-        :param discard: boolean whether to discard the samples
-        :param display: boolean whether to show progress
         :return: samples
         """
         samples = []
-        start = time()
+        fetches_config = [{'name': 'log likelihood', 'modifier': '.2e'},
+                          {'name': 'attempts', 'modifier': 'd'},
+                          {'name': 'time/attempt',
+                           'modifier': '.2f',
+                           'unit': 'ms'}]
+        progress = Progress(name='sampling using ESS',
+                            iters=num,
+                            fetches_config=fetches_config)
         for i in range(num):
             u = self._log_lik_x - rng.exponential(1.0)
             self._establish_ellipse()
@@ -114,20 +121,10 @@ class ESS(object):
             self._x, self._log_lik_x, attempts = self._draw(
                 self._draw_bracket(), u)
             end_it = time()
-            if not discard:
-                samples.append(self._x)
+            samples.append(self._x)
 
             # Report
-            if display:
-                eta = (time() - start) / (i + 1) * (num - i - 1)
-                time_attempt = 1000 * (end_it - start_it) / attempts
-                print 'ESS:'
-                print '  burning:      {}'.format('yes' if discard else 'no')
-                print '  iteration:    {:d}/{:d}'.format(i + 1, num)
-                print '  time left:    {:.0f} sec'.format(eta)
-                print '  attempts:     {}'.format(attempts)
-                print '  time/attempt: {:.0f} ms'.format(time_attempt)
-                print '  log lik:      {:.0f}'.format(self._log_lik_x)
+            time_attempt = 1000 * (end_it - start_it) / attempts
+            progress([self._log_lik_x, attempts, time_attempt])
 
-        if not discard:
-            return samples if len(samples) > 1 else samples[0]
+        return samples if len(samples) > 1 else samples[0]

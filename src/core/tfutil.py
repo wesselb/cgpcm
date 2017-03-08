@@ -11,7 +11,7 @@ from rpy2.robjects.packages import importr
 import rpy2.robjects.numpy2ri
 
 rpy2.robjects.numpy2ri.activate()
-importr("pbivnorm")
+importr('pbivnorm')
 
 
 def pw_dists2(x, y, output_norms=False):
@@ -20,8 +20,7 @@ def pw_dists2(x, y, output_norms=False):
 
     :param x: first set of features
     :param y: second set of features
-    :param output_norms: boolean that indicates whether to also output the
-                         norms of `x` and `y`
+    :param output_norms: also output the norms of `x` and `y`
     :return: squared distances, further outputs norms of `x` and norms of `y`
              if `output_norms` is set to `True`
     """
@@ -144,7 +143,7 @@ def mul(a, b, adj_a=False, adj_b=False):
     """
     Alias for `tf.batch_matmul`.
     """
-    return tf.matmul(a, b, adj_x=adj_a, adj_y=adj_b)
+    return tf.matmul(a, b, adjoint_a=adj_a, adjoint_b=adj_b)
 
 
 def trisolve(a, b, lower_a=True, adj_a=False):
@@ -337,6 +336,13 @@ def placeholder(*args, **kw_args):
     return tf.placeholder(config.dtype, *args, **kw_args)
 
 
+def constant(*args, **kw_args):
+    """
+    Alias for `tf.constant`.
+    """
+    return tf.constant(*args, dtype=config.dtype, **kw_args)
+
+
 def reg(x, diag=None):
     """
     Regularise a matrix.
@@ -361,28 +367,27 @@ def var_pos(init_value, name=None):
     return tf.exp(tf.Variable(tf.log(init_value), name=name))
 
 
-class SessionDecoratorDebug(object):
+class Session(object):
     """
-    Decorator to add debugging functionality.
-
-    :param sess: session
+    Session proxy to add debugging functionality.
     """
 
-    def __init__(self, sess):
-        self.sess = sess
+    def __init__(self):
+        self.sess = tf.Session()
         self.run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         self.run_metadata = tf.RunMetadata()
 
     def run(self, *args, **kw_args):
         """
-        Alias for `tf.Session.run`.
+        Alias for `tf.Session.run`. Set the keyword argument `debug` to `True`
+        to enable logging.
         """
         if 'debug' in kw_args:
             if kw_args['debug']:
                 kw_args['options'] = self.run_options
                 kw_args['run_metadata'] = self.run_metadata
             del kw_args['debug']
-        return self.sess._run(*args, **kw_args)
+        return self.sess.run(*args, **kw_args)
 
     def report(self, fn='debug.ctl'):
         """
@@ -425,7 +430,7 @@ def _bvn_cdf2(x, rho):
     :param rho: correlation
     :return: CDF evaluated at the rows of `x`
     """
-    return np.array(r.pbivnorm(x, rho=rho))
+    return r.pbivnorm(x, rho=rho)
 
 
 def _bvn_cdf2_grad(op, grad):

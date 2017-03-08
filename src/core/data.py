@@ -74,6 +74,28 @@ class Data(object):
         noise = var ** .5 * np.random.randn(*shape(self.y))
         return Data(self.t, self.y + noise)
 
+    def positive_part(self):
+        """
+        Get part of data associated to positive times.
+
+        :return: positive part of data
+        """
+        return self._split(self.t >= 0)[0]
+
+    @property
+    def energy(self):
+        """
+        Energy of data.
+        """
+        return np.trapz(self.y ** 2, self.t)
+
+    @property
+    def energy_causal(self):
+        """
+        Energy of data, assuming that the data is causal.
+        """
+        return self.positive_part().energy
+
     @property
     def mean(self):
         """
@@ -88,29 +110,40 @@ class Data(object):
         """
         return np.std(self.y, ddof=1)
 
+    def _assert_compat(self, other):
+        if not np.allclose(self.t, other.t):
+            raise ValueError('Data objects must be compatible')
+
+    def _to_y(self, other):
+        if type(other) is Data:
+            self._assert_compat(other)
+            return other.y
+        else:
+            return other
+
     def __neg__(self):
         return Data(self.t, -self.y)
 
     def __add__(self, other):
-        return Data(self.t, self.y + other)
+        return Data(self.t, self.y + self._to_y(other))
 
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
-        return Data(self.t, self.y - other)
+        return Data(self.t, self.y - self._to_y(other))
 
     def __rsub__(self, other):
         return -self.__sub__(other)
 
     def __div__(self, other):
-        return Data(self.t, self.y / other)
+        return Data(self.t, self.y / self._to_y(other))
 
     def __rdiv__(self, other):
         return 1 / self.__div__(other)
 
     def __mul__(self, other):
-        return Data(self.t, self.y * other)
+        return Data(self.t, self.y * self._to_y(other))
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -207,7 +240,7 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
     Sample from the AKM.
 
     :param sess: TensorFlow session
-    :param causal: boolean that indicates whether the AKM is causal
+    :param causal: causal AKM
     :param n: number of time points
     :param nh: number of inducing points for the filter
     :param k_len: length of kernel
@@ -216,7 +249,6 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
     :return: data for function, kernel, and filter, and parameters of the AKM
     """
     t = np.linspace(0, 1, n)
-    tk = np.linspace(-2 * k_len, 2 * k_len, 301)
     pars = cgpcm.cgpcm_pars(sess=sess,
                             t=t,
                             y=[],
@@ -225,6 +257,9 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
                             k_len=k_len,
                             k_wiggles=k_wiggles,
                             causal=causal)
+    k_len = pars['k_len']
+    k_stretch = 6
+    tk = np.linspace(-k_stretch * k_len, k_stretch * k_len, 301)
 
     # Construct AKM and sample
     akm = cgpcm.AKM(**pars)
@@ -233,14 +268,15 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
         akm.sample_f(t)
 
     # Construct data
+    frac_k_len_pos = .2  # A magic number here
     f = Data(t, akm.f())
     k = Data(tk, akm.k(tk))
-    i = nearest_index(tk, k_len / 5)
+    i = nearest_index(tk, frac_k_len_pos * k_len)
     h = Data(tk, akm.h(tk, assert_positive_at_index=i))
 
     # Normalise
     f -= f.mean
     f /= f.std
-    h /= max(k.y) ** .5
+    h /= h.energy_causal ** .5
     k /= max(k.y)
     return f, k, h, pars
