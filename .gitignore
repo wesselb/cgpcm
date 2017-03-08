@@ -3,6 +3,9 @@ src/iterate.dat
 src/debug.ctl
 *.pickle
 
+# Auxilary scripts
+src/experiments.sh
+
 # Core latex/pdflatex auxiliary files
 *.aux
 *.lof
