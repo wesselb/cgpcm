@@ -154,16 +154,6 @@ def map_progress(f, xs, name):
     return map(mapping_fun, xs)
 
 
-def flag(name):
-    """
-    Check if flag is set.
-
-    :param name: name of flag
-    :return: boolean
-    """
-    return '--{}'.format(name) in sys.argv[1:]
-
-
 class TaskConfig(Parametrisable):
     """
     Configuration for a task.

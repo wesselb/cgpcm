@@ -1,8 +1,5 @@
-# Flags:
-#   --psd to compute PSD, and
-#   --show to show plot.
-
-import sys
+#!/usr/bin/env python
+import argparse
 
 from core.cgpcm import AKM
 from core.plot import Plotter2D
@@ -24,9 +21,12 @@ def plot(p, k, psd):
         p.lims(x=(-.5, .5), y=(-.25, 2))
 
 
-# Config
-show = '--show' in sys.argv[1:]
-psd = '--psd' in sys.argv[1:]
+parser = argparse.ArgumentParser(description='Plot prior kernel or PSD.')
+parser.add_argument('--psd', action='store_true', help='plot PSD')
+parser.add_argument('--show', action='store_true', help='show plots')
+args = parser.parse_args()
+
+# Initialise
 sess = Session()
 seed()
 recipe_c = {'sess': sess,
@@ -46,10 +46,10 @@ mod_ac = AKM.from_recipe(**recipe_ac)
 out.section('sampling')
 tk = np.linspace(-.6, .6, 301)
 out.section('causal model')
-k_c = mod_c.k_prior(tk, granularity=.75, iters=5000, psd=psd)
+k_c = mod_c.k_prior(tk, granularity=.75, iters=5000, psd=args.psd)
 out.section_end()
 out.section('acausal model')
-k_ac = mod_ac.k_prior(tk, granularity=.75, iters=5000, psd=psd)
+k_ac = mod_ac.k_prior(tk, granularity=.75, iters=5000, psd=args.psd)
 out.section_end()
 out.section_end()
 
@@ -57,10 +57,10 @@ out.section_end()
 out.section('plotting')
 p = Plotter2D(figure_size=(5, 2), grid_style='none')
 p.subplot(1, 2, 1)
-plot(p, k_ac, psd)
+plot(p, k_ac, args.psd)
 p.subplot(1, 2, 2)
-plot(p, k_c, psd)
-p.save('output/prior_{}.pdf'.format('psd' if psd else 'kernel'))
-if show:
+plot(p, k_c, args.psd)
+p.save('output/prior_{}.pdf'.format('psd' if args.psd else 'kernel'))
+if args.show:
     p.show()
 out.section_end()

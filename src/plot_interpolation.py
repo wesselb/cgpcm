@@ -1,8 +1,6 @@
-# Flags:
-#   --compute to perform computation, and
-#   --show to show plot.
-
+#!/usr/bin/env python
 import pickle
+import argparse
 
 from core.cgpcm import AKM
 from core.plot import Plotter2D
@@ -46,6 +44,12 @@ def h_inv(h):
     return sess.run(tf.cholesky_solve(L, h))
 
 
+parser = argparse.ArgumentParser(description='Plot interpolation of filters.')
+parser.add_argument('--compute', action='store_true',
+                    help='compute interpolation')
+parser.add_argument('--show', action='store_true', help='show plots')
+args = parser.parse_args()
+
 # Config
 fn_cache = 'output/cache/interpolation_data.pickle'
 sess = Session()
@@ -75,7 +79,7 @@ tk = np.linspace(-.6, .6, 301)
 fracs = np.linspace(0, .6, 5)
 num_fracs = len(fracs)
 
-if learn.flag('compute'):
+if args.compute:
     mod.sample_f(t)
     hs, ks, fs = [], [], []
 
@@ -123,6 +127,6 @@ for i in range(num_fracs):
     if i == 0:
         p.labels(y='$f\,|\,h$')
 p.save('output/interpolation.pdf')
-if learn.flag('show'):
+if args.show:
     p.show()
 out.section_end()
