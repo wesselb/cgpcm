@@ -362,9 +362,10 @@ def var_pos(init_value, name=None):
 
     :param init_value: initial value
     :param name: name of variable
-    :return: variable
+    :return: positive variable and TensorFlow variable
     """
-    return tf.exp(tf.Variable(tf.log(init_value), name=name))
+    var = tf.Variable(tf.log(init_value), name=name)
+    return tf.exp(var), var
 
 
 class Session(object):

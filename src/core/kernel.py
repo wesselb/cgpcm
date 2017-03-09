@@ -1,4 +1,5 @@
 import abc
+
 from tfutil import *
 from par import Parametrisable
 

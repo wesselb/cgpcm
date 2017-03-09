@@ -1,9 +1,12 @@
 from tensorflow.contrib.opt.python.training.external_optimizer import \
     ScipyOptimizerInterface as SciPyOpt
 import time
+import abc
+import sys
 
-import out
 from tfutil import *
+from par import Parametrisable
+import out
 
 
 class Progress(object):
@@ -11,8 +14,8 @@ class Progress(object):
     Progress display.
 
     A fetch is specified through a dictionary where the key `name` specifies
-    the name of the fetch, and the key `modifier` specifies the modifier of the
-    fetch.
+    the name of the fetch, the key `modifier` specifies the modifier of the
+    fetch, and the key `unit` specifies the unit of the fetch.
 
     :param name: name of task
     :param iters: total number of iterations
@@ -115,20 +118,107 @@ def minimise_lbfgs(sess, objective, vars, iters, fetches_config=None):
     if fetches_config is None:
         fetches_config = []
 
-    # fmin_l_bfgs_b tends to perform two extra iterations
+    # SciPy's fmin_l_bfgs_b tends to perform two extra iterations
     opt = SciPyOpt(objective,
                    options={'disp': False,
                             'maxiter': iters - 2},
                    var_list=vars)
     initialise_uninitialised_variables(sess)
 
-    progress = Progress(
-        name='minimisation using scipy.optimize.fmin_l_bfgs_b',
-        iters=iters,
-        fetches_config=fetches_config)
+    progress = Progress(name='minimisation using L-BFGS',
+                        iters=iters,
+                        fetches_config=fetches_config)
 
     opt.minimize(sess,
                  loss_callback=lambda *fetches: progress(fetches,
                                                          step=False),
                  step_callback=lambda x: progress(step=True),
                  fetches=[x['tensor'] for x in fetches_config])
+
+
+def map_progress(f, xs, name):
+    """
+    Map whilst showing progress.
+
+    :param f: function
+    :param xs: list
+    :param name: name of operation
+    :return: transformed list
+    """
+    progress = Progress(name=name, iters=len(xs))
+
+    def mapping_fun(x):
+        progress()
+        return f(x)
+
+    return map(mapping_fun, xs)
+
+
+def flag(name):
+    """
+    Check if flag is set.
+
+    :param name: name of flag
+    :return: boolean
+    """
+    return '--{}'.format(name) in sys.argv[1:]
+
+
+class TaskConfig(Parametrisable):
+    """
+    Configuration for a task.
+    """
+    _required_pars = ['fn', 'seed', 'iters', 'iters_pre', 'samps', 'name']
+
+
+class Task(object):
+    """
+    Learning task.
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, options):
+        self.data = {}  # To save useful data in
+        self.config = self.generate_config(options)
+
+    @abc.abstractmethod
+    def generate_config(self, options):
+        """
+        Generate config for task.
+
+        :param options: list of strings
+        :return: instance of `TaskConfig`
+        """
+        pass
+
+    @abc.abstractmethod
+    def load(self, sess):
+        """
+        Load data and model.
+
+        This method should call `self._set_data` and `self._set_model`.
+
+        :param sess: TensorFlow session
+        """
+        pass
+
+    def _set_data(self, h=None, k=None, f=None, e=None):
+        self.data['h'] = h
+        self.data['k'] = k
+        self.data['f'] = f
+        self.data['e'] = e
+
+    def _set_model(self, mod):
+        self.mod = mod
+
+    def make_pickleable(self, sess):
+        """
+        Save useful data in the property `data` and make the object pickleable.
+        """
+        self.data.update({'tx': sess.run(self.mod.tx),
+                          'th': sess.run(self.mod.th),
+                          's2': sess.run(self.mod.s2),
+                          's2_f': sess.run(self.mod.s2_f),
+                          'mu': sess.run(self.mod.h.mean),
+                          'var': sess.run(self.mod.h.var)})
+        del self.mod

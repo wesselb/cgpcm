@@ -2,6 +2,7 @@ import colorsys
 import scipy.stats
 import numpy as np
 import tensorflow as tf
+
 from tfutil import shape
 
 # Some handy constants

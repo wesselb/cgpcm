@@ -1,5 +1,7 @@
-from eq import *
 import unittest
+
+from eq import *
+from util import inf
 
 
 class TestEQ(unittest.TestCase):

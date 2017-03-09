@@ -1,6 +1,7 @@
-from core.tfutil import *
-from core.util import *
 import operator
+
+from tfutil import *
+from util import is_numeric, is_inf
 
 
 def const(x):

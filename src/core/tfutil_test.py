@@ -1,5 +1,6 @@
-from tfutil import *
 import unittest
+
+from tfutil import *
 
 
 class TestBVNCDF2(unittest.TestCase):

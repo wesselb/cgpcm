@@ -3,13 +3,10 @@ import sys
 level = 0
 total_width = 25
 width = 25
-indenter = '  '
-first_output = True
+indenter = '|  '
 
 
 def _out(msg):
-    global first_output
-    first_output = False
     sys.stdout.write(msg)
 
 
@@ -28,8 +25,6 @@ def section(name):
 
     :param name: name of section
     """
-    if level == 0 and not first_output:
-        state('')
     state(name)
     indent()
 

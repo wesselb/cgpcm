@@ -2,7 +2,7 @@ import scipy.io as sio
 import scipy.io.wavfile as sio_wav
 
 from tfutil import *
-from util import *
+import util
 import cgpcm
 import kernel
 
@@ -12,13 +12,18 @@ class Data(object):
     Data.
 
     :param t: times
-    :param y: values
+    :param y: values, set to None in case of missing data
     """
 
-    def __init__(self, t, y):
-        self.t = t
-        self.y = y
-        self.n = shape(t)[0]
+    def __init__(self, x, y=None):
+        self.x = x
+        self.n = shape(x)[0]
+        if y is None:
+            # Data is missing
+            self.y = np.zeros(shape(x))
+            self.y.fill(np.nan)
+        else:
+            self.y = y
 
     def subsample(self, n):
         """
@@ -42,8 +47,8 @@ class Data(object):
     def _split(self, i_in):
         i_in = sorted(i_in)
         i_out = sorted(list(set(range(self.n)) - set(i_in)))
-        return Data(self.t[i_in], self.y[i_in]), \
-               Data(self.t[i_out], self.y[i_out])
+        return Data(self.x[i_in], self.y[i_in]), \
+               Data(self.x[i_out], self.y[i_out])
 
     def smse(self, y):
         """
@@ -52,7 +57,7 @@ class Data(object):
         :param y: predictions
         :return: standardised means squared error
         """
-        return smse(y, self.y)
+        return util.smse(y, self.y)
 
     def mll(self, mu, std):
         """
@@ -62,7 +67,7 @@ class Data(object):
         :param std: standard deviation of predictions
         :return: mean log loss
         """
-        return mll(mu, std, self.y)
+        return util.mll(mu, std, self.y)
 
     def make_noisy(self, var):
         """
@@ -72,7 +77,7 @@ class Data(object):
         :return: noisy data
         """
         noise = var ** .5 * np.random.randn(*shape(self.y))
-        return Data(self.t, self.y + noise)
+        return Data(self.x, self.y + noise)
 
     def positive_part(self):
         """
@@ -80,14 +85,14 @@ class Data(object):
 
         :return: positive part of data
         """
-        return self._split(self.t >= 0)[0]
+        return self._split(self.x >= 0)[0]
 
     @property
     def energy(self):
         """
         Energy of data.
         """
-        return np.trapz(self.y ** 2, self.t)
+        return np.trapz(self.y ** 2, self.x)
 
     @property
     def energy_causal(self):
@@ -111,7 +116,7 @@ class Data(object):
         return np.std(self.y, ddof=1)
 
     def _assert_compat(self, other):
-        if not np.allclose(self.t, other.t):
+        if not np.allclose(self.x, other.x):
             raise ValueError('Data objects must be compatible')
 
     def _to_y(self, other):
@@ -122,28 +127,28 @@ class Data(object):
             return other
 
     def __neg__(self):
-        return Data(self.t, -self.y)
+        return Data(self.x, -self.y)
 
     def __add__(self, other):
-        return Data(self.t, self.y + self._to_y(other))
+        return Data(self.x, self.y + self._to_y(other))
 
     def __radd__(self, other):
         return self.__add__(other)
 
     def __sub__(self, other):
-        return Data(self.t, self.y - self._to_y(other))
+        return Data(self.x, self.y - self._to_y(other))
 
     def __rsub__(self, other):
         return -self.__sub__(other)
 
     def __div__(self, other):
-        return Data(self.t, self.y / self._to_y(other))
+        return Data(self.x, self.y / self._to_y(other))
 
     def __rdiv__(self, other):
         return 1 / self.__div__(other)
 
     def __mul__(self, other):
-        return Data(self.t, self.y * self._to_y(other))
+        return Data(self.x, self.y * self._to_y(other))
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -187,7 +192,7 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav'):
     :return: data for function, filter, and noise
     """
     h = Data.from_wav(h_wav_fn)
-    dt = h.t[1] - h.t[0]
+    dt = h.x[1] - h.x[0]
     t = np.arange(n) * dt
     x = Data(t, np.random.randn(n))
     x /= x.std  # Make sure noise is unity variance
@@ -225,7 +230,7 @@ def load_gp_exp(sess, n=250, k_len=.1):
     """
     t = np.linspace(0, 1, n)
     tk = np.linspace(0, 1, 301)
-    k_fun = kernel.Exponential(s2=1., gamma=length_scale(k_len))
+    k_fun = kernel.Exponential(s2=1., gamma=util.length_scale(k_len))
     f = Data.from_gp(sess, k_fun, t)
     k = Data(tk, k_fun(tk[0, :], np.array([[0]])))
 
@@ -248,35 +253,36 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
     :param resample: number of times to resample function
     :return: data for function, kernel, and filter, and parameters of the AKM
     """
-    t = np.linspace(0, 1, n)
-    pars = cgpcm.cgpcm_pars(sess=sess,
-                            t=t,
-                            y=[],
-                            nx=0,
-                            nh=nh,
-                            k_len=k_len,
-                            k_wiggles=k_wiggles,
-                            causal=causal)
-    k_len = pars['k_len']
+    # Config
+    frac_k_len_pos = .2
     k_stretch = 6
-    tk = np.linspace(-k_stretch * k_len, k_stretch * k_len, 301)
+    e = Data(np.linspace(0, 1, n), None)
 
-    # Construct AKM and sample
-    akm = cgpcm.AKM(**pars)
-    akm.sample(t)
+    # Construct AKM
+    akm = cgpcm.AKM.from_recipe(sess=sess,
+                                e=e,
+                                nx=0,
+                                nh=nh,
+                                k_len=k_len,
+                                k_wiggles=k_wiggles,
+                                causal=causal)
+
+    # Sample
+    akm.sample(e.x)
     for i in range(resample):
-        akm.sample_f(t)
+        akm.sample_f(e.x)
 
     # Construct data
-    frac_k_len_pos = .2  # A magic number here
-    f = Data(t, akm.f())
-    k = Data(tk, akm.k(tk))
-    i = nearest_index(tk, frac_k_len_pos * k_len)
-    h = Data(tk, akm.h(tk, assert_positive_at_index=i))
+    f = akm.f()
+    tk = np.linspace(-k_stretch * akm.k_len_eff,
+                     k_stretch * akm.k_len_eff, 301)
+    k = akm.k(tk)
+    i = util.nearest_index(tk, frac_k_len_pos * k_len)
+    h = akm.h(tk, assert_positive_at_index=i)
 
     # Normalise
     f -= f.mean
     f /= f.std
     h /= h.energy_causal ** .5
     k /= max(k.y)
-    return f, k, h, pars
+    return f, k, h
