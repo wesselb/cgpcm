@@ -5,10 +5,10 @@ documentation = [
      'title': 'Core Modules',
      'description': 'Important modules that make up the system',
      'subpackages': []},
-    # {'package': 'learn',
-    #  'title': 'Learning Tasks',
-    #  'description': 'Scripts to perform learning tasks',
-    #  'subpackages': []}
+    {'package': 'tasks',
+     'title': 'Learning Tasks',
+     'description': 'Scripts to perform learning tasks',
+     'subpackages': []}
 ]
 
 
@@ -133,8 +133,8 @@ class Documentation(object):
     def _import_to_path(self, package):
         return package.replace('.', os.path.sep)
 
-    def _path_to_import(self, package):
-        return package.replace(os.path.sep, '.')
+    def _path_to_import(self, path):
+        return path.replace(os.path.sep, '.')
 
     def _render_package(self, package):
         # Gather the packages and the subpackages to be included

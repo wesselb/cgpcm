@@ -6,6 +6,7 @@ CGPCM Documentation
    :maxdepth: 2
 
    core
+   tasks
 
 
 Indices and Tables
