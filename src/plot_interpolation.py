@@ -1,3 +1,9 @@
+# Flags:
+#   --compute to perform computation, and
+#   --show to show plot.
+
+import pickle
+
 from core.cgpcm import AKM
 from core.plot import Plotter2D
 from core.kernel import DEQ
@@ -5,8 +11,8 @@ from core.dist import Normal
 from core.tfutil import *
 from core.util import *
 from core.data import Data
-
-import pickle
+import core.out as out
+import core.learn as learn
 
 
 def h_sample():
@@ -40,20 +46,19 @@ def h_inv(h):
     return sess.run(tf.cholesky_solve(L, h))
 
 
+# Config
+fn_cache = 'output/cache/interpolation_data.pickle'
 sess = Session()
-seed(25)
+seed(28)
 
-compute = False
-
-mod = AKM.from_pars_config(sess=sess,
-                           t=np.linspace(0, 1, 150),
-                           y=[],
-                           nx=0,
-                           nh=51,
-                           k_len=.1,
-                           k_wiggles=1,
-                           causal=True)
-
+# Construct model and kernel
+mod = AKM.from_recipe(sess=sess,
+                      e=Data(np.linspace(0, 1, 150), None),
+                      nx=0,
+                      nh=51,
+                      k_len=.1,
+                      k_wiggles=1,
+                      causal=True)
 kernel = DEQ(s2=1., alpha=mod.alpha, gamma=mod.gamma)
 
 # Sample and normalise to unity energy
@@ -67,31 +72,36 @@ h_to /= h_to.energy_causal ** .5
 t = np.linspace(0, 1, 250)
 th = np.linspace(0, .6, 301)
 tk = np.linspace(-.6, .6, 301)
-
-mod.sample_f(t)
-hs, ks, fs = [], [], []
-
-fracs = np.array([0, .2, .32, .42, .5])
+fracs = np.linspace(0, .6, 5)
 num_fracs = len(fracs)
 
-if compute:
+if learn.flag('compute'):
+    mod.sample_f(t)
+    hs, ks, fs = [], [], []
+
+    progress = learn.Progress(name='computing filters, kernels, and samples',
+                              iters=num_fracs,
+                              fetches_config=[{'name': 'fraction',
+                                               'modifier': '.2f'}])
     for i, frac in enumerate(fracs):
-        print 'Iteration {}/{}, fraction {:.2f}'.format(i + 1, num_fracs, frac)
+        progress([frac])
+
         h = (1 - frac) * h_from + frac * h_to
         mod.sample_h(h_inv(h.y[:, None]))
-        ks.append(mod.k(tk))
-        fs.append(mod.f())
-        hs.append(mod.h(th, assert_positive_at_index=120))
-    with open('output/interpolation_data.pickle', 'w') as f:
+
+        ks.append(mod.k(tk).y)
+        fs.append(mod.f().y)
+        hs.append(mod.h(th, assert_positive_at_index=50).y)
+    with open(fn_cache, 'w') as f:
         pickle.dump((ks, fs, hs), f)
 else:
-    with open('output/interpolation_data.pickle') as f:
+    with open(fn_cache) as f:
         ks, fs, hs = pickle.load(f)
 
-print 'Plotting...'
+# Plotting
+out.section('plotting')
 p = Plotter2D(figure_size=(9, 2.5), font_size=13)
 p.figure('Kernels')
-
 for i in range(num_fracs):
     p.subplot(3, num_fracs, i + 1)
     p.plot(th, th * 0, line_colour='k')
@@ -99,7 +109,6 @@ for i in range(num_fracs):
     p.hide_ticks(x=True, y=True)
     if i == 0:
         p.labels(y='$h$')
-
 for i in range(num_fracs):
     p.subplot(3, num_fracs, num_fracs + i + 1)
     p.plot(tk, tk * 0, line_colour='k')
@@ -107,13 +116,13 @@ for i in range(num_fracs):
     p.hide_ticks(x=True, y=True)
     if i == 0:
         p.labels(y='$k_{f\,|\,h}$')
-
 for i in range(num_fracs):
     p.subplot(3, num_fracs, 2 * num_fracs + i + 1)
     p.plot(t, fs[i], line_width=1.5)
     p.hide_ticks(x=True, y=True)
     if i == 0:
         p.labels(y='$f\,|\,h$')
-
 p.save('output/interpolation.pdf')
-p.show()
+if learn.flag('show'):
+    p.show()
+out.section_end()
