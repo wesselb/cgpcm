@@ -49,7 +49,7 @@ class CGPCM(Parametrisable):
         vars = {}
 
         # Config
-        noise_init = 1e-3
+        noise_init = 1e-4
         k_stretch = 3
         causal_extra_points = 3
 
@@ -287,6 +287,7 @@ class CGPCM(Parametrisable):
         if not self._precomputed:
             self.mats_symbolic = dict(self.mats)
             self.mats = {k: self._run(v) for k, v in self.mats.items()}
+            self._precomputed = True
 
     def undo_precompute(self):
         """
@@ -515,7 +516,8 @@ class VCGPCM(CGPCM):
         k = self.s2_f * (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
         samples = map_progress(lambda x: self._run(k, feed_dict={h: x}),
                                samples_h,
-                               name='kernel prediction using MC')
+                               name='{} prediction using '
+                                    'MC'.format('PSD' if psd else 'kernel'))
 
         # Check whether to normalise predictions
         if normalise:

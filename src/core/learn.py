@@ -1,12 +1,10 @@
+import time
+
 from tensorflow.contrib.opt.python.training.external_optimizer import \
     ScipyOptimizerInterface as SciPyOpt
-import time
-import abc
-import sys
 
-from tfutil import *
-from par import Parametrisable
 import out
+from tfutil import *
 
 
 class Progress(object):
@@ -101,7 +99,8 @@ class Progress(object):
                 self._kv(conf['name'], fetch, mod=mod, unit=unit)
 
 
-def minimise_lbfgs(sess, objective, vars, iters, fetches_config=None):
+def minimise_lbfgs(sess, objective, vars, iters, fetches_config=None,
+                   name='minimisation using L-BFGS'):
     """
     Minimise some objective using `scipy.optimise.fmin_l_bfgs_b`.
 
@@ -112,6 +111,7 @@ def minimise_lbfgs(sess, objective, vars, iters, fetches_config=None):
     :param fetches_config: config for fetches as specified in `Progress` and
                            with an additional key `tensor` that gives the
                            tensor of the fetch
+    :param name: name of minimisataion
     """
     if iters == 0:
         return
@@ -125,10 +125,8 @@ def minimise_lbfgs(sess, objective, vars, iters, fetches_config=None):
                    var_list=vars)
     initialise_uninitialised_variables(sess)
 
-    progress = Progress(name='minimisation using L-BFGS',
-                        iters=iters,
-                        fetches_config=fetches_config)
-
+    # Perform minimisation
+    progress = Progress(name=name, iters=iters, fetches_config=fetches_config)
     opt.minimize(sess,
                  loss_callback=lambda *fetches: progress(fetches,
                                                          step=False),
@@ -152,63 +150,3 @@ def map_progress(f, xs, name):
         return f(x)
 
     return map(mapping_fun, xs)
-
-
-class TaskConfig(Parametrisable):
-    """
-    Configuration for a task.
-    """
-    _required_pars = ['fn', 'seed', 'iters', 'iters_pre', 'samps', 'name']
-
-
-class Task(object):
-    """
-    Learning task.
-    """
-    __metaclass__ = abc.ABCMeta
-
-    def __init__(self, options):
-        self.data = {}  # To save useful data in
-        self.config = self.generate_config(options)
-
-    @abc.abstractmethod
-    def generate_config(self, options):
-        """
-        Generate config for task.
-
-        :param options: list of strings
-        :return: instance of `TaskConfig`
-        """
-        pass
-
-    @abc.abstractmethod
-    def load(self, sess):
-        """
-        Load data and model.
-
-        This method should call `self._set_data` and `self._set_model`.
-
-        :param sess: TensorFlow session
-        """
-        pass
-
-    def _set_data(self, h=None, k=None, f=None, e=None):
-        self.data['h'] = h
-        self.data['k'] = k
-        self.data['f'] = f
-        self.data['e'] = e
-
-    def _set_model(self, mod):
-        self.mod = mod
-
-    def make_pickleable(self, sess):
-        """
-        Save useful data in the property `data` and make the object pickleable.
-        """
-        self.data.update({'tx': sess.run(self.mod.tx),
-                          'th': sess.run(self.mod.th),
-                          's2': sess.run(self.mod.s2),
-                          's2_f': sess.run(self.mod.s2_f),
-                          'mu': sess.run(self.mod.h.mean),
-                          'var': sess.run(self.mod.h.var)})
-        del self.mod

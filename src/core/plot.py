@@ -2,6 +2,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
 import abc
 import warnings
+import numpy as np
+
 with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     import matplotlib.pyplot as plt
@@ -61,6 +63,7 @@ class Plotter(object):
                'font_family': 'Adobe Caslon Pro',
                'font_size': 11,
                'legend_colour': '0.95',
+               'legend_alpha': 0.8,
                'legend_location': 'upper right',
                'line_colour': 'undefined',
                'line_width': 1,
@@ -75,7 +78,7 @@ class Plotter(object):
                'surface_antialiased': False,
                'surface_line_width': 0,
                'cmap': mpl.cm.coolwarm,
-               'fill_alpha': 0.25,
+               'fill_alpha': 0.3,
                'fill_colour': 'undefined',
                'label': 'undefined',
                'figure_size': (8, 6),
@@ -132,9 +135,11 @@ class Plotter(object):
 
     def show_legend(self, **kw_args):
         config = self._map({'legend_colour': 'legend_colour',
+                            'legend_alpha': 'legend_alpha',
                             'legend_location': 'legend_location'}, kw_args)
         self.leg = self.ax.legend(loc=config['legend_location'])
         self.leg.get_frame().set_color(config['legend_colour'])
+        self.leg.get_frame().set_alpha(config['legend_alpha'])
         return self
 
     def title(self, *args, **kw_args):
@@ -187,6 +192,14 @@ class Plotter(object):
             self.ax.zaxis.set_ticks([])
             self.ax.zaxis.set_ticklabels([])
 
+    def ticks_arange(self, x=None, y=None, z=None):
+        if x is not None:
+            self.ax.xaxis.set_ticks(np.arange(*x))
+        if y is not None:
+            self.ax.yaxis.set_ticks(np.arange(*y))
+        if z is not None:
+            self.ax.xaxis.set_ticks(np.arange(*z))
+
 
 class Plotter2D(Plotter):
     def __init__(self, **kw_args):
@@ -233,6 +246,17 @@ class Plotter2D(Plotter):
         self.plots.append(p)
         return self
 
+    def scatter(self, *args, **kw_args):
+        self._check_first_figure()
+        mapping = {'marker': 'marker_style',
+                   'c': 'marker_colour',
+                   'edgecolors': 'marker_colour',
+                   's': 'marker_size',
+                   'label': 'label'}
+        p = plt.scatter(*args, **self._map(mapping, kw_args))
+        self.plots.append(p)
+        return self
+
     def fill(self, x, y1, y2, *args, **kw_args):
         self._check_first_figure()
         mapping = {'alpha': 'fill_alpha',
@@ -241,6 +265,10 @@ class Plotter2D(Plotter):
                    'interpolate': 'val:True'}
         p = plt.fill_between(x, y1, y2, *args, **self._map(mapping, kw_args))
         self.plots.append(p)
+        return self
+
+    def tight(self):
+        self.plt.axis('tight')
         return self
 
 

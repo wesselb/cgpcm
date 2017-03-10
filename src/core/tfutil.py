@@ -407,6 +407,18 @@ class Session(object):
         """
         return self.sess.as_default()
 
+    def __enter__(self):
+        return self.sess.__enter__()
+
+    def __exit__(self, *args):
+        return self.sess.__exit__(*args)
+
+    def close(self):
+        """
+        Alias for `tf.Session.close`.
+        """
+        return self.sess.close()
+
 
 def _bvn_cdf(x, mu, var):
     """

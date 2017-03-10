@@ -44,6 +44,16 @@ class Data(object):
         """
         return self._split(range(start, start + length))
 
+    def filter(self, f):
+        """
+        Select parts of the data according to a filter.
+
+        :param f: filter
+        :return: selected data
+        """
+        filtered = filter(lambda (i, x): f(x), enumerate(self.x))
+        return self._split(zip(*filtered)[0])  # Select indices
+
     def _split(self, i_in):
         i_in = sorted(i_in)
         i_out = sorted(list(set(range(self.n)) - set(i_in)))
@@ -255,7 +265,7 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
     """
     # Config
     frac_k_len_pos = .2
-    k_stretch = 6
+    k_stretch = 8
     e = Data(np.linspace(0, 1, n), None)
 
     # Construct AKM
@@ -274,8 +284,8 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
 
     # Construct data
     f = akm.f()
-    tk = np.linspace(-k_stretch * akm.k_len_eff,
-                     k_stretch * akm.k_len_eff, 301)
+    tk = np.linspace(-k_stretch * akm.k_len,
+                     k_stretch * akm.k_len, 301)
     k = akm.k(tk)
     i = util.nearest_index(tk, frac_k_len_pos * k_len)
     h = akm.h(tk, assert_positive_at_index=i)
@@ -285,4 +295,9 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
     f /= f.std
     h /= h.energy_causal ** .5
     k /= max(k.y)
-    return f, k, h
+
+    # Compute PSD
+    psd = util.psd(util.zero_pad(k.y, 1000))
+    psd = Data(util.fft_freq(len(psd)), psd)
+
+    return f, k, h, psd
