@@ -1,17 +1,13 @@
 Code:
     Bugs:
     Refactor:
-        ☐ Don't fetch variables by name
-        ☐ More elegant VCPGCM.from_pars_config constructor
-        ☐ Return Data objects instead
-        ☐ Handle k_len modification
-        ☐ Don't import * util
+        ☐ Proper plotting @started
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
-        ☐ Separate training and plotting @started
+        ☐ Show actual log likelihood during sampling
+        ☐ Store LLs
     Experiments:
-        ☐ Good illustrative toy example @critical
         ☐ New TIMIT predictions
         ☐ Arctic Sea Ice Extent
         ☐ Stocks
@@ -29,6 +25,13 @@ Doc:
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Good illustrative toy example @critical @started @done (17-03-10 18:49) @project(Code / Experiments)
+ ✓ Fix imports @started @done (17-03-08 18:47) @project(Code / Refactor)
+ ✓ Separate training and plotting @started @done (17-03-08 18:41) @project(Code / Features)
+ ✓ Don't fetch variables by name @started @done (17-03-08 15:31) @project(Code / Refactor)
+ ✓ Handle k_len modification @done (17-03-08 15:14) @project(Code / Refactor)
+ ✓ Return Data objects instead @done (17-03-08 15:13) @project(Code / Refactor)
+ ✓ More elegant VCPGCM.from_pars_config constructor @started @done (17-03-08 15:01) @project(Code / Refactor)
  ✓ proper logging setup @done (17-03-07 22:27) @project(Code / Features)
  ✓ progress in methods of AKM and VCGCPM @done (17-03-07 22:27) @project(Code / Features)
  ✓ units in Progress @working @done (17-03-07 20:20) @project(Code / Features)
