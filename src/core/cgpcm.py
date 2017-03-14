@@ -31,7 +31,7 @@ class CGPCM(Parametrisable):
 
     @classmethod
     def from_recipe(cls, sess, e, nx, nh, k_len, k_wiggles, causal,
-                    causal_id=False):
+                    causal_id=False, noise_init=1e-4):
         """
         Generate parameters for the CGPCM and construct afterwards.
 
@@ -43,14 +43,14 @@ class CGPCM(Parametrisable):
         :param k_wiggles: number of wiggles in kernel
         :param causal: causal model
         :param causal_id: causal interdomain transformation
+        :param noise_init: initialisation of noise
         :return: CGPCM instance
         """
         # Trainable variables
         vars = {}
 
         # Config
-        noise_init = 1e-4
-        k_stretch = 3
+        k_stretch = 2
         causal_extra_points = 3
 
         # Compute effective kernel length to match equal prior power

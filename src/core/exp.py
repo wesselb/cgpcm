@@ -62,6 +62,112 @@ class Task(object):
         del self.mod
 
 
+class TaskOptions(object):
+    """
+    Options for task.
+    """
+
+    def __init__(self):
+        self._options = []
+
+    def add_option(self, name, desc='no description available'):
+        """
+        Add a boolean option.
+
+        :param name: name of options
+        :param desc: description of option
+        """
+        self._options.append({'has_value': False,
+                              'name': name.lower(),
+                              'value': False,
+                              'description': desc,
+                              'required': False})
+
+    def add_value_option(self, name, value_type,
+                         desc='no description available', required=False):
+        """
+        Add an option with a value.
+
+        :param name: name of option
+        :param value_type: type of option, should be callable
+        :param desc: description of option
+        :param required: option is required
+        """
+        self._options.append({'has_value': True,
+                              'name': name.lower(),
+                              'value_type': value_type,
+                              'value': None,
+                              'description': desc,
+                              'required': required})
+
+    def _get_option(self, name):
+        for option in self._options:
+            if name == option['name']:
+                return option
+        raise RuntimeError('option "{}" not found'.format(name))
+
+    def parse(self, args):
+        """
+        Parse arguments.
+
+        :param args: arguments
+        """
+        self._options = sorted(self._options, key=lambda x: x['name'])
+        self._parse_help(args)
+        self._parse_args(args)
+        self._parse_required()
+
+    def _parse_required(self):
+        missing = []
+        for option in self._options:
+            if option['required'] and option['value'] is None:
+                missing.append(option['name'])
+        if len(missing) == 1:
+            raise RuntimeError('missing option "{}"'.format(missing[0]))
+        elif len(missing) > 1:
+            missing_string = ', '.join(['"{}"'.format(x) for x in missing])
+            raise RuntimeError('missing options {}'.format(missing_string))
+
+    def _parse_args(self, args):
+        it = iter(args)
+        for arg in it:
+            option = self._get_option(arg)
+            if option['has_value']:
+                option['value'] = option['value_type'](next(it))
+            else:
+                option['value'] = True
+
+    def _parse_help(self, args):
+        if 'help' in args:
+            out.section('options for task')
+            for option in self._options:
+                out.section(option['name'])
+                out.kv('description', option['description'])
+                out.kv('type', 'value' if option['has_value'] else 'bool')
+                out.kv('required', 'yes' if option['required'] else 'no')
+                out.section_end()
+            out.section_end()
+            exit()
+
+    def __getitem__(self, name):
+        return self._get_option(name)['value']
+
+    def fn(self, group_by=None):
+        group_names = [] if group_by is None else sorted(group_by)
+        fn_names = sorted(set([x['name'] for x in self._options])
+                          - set(group_names))
+        return '{}/{}'.format(self._fn_opts_to_str(map(self._get_option,
+                                                       group_names)),
+                              self._fn_opts_to_str(map(self._get_option,
+                                                       fn_names)))
+
+    def _fn_opts_to_str(self, xs):
+        def to_str(x): return ('y' if x else 'n') if type(x) == bool \
+                                                  else str(x)
+        return ','.join(['{}={}'.format(x['name'], to_str(x['value']))
+                         for x in xs])
+
+
 class TaskConfig(Parametrisable):
     """
     Configuration for a task.
@@ -258,7 +364,7 @@ def plot_compare(tasks, options):
     task2_colour = '#ca0020'
     marker_size = 2
     inducing_point_size = 2
-    psd_drop = 15
+    psd_drop = 17.5
 
     p = Plotter2D(figure_size=(24, 5) if 'big' in options else (12, 6),
                   font_size=12, figure_toolbar='none', grid_colour='none')
@@ -367,7 +473,10 @@ def plot_compare(tasks, options):
     p.lims(y=(max(freq_filter(task1.data['psd']).y) - 1.25 * psd_drop,
               max(freq_filter(task1.data['psd']).y) + .25 * psd_drop))
 
-    return p, '{}_versus_{}'.format(task1.config.fn, task2.config.fn)
+    group1, fn1 = task1.config.fn.split('/')
+    group2, fn2 = task2.config.fn.split('/')
+
+    return p, '{}/{}_versus_{}'.format(group1, fn1, fn2)
 
 
 plot_choices = ['full', 'compare']

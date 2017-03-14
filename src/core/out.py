@@ -3,7 +3,7 @@ import sys
 level = 0
 total_width = 25
 width = 25
-indenter = '|  '
+indenter = '    '
 
 
 def _out(msg):
