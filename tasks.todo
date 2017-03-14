@@ -2,9 +2,11 @@ Code:
     Bugs:
     Refactor:
         ☐ Proper plotting @started
+        ☐ Make plots friendly for colour blind people @started
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
+        ☐ File name management system @critical
         ☐ Show actual log likelihood during sampling
         ☐ Store LLs
     Experiments:
@@ -20,11 +22,11 @@ Doc:
     ☐ Show data set for HRIR
     ☐ Add supplementary material
     ☐ More details for experiments
-    ☐ Axis labels and ticks
 
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Why learner scale???? @critical @done (17-03-12 01:02) @project(Code / Bugs)
  ✓ Good illustrative toy example @critical @started @done (17-03-10 18:49) @project(Code / Experiments)
  ✓ Fix imports @started @done (17-03-08 18:47) @project(Code / Refactor)
  ✓ Separate training and plotting @started @done (17-03-08 18:41) @project(Code / Features)
