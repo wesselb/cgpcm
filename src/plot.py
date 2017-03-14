@@ -4,6 +4,7 @@ import pickle
 import argparse
 
 import core.out as out
+import core.util as util
 import core.exp as exp
 
 parser = argparse.ArgumentParser(description='Run a task.')
@@ -33,7 +34,9 @@ out.section_end()
 
 out.section('plotting')
 p, fn = exp.plot(args.plot[0], tasks, options=args.plot[1:])
-p.save('output/out_{}_{}.pdf'.format(args.plot[0], fn))
+fn = 'output/{}/{}.pdf'.format(args.plot[0], fn)
+util.mkdirs(fn)
+p.save(fn)
 if args.show:
     p.show()
 out.section_end()

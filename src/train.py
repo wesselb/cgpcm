@@ -40,7 +40,9 @@ for i, task_args in enumerate(args.task):
         # Save resulting task
         out.section('saving')
         task.make_pickleable(sess)
-        with open('tasks/cache/{}.pickle'.format(task.config.fn), 'w') as f:
+        fn = 'tasks/cache/{}.pickle'.format(task.config.fn)
+        util.mkdirs(fn)
+        with open(fn, 'w') as f:
             pickle.dump(task, f)
         out.section_end()
 
