@@ -10,37 +10,31 @@ class Experiment(Task):
 
     def generate_config(self, args):
         options = TaskOptions()
-        options.add_option('causal', 'generate a causal sample')
+        options.add_option('causal-sample', 'generate a causal sample')
         options.add_option('causal-model', 'use the causal model')
-        options.add_option('post', 'use posttraining')
-        options.add_option('no-pre', 'no pretraining')
-        options.add_option('noisy', 'noisy sample')
-        options.add_option('small', 'small sample')
-        options.add_option('extensive', 'extensive training')
         options.add_value_option('resample', int,
                                  'number of times to resamples',
                                  required=True)
-        options.add_value_option('seed', int, 'seed', required=True)
         options.parse(args)
 
         return TaskConfig(name='Toy Experiment',
-                          seed=options['seed'],
-                          fn=options.fn(group_by=['causal', 'seed', 'small']),
+                          seed=1025 if options['causal'] else 1030,
+                          fn=options.fn(group_by=['causal'], prefix='toy'),
 
                           # Training options
-                          iters_pre=0 if options['no-pre'] else 250,
-                          iters=10000 if options['extensive'] else 2000,
-                          iters_post=50 if options['post'] else 0,
+                          iters_pre=0,
+                          iters=2000,
+                          iters_post=0,
                           samps=400,
 
                           # Sample options
                           causal=options['causal'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
-                          n=150 if options['small'] else 400,
-                          nx=50 if options['small'] else 120,
+                          n=400,
+                          nx=120,
                           nh=41,
-                          noise=.5 if options['noisy'] else 1e-4,
+                          noise=1e-4 if options['causal'] else .5,
                           noise_init=1e-4 if options['causal'] else 1e-2,
 
                           tau_w=0.12 if options['causal'] else 0.04,

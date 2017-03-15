@@ -4,6 +4,8 @@ Code:
         ☐ Proper plotting @started
         ☐ Make plots friendly for colour blind people @started
         ☐ Relative to absolute frequencies in PSD
+        ☐ Group handling by plots
+        ☐ Flexible groups
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:

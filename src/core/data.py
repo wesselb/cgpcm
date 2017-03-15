@@ -201,17 +201,27 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav'):
     :param h_wav_fn: HRIR WAV file
     :return: data for function, filter, and noise
     """
+    # Load data
     h = Data.from_wav(h_wav_fn)
     dt = h.x[1] - h.x[0]
-    t = np.arange(n) * dt
-    x = Data(t, np.random.randn(n))
+
+    # Take extra `len(h.x)` points to avoid transition effects
+    t = np.arange(n + len(h.x)) * dt
+    x = Data(t, np.random.randn(n + len(h.x)))
     x /= x.std  # Make sure noise is unity variance
-    f = Data(t, np.convolve(h.y, x.y)[:n])
+
+    # Convolve and take the right fragment
+    f = Data(t, np.convolve(h.y, x.y)).fragment(n, len(h.x))[0]
+
+    k = Data(np.linspace(-h.x[-1], h.x[-1],  2 * len(h.x) - 1),
+             np.convolve(h.y[::-1], h.y))
 
     # Normalise
-    h /= f.std
+    h /= h.energy ** .5
+    k /= max(k.y)
     f /= f.std
-    return f, h
+
+    return f, k, h
 
 
 def load_timit_tobar2015():

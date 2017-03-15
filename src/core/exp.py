@@ -152,14 +152,19 @@ class TaskOptions(object):
     def __getitem__(self, name):
         return self._get_option(name)['value']
 
-    def fn(self, group_by=None):
+    def fn(self, group_by=None, prefix=''):
         group_names = [] if group_by is None else sorted(group_by)
         fn_names = sorted(set([x['name'] for x in self._options])
                           - set(group_names))
-        return '{}/{}'.format(self._fn_opts_to_str(map(self._get_option,
-                                                       group_names)),
-                              self._fn_opts_to_str(map(self._get_option,
-                                                       fn_names)))
+
+        if prefix:
+            prefix += '_'  # Add separator
+
+        group_part = self._fn_opts_to_str(map(self._get_option, group_names))
+        if group_part:
+            prefix += group_part + '/'
+
+        return prefix + self._fn_opts_to_str(map(self._get_option, fn_names))
 
     def _fn_opts_to_str(self, xs):
         def to_str(x): return ('y' if x else 'n') if type(x) == bool \
@@ -257,24 +262,25 @@ def train(sess, task, debug_options):
                                         assert_positive_at_index=pos_i)
     out.section_end()
 
-    # Train SMF
-    out.section('training SMF')
-    task.data['samples'] = mod.sample(iters=task.config.samps)
-    out.section_end()
+    if task.config.samps > 0:
+        # Train SMF
+        out.section('training SMF')
+        task.data['samples'] = mod.sample(iters=task.config.samps)
+        out.section_end()
 
-    # Predict SMF
-    out.section('predicting SMF')
-    task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x,
-                                            samples_h=task.data['samples'])
-    task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
-                                            samples_h=task.data['samples'])
-    task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
-                                              samples_h=task.data['samples'],
-                                              psd=True)
-    task.data['h_pred_smf'] = mod.predict_h(task.data['h'].x,
-                                            samples_h=task.data['samples'],
-                                            assert_positive_at_index=pos_i)
-    out.section_end()
+        # Predict SMF
+        out.section('predicting SMF')
+        task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x,
+                                                samples_h=task.data['samples'])
+        task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
+                                                samples_h=task.data['samples'])
+        task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
+                                                  samples_h=task.data['samples'],
+                                                  psd=True)
+        task.data['h_pred_smf'] = mod.predict_h(task.data['h'].x,
+                                                samples_h=task.data['samples'],
+                                                assert_positive_at_index=pos_i)
+        out.section_end()
 
 
 def plot_full(tasks, options):
@@ -311,7 +317,7 @@ def plot_full(tasks, options):
                    marker_size=3)
         p.show_legend()
 
-    p = Plotter2D(figure_size=(20, 10))
+    p = Plotter2D(figure_size=(20, 7))
     p.figure('Results')
 
     p.subplot(2, 3, 1)
@@ -329,20 +335,21 @@ def plot_full(tasks, options):
     do_plot(p, task.data['f'], task.data['f_pred'], x_noisy=task.data['e'],
             inducing_points=task.data['tx'])
 
-    p.subplot(2, 3, 4)
-    p.title('Filter')
-    do_plot(p, task.data['h'], task.data['h_pred_smf'],
-            inducing_points=task.data['th'])
+    if 'h_pref_smf' in task.data:
+        p.subplot(2, 3, 4)
+        p.title('Filter')
+        do_plot(p, task.data['h'], task.data['h_pred_smf'],
+                inducing_points=task.data['th'])
 
-    p.subplot(2, 3, 5)
-    p.title('Kernel')
-    do_plot(p, task.data['k'], task.data['k_pred_smf'],
-            inducing_points=task.data['th'])
+        p.subplot(2, 3, 5)
+        p.title('Kernel')
+        do_plot(p, task.data['k'], task.data['k_pred_smf'],
+                inducing_points=task.data['th'])
 
-    p.subplot(2, 3, 6)
-    p.title('Function')
-    do_plot(p, task.data['f'], task.data['f_pred_smf'], x_noisy=task.data['e'],
-            inducing_points=task.data['tx'])
+        p.subplot(2, 3, 6)
+        p.title('Function')
+        do_plot(p, task.data['f'], task.data['f_pred_smf'],
+                x_noisy=task.data['e'], inducing_points=task.data['tx'])
 
     return p, task.config.fn
 
@@ -367,7 +374,6 @@ def plot_compare(tasks, options):
     task2_colour = '#ca0020'
     marker_size = 2
     inducing_point_size = 2
-    psd_drop = 100
 
     p = Plotter2D(figure_size=(24, 5) if 'big' in options else (12, 6),
                   font_size=12, figure_toolbar='none', grid_colour='none')
@@ -454,8 +460,6 @@ def plot_compare(tasks, options):
     p.lims(x=(0, max(task1.data['h'].x)))
 
     # Build a filter to limit x axis
-    x, y = task1.data['psd'].x, task1.data['psd'].y
-    freq_max = max(np.abs(x[y >= max(y) - psd_drop]))
     freq_max = 0.1
 
     def freq_filter(d):
@@ -475,8 +479,6 @@ def plot_compare(tasks, options):
     p.title('PSD of $f\,|\,h$')
     p.lims(x=(0, max(freq_filter(task1.data['psd']).x)))
     p.lims(y=(-10, 20))
-    # p.lims(y=(max(freq_filter(task1.data['psd']).y) - 1.25 * psd_drop,
-    #           max(freq_filter(task1.data['psd']).y) + .25 * psd_drop))
 
     group1, fn1 = task1.config.fn.split('/')
     group2, fn2 = task2.config.fn.split('/')
