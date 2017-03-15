@@ -32,7 +32,7 @@ def length_scale(ls):
     :param ls: length scale
     :return: constant
     """
-    return .5 / ls ** 2
+    return (.5 * np.pi) * (.5 / ls ** 2)
 
 
 def is_inf(x):

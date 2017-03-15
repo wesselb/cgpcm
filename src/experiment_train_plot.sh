@@ -7,6 +7,6 @@ resample=$3
 opts=${@:4:${#}}
 
 prefix="$task seed $seed resample $resample $opts"
-./train.py -t $prefix causal-model -t $prefix
-./plot.py compare -t $prefix causal-model -t $prefix
+./train.py -t $prefix
+./plot.py full -t $prefix -s
 

@@ -163,7 +163,8 @@ class TaskOptions(object):
 
     def _fn_opts_to_str(self, xs):
         def to_str(x): return ('y' if x else 'n') if type(x) == bool \
-                                                  else str(x)
+            else str(x)
+
         return ','.join(['{}={}'.format(x['name'], to_str(x['value']))
                          for x in xs])
 
@@ -193,6 +194,8 @@ def train(sess, task, debug_options):
     if 'kernel' in debug_options:
         out.state('plotting kernel and filter and then exiting')
         p = Plotter2D()
+        p.figure('Data')
+        p.plot(task.data['f'].x, task.data['f'].y)
         p.figure('Kernel')
         p.plot(task.data['k'].x, task.data['k'].y)
         p.figure('Filter')
@@ -249,7 +252,7 @@ def train(sess, task, debug_options):
     task.data['f_pred'] = mod.predict_f(task.data['f'].x)
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
     task.data['psd_pred'] = mod.predict_k(task.data['k'].x, psd=True)
-    pos_i = util.nearest_index(task.data['h'].x, .1 * mod.k_len)
+    pos_i = util.nearest_index(task.data['h'].x, .2 * mod.tau_w)
     task.data['h_pred'] = mod.predict_h(task.data['h'].x,
                                         assert_positive_at_index=pos_i)
     out.section_end()
@@ -364,7 +367,7 @@ def plot_compare(tasks, options):
     task2_colour = '#ca0020'
     marker_size = 2
     inducing_point_size = 2
-    psd_drop = 17.5
+    psd_drop = 100
 
     p = Plotter2D(figure_size=(24, 5) if 'big' in options else (12, 6),
                   font_size=12, figure_toolbar='none', grid_colour='none')
@@ -453,6 +456,7 @@ def plot_compare(tasks, options):
     # Build a filter to limit x axis
     x, y = task1.data['psd'].x, task1.data['psd'].y
     freq_max = max(np.abs(x[y >= max(y) - psd_drop]))
+    freq_max = 0.1
 
     def freq_filter(d):
         return d.filter(lambda x: x[np.logical_and(x >= 0, x <= freq_max)])[0]
@@ -470,8 +474,9 @@ def plot_compare(tasks, options):
            line_width=1)
     p.title('PSD of $f\,|\,h$')
     p.lims(x=(0, max(freq_filter(task1.data['psd']).x)))
-    p.lims(y=(max(freq_filter(task1.data['psd']).y) - 1.25 * psd_drop,
-              max(freq_filter(task1.data['psd']).y) + .25 * psd_drop))
+    p.lims(y=(-10, 20))
+    # p.lims(y=(max(freq_filter(task1.data['psd']).y) - 1.25 * psd_drop,
+    #           max(freq_filter(task1.data['psd']).y) + .25 * psd_drop))
 
     group1, fn1 = task1.config.fn.split('/')
     group2, fn2 = task2.config.fn.split('/')

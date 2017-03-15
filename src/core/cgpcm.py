@@ -30,7 +30,7 @@ class CGPCM(Parametrisable):
         self._init_expressions()
 
     @classmethod
-    def from_recipe(cls, sess, e, nx, nh, k_len, k_wiggles, causal,
+    def from_recipe(cls, sess, e, nx, nh, tau_w, tau_f, causal,
                     causal_id=False, noise_init=1e-4):
         """
         Generate parameters for the CGPCM and construct afterwards.
@@ -39,8 +39,8 @@ class CGPCM(Parametrisable):
         :param e: observations
         :param nx: number of inducing points for noise
         :param nh: number of inducing points for filter
-        :param k_len: length of kernel
-        :param k_wiggles: number of wiggles in kernel
+        :param tau_w: length of kernel window
+        :param tau_f: length scale of function prior
         :param causal: causal model
         :param causal_id: causal interdomain transformation
         :param noise_init: initialisation of noise
@@ -50,31 +50,25 @@ class CGPCM(Parametrisable):
         vars = {}
 
         # Config
-        k_stretch = 2
-        causal_extra_points = 3
+        k_stretch = 3
+        causal_extra_points = 2
 
-        # Compute effective kernel length to match equal prior power
+        # Acausal parameters
+        alpha = length_scale(tau_w)
+        gamma = length_scale(tau_f) - .5 * alpha
+        s2_f, vars['s2_f'] = var_pos(to_float((2 * alpha / np.pi) ** .5))
+
+        # Update in the causal case
         if causal:
-            k_len_eff = 2 * k_len
-        else:
-            k_len_eff = k_len
+            gamma += 3. * alpha / 8.
+            alpha /= 4.
 
-        # Hyperparameters for filter
-        alpha = length_scale(k_len_eff)
-        gamma = length_scale(float(k_len_eff) / k_wiggles)
         alpha, vars['alpha'] = var_pos(to_float(alpha))
         gamma, vars['gamma'] = var_pos(to_float(gamma))
 
-        # Scale to unity prior power
-        if causal:
-            s2_f = (8 * alpha / np.pi) ** .5
-        else:
-            s2_f = (2 * alpha / np.pi) ** .5
-        s2_f, vars['s2_f'] = var_pos(to_float(s2_f))
-
         # Hyperparameter and inducing points for noise
         if nx > 0:
-            omega = length_scale((max(e.x) - min(e.x)) / nx)
+            omega = .5 * length_scale((max(e.x) - min(e.x)) / nx)
             tx = constant(np.linspace(min(e.x), max(e.x), nx))
         else:
             omega = to_float(np.nan)
@@ -88,14 +82,14 @@ class CGPCM(Parametrisable):
 
         # Inducing points for filter
         if causal:
-            th = np.linspace(0, k_stretch * k_len_eff, nh)
+            th = np.linspace(0, 2 * k_stretch * tau_w, nh)
             dth = th[1] - th[0]
-            # Extra inducing points to tasks for value and derivatives at zero
+            # Extra inducing points to account for derivatives at zero
             th -= dth * causal_extra_points
             th = constant(th)
         else:
-            th = constant(np.linspace(-k_stretch * k_len_eff,
-                                      k_stretch * k_len_eff, nh))
+            th = constant(np.linspace(-k_stretch * tau_w,
+                                      k_stretch * tau_w, nh))
 
         # Initial observation noise
         s2, vars['s2'] = var_pos(to_float(noise_init))
@@ -107,8 +101,7 @@ class CGPCM(Parametrisable):
                    gamma=gamma, omega=omega, vars=vars, causal=causal,
                    causal_id=causal_id,
                    # Also set some handy variables
-                   k_len=k_len, k_len_eff=k_len_eff, k_wiggles=k_wiggles,
-                   nh=nh, nx=nx)
+                   tau_w=tau_w, tau_f=tau_f, nh=nh, nx=nx)
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)

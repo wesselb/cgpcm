@@ -250,7 +250,7 @@ def load_gp_exp(sess, n=250, k_len=.1):
     return f, k
 
 
-def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
+def load_akm(sess, causal, n=250, nh=31, tau_w=.1, tau_f=.05, resample=0):
     """
     Sample from the AKM.
 
@@ -258,14 +258,14 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
     :param causal: causal AKM
     :param n: number of time points
     :param nh: number of inducing points for the filter
-    :param k_len: length of kernel
-    :param k_wiggles: number of wiggles in kernel
+    :param tau_w: length kernel window
+    :param tau_f: kernel length of function prior
     :param resample: number of times to resample function
     :return: data for function, kernel, and filter, and parameters of the AKM
     """
     # Config
-    frac_k_len_pos = .2
-    k_stretch = 8
+    frac_tau_f_pos = .1
+    k_stretch = 8  # Causal case will range from 0 to 6
     e = Data(np.linspace(0, 1, n), None)
 
     # Construct AKM
@@ -273,8 +273,8 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
                                 e=e,
                                 nx=0,
                                 nh=nh,
-                                k_len=k_len,
-                                k_wiggles=k_wiggles,
+                                tau_w=tau_w,
+                                tau_f=tau_f,
                                 causal=causal)
 
     # Sample
@@ -284,10 +284,10 @@ def load_akm(sess, causal, n=250, nh=31, k_len=.1, k_wiggles=2, resample=0):
 
     # Construct data
     f = akm.f()
-    tk = np.linspace(-k_stretch * akm.k_len,
-                     k_stretch * akm.k_len, 301)
+    tk = np.linspace(-k_stretch * tau_w,
+                     k_stretch * tau_w, 301)
     k = akm.k(tk)
-    i = util.nearest_index(tk, frac_k_len_pos * k_len)
+    i = util.nearest_index(tk, frac_tau_f_pos * tau_f)
     h = akm.h(tk, assert_positive_at_index=i)
 
     # Normalise

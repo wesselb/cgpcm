@@ -29,57 +29,46 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=0 if options['no-pre'] else 250,
-                          iters=25000 if options['extensive'] else 1000,
+                          iters=10000 if options['extensive'] else 2000,
                           iters_post=50 if options['post'] else 0,
-                          samps=200,
+                          samps=400,
 
                           # Sample options
                           causal=options['causal'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
-                          n=250 if options['small'] else 400,  # 500
-                          nx=100 if options['small'] else 100,  # 120
+                          n=150 if options['small'] else 400,
+                          nx=50 if options['small'] else 120,
                           nh=41,
-                          k_len=1.,
-                          k_wiggles=1.5,
-                          noise=1e-1 if options['noisy'] else 1e-4,
+                          noise=.5 if options['noisy'] else 1e-4,
                           noise_init=1e-4 if options['causal'] else 1e-2,
 
-                          data_scale=.8)
+                          tau_w=0.12 if options['causal'] else 0.04,
+                          tau_f=0.12 if options['causal'] else 0.04,
+                          data_scale=.75)
 
     def load(self, sess):
-        data_k_len = self.config.data_scale * self.config.k_len
-        data_wiggles = self.config.k_wiggles
-        learner_wiggles = self.config.k_wiggles / self.config.data_scale
-
-        if self.config.causal:
-            # Match effective kernel length
-            data_k_len /= 2.
-
-            # Match effective complexity of sample
-            data_wiggles /= 2
-
-
         # Load data
         f, k, h, psd = data.load_akm(sess=sess,
                                      n=self.config.n,
                                      nh=self.config.nh,
-                                     k_len=data_k_len,
-                                     k_wiggles=data_wiggles,
+                                     tau_w=self.config.tau_w \
+                                           * self.config.data_scale,
+                                     tau_f=self.config.tau_f \
+                                           * self.config.data_scale,
                                      causal=self.config.causal,
                                      resample=self.config.resample)
         e = f.make_noisy(self.config.noise)
         self._set_data(h=h, k=k, f=f, e=e, psd=psd)
-
-        # Too many wiggles in causal model case now
 
         # Construct model
         mod = VCGPCM.from_recipe(sess=sess,
                                  e=e,
                                  nx=self.config.nx,
                                  nh=self.config.nh,
-                                 k_len=self.config.k_len,
-                                 k_wiggles=learner_wiggles,
+                                 tau_w=self.config.tau_w,
+                                 tau_f=self.config.tau_f \
+                                       * self.config.data_scale,
                                  causal=self.config.causal_model,
                                  noise_init=self.config.noise_init)
         self._set_model(mod)
