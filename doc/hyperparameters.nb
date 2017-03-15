@@ -1,0 +1,703 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.2' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     23246,        694]
+NotebookOptionsPosition[     21289,        628]
+NotebookOutlinePosition[     21643,        644]
+CellTagsIndexPosition[     21600,        641]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[{Cell["Kernel over the filter:"], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"kh", "[", 
+    RowBox[{"t1_", ",", "t2_"}], "]"}], ":=", 
+   RowBox[{"Exp", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"-", "\[Alpha]"}], 
+      RowBox[{"(", 
+       RowBox[{
+        SuperscriptBox["t1", "2"], "+", 
+        SuperscriptBox["t2", "2"]}], ")"}]}], "-", 
+     RowBox[{"\[Gamma]", 
+      SuperscriptBox[
+       RowBox[{"(", 
+        RowBox[{"t1", "-", "t2"}], ")"}], "2"]}]}], "]"}]}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", Cell["Prior kernels of the \
+CGPCM and GPCM:"], "\[IndentingNewLine]", 
+ RowBox[{"kc", "=", 
+  RowBox[{"Assuming", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"\[Alpha]", ">", "0"}], "&&", 
+     RowBox[{"Element", "[", 
+      RowBox[{"r", ",", "Reals"}], "]"}]}], ",", 
+    RowBox[{"Simplify", "[", 
+     RowBox[{"Integrate", "[", 
+      RowBox[{
+       RowBox[{"kh", "[", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"Abs", "[", "r", "]"}], "+", "t"}], ",", "t"}], "]"}], ",", 
+       
+       RowBox[{"{", 
+        RowBox[{"t", ",", "0", ",", "Infinity"}], "}"}]}], "]"}], "]"}]}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"kac", "=", 
+   RowBox[{"Assuming", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"\[Alpha]", ">", "0"}], "&&", 
+      RowBox[{"Element", "[", 
+       RowBox[{"r", ",", "Reals"}], "]"}]}], ",", 
+     RowBox[{"Simplify", "[", 
+      RowBox[{"Integrate", "[", 
+       RowBox[{
+        RowBox[{"kh", "[", 
+         RowBox[{
+          RowBox[{
+           RowBox[{"Abs", "[", "r", "]"}], "+", "t"}], ",", "t"}], "]"}], ",", 
+        RowBox[{"{", 
+         RowBox[{"t", ",", 
+          RowBox[{"-", "Infinity"}], ",", "Infinity"}], "}"}]}], "]"}], 
+      "]"}]}], "]"}]}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", Cell["Correlation times of \
+the CPGCM and GPCM:"], "\[IndentingNewLine]", 
+ RowBox[{"tauc", "=", 
+  RowBox[{"Assuming", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"\[Gamma]", ">", "0"}], "&&", 
+     RowBox[{"\[Alpha]", ">", "0"}]}], ",", 
+    RowBox[{"Simplify", "[", 
+     RowBox[{
+      RowBox[{"Integrate", "[", 
+       RowBox[{"kc", ",", 
+        RowBox[{"{", 
+         RowBox[{"r", ",", "0", ",", "Infinity"}], "}"}]}], "]"}], "/", 
+      RowBox[{"(", 
+       RowBox[{"kc", "/.", 
+        RowBox[{"r", "\[Rule]", "0"}]}], ")"}]}], "]"}]}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{"tauac", "=", 
+  RowBox[{"Assuming", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"\[Gamma]", ">", "0"}], "&&", 
+     RowBox[{"\[Alpha]", ">", "0"}]}], ",", 
+    RowBox[{"Simplify", "[", 
+     RowBox[{
+      RowBox[{"Integrate", "[", 
+       RowBox[{"kac", ",", 
+        RowBox[{"{", 
+         RowBox[{"r", ",", "0", ",", "Infinity"}], "}"}]}], "]"}], "/", 
+      RowBox[{"(", 
+       RowBox[{"kac", "/.", 
+        RowBox[{"r", "\[Rule]", "0"}]}], ")"}]}], "]"}]}], "]"}]}]}], "Input",\
+
+ CellChangeTimes->{{3.698573379828432*^9, 3.6985734883048687`*^9}, {
+  3.698573599718542*^9, 3.698573654336856*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Kernel over the filter:"],
+  TextCell["Kernel over the filter:"]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.698574583778166*^9}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Prior kernels of the CGPCM and GPCM:"],
+  TextCell["Prior kernels of the CGPCM and GPCM:"]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.698574583784235*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SuperscriptBox["\[ExponentialE]", 
+    RowBox[{
+     RowBox[{"-", 
+      FractionBox["1", "2"]}], " ", 
+     SuperscriptBox["r", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{"\[Alpha]", "+", 
+       RowBox[{"2", " ", "\[Gamma]"}]}], ")"}]}]], " ", 
+   SqrtBox[
+    FractionBox["\[Pi]", "2"]], " ", 
+   RowBox[{"Erfc", "[", 
+    FractionBox[
+     RowBox[{
+      SqrtBox["\[Alpha]"], " ", 
+      RowBox[{"Abs", "[", "r", "]"}]}], 
+     SqrtBox["2"]], "]"}]}], 
+  RowBox[{"2", " ", 
+   SqrtBox["\[Alpha]"]}]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.698574584893173*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SuperscriptBox["\[ExponentialE]", 
+    RowBox[{
+     RowBox[{"-", 
+      FractionBox["1", "2"]}], " ", 
+     SuperscriptBox["r", "2"], " ", 
+     RowBox[{"(", 
+      RowBox[{"\[Alpha]", "+", 
+       RowBox[{"2", " ", "\[Gamma]"}]}], ")"}]}]], " ", 
+   SqrtBox[
+    FractionBox["\[Pi]", "2"]]}], 
+  SqrtBox["\[Alpha]"]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.69857458575112*^9}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Correlation times of the CPGCM and GPCM:"],
+  TextCell["Correlation times of the CPGCM and GPCM:"]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.69857458575709*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SqrtBox["2"], " ", 
+   RowBox[{"ArcTan", "[", 
+    SqrtBox[
+     RowBox[{"1", "+", 
+      FractionBox[
+       RowBox[{"2", " ", "\[Gamma]"}], "\[Alpha]"]}]], "]"}]}], 
+  SqrtBox[
+   RowBox[{
+    RowBox[{"\[Pi]", " ", "\[Alpha]"}], "+", 
+    RowBox[{"2", " ", "\[Pi]", " ", "\[Gamma]"}]}]]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.698574587082169*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  SqrtBox["\[Pi]"], 
+  SqrtBox[
+   RowBox[{
+    RowBox[{"2", " ", "\[Alpha]"}], "+", 
+    RowBox[{"4", " ", "\[Gamma]"}]}]]]], "Output",
+ CellChangeTimes->{
+  3.698573438604238*^9, {3.6985734700816708`*^9, 3.698573488774147*^9}, {
+   3.6985736473556767`*^9, 3.698573654612719*^9}, 3.698573847663889*^9, 
+   3.6985745413119717`*^9, 3.69857458747149*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{Cell["Assume that \[Gamma] is much larger than \[Alpha] for the \
+CGPCM. Then"], "\[IndentingNewLine]", 
+ RowBox[{"tauc", "=", 
+  RowBox[{
+   RowBox[{
+    FractionBox[
+     RowBox[{
+      SqrtBox["2"], " "}], 
+     SqrtBox[
+      RowBox[{
+       RowBox[{"\[Pi]", " ", "\[Alpha]"}], "+", 
+       RowBox[{"2", " ", "\[Pi]", " ", "\[Gamma]"}]}]]], 
+    RowBox[{"ArcTan", "[", "Infinity", "]"}]}], "//", 
+   "Simplify"}]}]}], "Input",
+ CellChangeTimes->{{3.698573498718565*^9, 3.698573592985615*^9}, {
+  3.698573664270302*^9, 3.698573664688806*^9}, {3.698573910484149*^9, 
+  3.698573910857211*^9}, {3.698574472891151*^9, 3.6985744859752817`*^9}, {
+  3.6985746952936497`*^9, 3.698574696896047*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell[
+  "Assume that \[Gamma] is much larger than \[Alpha] for the CGPCM. Then"],
+  TextCell[
+  "Assume that \[Gamma] is much larger than \[Alpha] for the CGPCM. Then"]]], \
+"Output",
+ CellChangeTimes->{{3.698573659559918*^9, 3.698573665004993*^9}, {
+   3.698573852579328*^9, 3.698573911208902*^9}, 3.698574486201798*^9, 
+   3.698574545323546*^9, 3.698574613275741*^9, 3.698574697163385*^9, 
+   3.6985747676795883`*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  SqrtBox[
+   FractionBox["\[Pi]", "2"]], 
+  SqrtBox[
+   RowBox[{"\[Alpha]", "+", 
+    RowBox[{"2", " ", "\[Gamma]"}]}]]]], "Output",
+ CellChangeTimes->{{3.698573659559918*^9, 3.698573665004993*^9}, {
+   3.698573852579328*^9, 3.698573911208902*^9}, 3.698574486201798*^9, 
+   3.698574545323546*^9, 3.698574613275741*^9, 3.698574697163385*^9, 
+   3.698574767687591*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{Cell["Prior power of the CGPCM and GPCM:"], \
+"\[IndentingNewLine]", 
+ RowBox[{"Pc", "=", 
+  RowBox[{"\[Sigma]2", " ", 
+   RowBox[{"(", 
+    RowBox[{"kc", "/.", 
+     RowBox[{"r", "\[Rule]", "0"}]}], ")"}]}]}], "\[IndentingNewLine]", 
+ RowBox[{"Pac", "=", 
+  RowBox[{"\[Sigma]2", 
+   RowBox[{"(", 
+    RowBox[{"kac", "/.", 
+     RowBox[{"r", "\[Rule]", "0"}]}], ")"}]}]}]}], "Input",
+ CellChangeTimes->{{3.698573687976591*^9, 3.698573727599794*^9}, {
+  3.698573780321842*^9, 3.698573792390911*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Prior power of the CGPCM and GPCM:"],
+  TextCell["Prior power of the CGPCM and GPCM:"]]], "Output",
+ CellChangeTimes->{
+  3.698573727819322*^9, 3.698573854324847*^9, {3.698573901527873*^9, 
+   3.698573912744649*^9}, 3.698574492473583*^9, 3.698574545392164*^9, 
+   3.6985746174187098`*^9, 3.698574769084055*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SqrtBox[
+    FractionBox["\[Pi]", "2"]], " ", "\[Sigma]2"}], 
+  RowBox[{"2", " ", 
+   SqrtBox["\[Alpha]"]}]]], "Output",
+ CellChangeTimes->{
+  3.698573727819322*^9, 3.698573854324847*^9, {3.698573901527873*^9, 
+   3.698573912744649*^9}, 3.698574492473583*^9, 3.698574545392164*^9, 
+   3.6985746174187098`*^9, 3.698574769090469*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SqrtBox[
+    FractionBox["\[Pi]", "2"]], " ", "\[Sigma]2"}], 
+  SqrtBox["\[Alpha]"]]], "Output",
+ CellChangeTimes->{
+  3.698573727819322*^9, 3.698573854324847*^9, {3.698573901527873*^9, 
+   3.698573912744649*^9}, 3.698574492473583*^9, 3.698574545392164*^9, 
+   3.6985746174187098`*^9, 3.698574769096427*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"\[IndentingNewLine]", 
+  RowBox[{
+  Cell["Ratio of power of CGPCM to that of GPCM:"], "\[IndentingNewLine]", 
+   RowBox[{"Pc", "/", "Pac"}], "\[IndentingNewLine]", "\[IndentingNewLine]", 
+   Cell["Ratio of correlation time of CPGCM to that of GPCM:"], 
+   "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"tauc", "/", "tauac"}], "//", "Simplify"}]}]}]], "Input",
+ CellChangeTimes->{{3.698574531341522*^9, 3.698574576903216*^9}, {
+  3.698574771962595*^9, 3.6985748086285553`*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Ratio of power of CGPCM to that of GPCM:"],
+  TextCell["Ratio of power of CGPCM to that of GPCM:"]]], "Output",
+ CellChangeTimes->{{3.698574535019622*^9, 3.698574577122322*^9}, 
+   3.698574620093626*^9, {3.698574796128745*^9, 3.698574809015697*^9}}],
+
+Cell[BoxData[
+ FractionBox["1", "2"]], "Output",
+ CellChangeTimes->{{3.698574535019622*^9, 3.698574577122322*^9}, 
+   3.698574620093626*^9, {3.698574796128745*^9, 3.6985748090224323`*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Ratio of correlation time of CPGCM to that of GPCM:"],
+  TextCell["Ratio of correlation time of CPGCM to that of GPCM:"]]], "Output",\
+
+ CellChangeTimes->{{3.698574535019622*^9, 3.698574577122322*^9}, 
+   3.698574620093626*^9, {3.698574796128745*^9, 3.6985748090276537`*^9}}],
+
+Cell[BoxData["1"], "Output",
+ CellChangeTimes->{{3.698574535019622*^9, 3.698574577122322*^9}, 
+   3.698574620093626*^9, {3.698574796128745*^9, 3.6985748090326967`*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{Cell["Make parameters model specific:"], "\[IndentingNewLine]", \
+
+ RowBox[{"Pc", "=", 
+  RowBox[{"(", 
+   RowBox[{"Pc", "/.", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"\[Alpha]", "\[Rule]", "\[Alpha]c"}], ",", 
+      RowBox[{"\[Gamma]", "\[Rule]", "\[Gamma]c"}], ",", 
+      RowBox[{"\[Sigma]2", "\[Rule]", "\[Sigma]2c"}]}], "}"}]}], 
+   ")"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"tauc", "=", 
+   RowBox[{"(", 
+    RowBox[{"tauc", "/.", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"\[Alpha]", "\[Rule]", "\[Alpha]c"}], ",", 
+       RowBox[{"\[Gamma]", "\[Rule]", "\[Gamma]c"}], ",", 
+       RowBox[{"\[Sigma]2", "\[Rule]", "\[Sigma]2c"}]}], "}"}]}], ")"}]}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{"Pac", "=", 
+  RowBox[{"(", 
+   RowBox[{"Pac", "/.", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"\[Alpha]", "\[Rule]", "\[Alpha]ac"}], ",", 
+      RowBox[{"\[Gamma]", "\[Rule]", "\[Gamma]ac"}], ",", 
+      RowBox[{"\[Sigma]2", "\[Rule]", "\[Sigma]2ac"}]}], "}"}]}], 
+   ")"}]}], "\[IndentingNewLine]", 
+ RowBox[{"tauac", "=", 
+  RowBox[{"(", 
+   RowBox[{"tauac", "/.", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"\[Alpha]", "\[Rule]", "\[Alpha]ac"}], ",", 
+      RowBox[{"\[Gamma]", "\[Rule]", "\[Gamma]ac"}], ",", 
+      RowBox[{"\[Sigma]2", "\[Rule]", "\[Sigma]2ac"}]}], "}"}]}], 
+   ")"}]}]}], "Input",
+ CellChangeTimes->{{3.6985737388972473`*^9, 3.69857383124971*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Make parameters model specific:"],
+  TextCell["Make parameters model specific:"]]], "Output",
+ CellChangeTimes->{{3.698573803396469*^9, 3.698573872495*^9}, {
+   3.6985739037126627`*^9, 3.6985739142801943`*^9}, 3.698574494804345*^9, 
+   3.698574811349627*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SqrtBox[
+    FractionBox["\[Pi]", "2"]], " ", "\[Sigma]2c"}], 
+  RowBox[{"2", " ", 
+   SqrtBox["\[Alpha]c"]}]]], "Output",
+ CellChangeTimes->{{3.698573803396469*^9, 3.698573872495*^9}, {
+   3.6985739037126627`*^9, 3.6985739142801943`*^9}, 3.698574494804345*^9, 
+   3.698574811358604*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  SqrtBox[
+   FractionBox["\[Pi]", "2"]], 
+  SqrtBox[
+   RowBox[{"\[Alpha]c", "+", 
+    RowBox[{"2", " ", "\[Gamma]c"}]}]]]], "Output",
+ CellChangeTimes->{{3.698573803396469*^9, 3.698573872495*^9}, {
+   3.6985739037126627`*^9, 3.6985739142801943`*^9}, 3.698574494804345*^9, 
+   3.6985748113646917`*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  RowBox[{
+   SqrtBox[
+    FractionBox["\[Pi]", "2"]], " ", "\[Sigma]2ac"}], 
+  SqrtBox["\[Alpha]ac"]]], "Output",
+ CellChangeTimes->{{3.698573803396469*^9, 3.698573872495*^9}, {
+   3.6985739037126627`*^9, 3.6985739142801943`*^9}, 3.698574494804345*^9, 
+   3.6985748113717937`*^9}],
+
+Cell[BoxData[
+ FractionBox[
+  SqrtBox["\[Pi]"], 
+  SqrtBox[
+   RowBox[{
+    RowBox[{"2", " ", "\[Alpha]ac"}], "+", 
+    RowBox[{"4", " ", "\[Gamma]ac"}]}]]]], "Output",
+ CellChangeTimes->{{3.698573803396469*^9, 3.698573872495*^9}, {
+   3.6985739037126627`*^9, 3.6985739142801943`*^9}, 3.698574494804345*^9, 
+   3.698574811378256*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{Cell["Equate prior power and correlation times and solve:"], "\
+\[IndentingNewLine]", 
+ RowBox[{"s1", "=", 
+  RowBox[{"Solve", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"1", "\[Equal]", "Pc", "\[Equal]", "Pac"}], "&&", 
+     RowBox[{"\[Sigma]2c", "\[Equal]", "\[Sigma]2ac"}]}], ",", 
+    RowBox[{"{", 
+     RowBox[{"\[Sigma]2c", ",", "\[Sigma]2ac", ",", "\[Alpha]c"}], "}"}]}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{"Solve", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"tauc", "\[Equal]", "tauac"}], "/.", "s1"}], ",", 
+   RowBox[{"{", "\[Gamma]c", "}"}]}], "]"}], "\[IndentingNewLine]"}], "Input",\
+
+ CellChangeTimes->{{3.6985739254147778`*^9, 3.698574031973888*^9}, {
+  3.6985741243862467`*^9, 3.6985743260792437`*^9}, {3.69857438002367*^9, 
+  3.6985744528949947`*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["Equate prior power and correlation times and solve:"],
+  TextCell["Equate prior power and correlation times and solve:"]]], "Output",\
+
+ CellChangeTimes->{{3.698573997162129*^9, 3.69857403508945*^9}, {
+   3.698574129715208*^9, 3.698574169568907*^9}, {3.698574213444519*^9, 
+   3.698574326381261*^9}, {3.698574392078418*^9, 3.6985744531038733`*^9}, 
+   3.698574497621052*^9, 3.6985748135099697`*^9}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{"\[Sigma]2c", "\[Rule]", 
+     RowBox[{
+      SqrtBox[
+       FractionBox["2", "\[Pi]"]], " ", 
+      SqrtBox["\[Alpha]ac"]}]}], ",", 
+    RowBox[{"\[Sigma]2ac", "\[Rule]", 
+     RowBox[{
+      SqrtBox[
+       FractionBox["2", "\[Pi]"]], " ", 
+      SqrtBox["\[Alpha]ac"]}]}], ",", 
+    RowBox[{"\[Alpha]c", "\[Rule]", 
+     FractionBox["\[Alpha]ac", "4"]}]}], "}"}], "}"}]], "Output",
+ CellChangeTimes->{{3.698573997162129*^9, 3.69857403508945*^9}, {
+   3.698574129715208*^9, 3.698574169568907*^9}, {3.698574213444519*^9, 
+   3.698574326381261*^9}, {3.698574392078418*^9, 3.6985744531038733`*^9}, 
+   3.698574497621052*^9, 3.698574813514271*^9}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"{", 
+   RowBox[{"\[Gamma]c", "\[Rule]", 
+    RowBox[{
+     FractionBox["1", "8"], " ", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"3", " ", "\[Alpha]ac"}], "+", 
+       RowBox[{"8", " ", "\[Gamma]ac"}]}], ")"}]}]}], "}"}], "}"}]], "Output",\
+
+ CellChangeTimes->{{3.698573997162129*^9, 3.69857403508945*^9}, {
+   3.698574129715208*^9, 3.698574169568907*^9}, {3.698574213444519*^9, 
+   3.698574326381261*^9}, {3.698574392078418*^9, 3.6985744531038733`*^9}, 
+   3.698574497621052*^9, 3.69857481352309*^9}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{Cell["\<\
+Determine \[Alpha]ac through specifying correlation time of window tauw:\
+\>"], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"s1", "=", 
+   RowBox[{"Solve", "[", 
+    RowBox[{
+     RowBox[{"tauw", "\[Equal]", 
+      RowBox[{"Assuming", "[", 
+       RowBox[{
+        RowBox[{"\[Alpha]ac", ">", "0"}], ",", 
+        RowBox[{"Integrate", "[", 
+         RowBox[{
+          RowBox[{"Exp", "[", 
+           RowBox[{
+            RowBox[{"-", "\[Alpha]ac"}], " ", 
+            SuperscriptBox["t", "2"]}], "]"}], ",", 
+          RowBox[{"{", 
+           RowBox[{"t", ",", "0", ",", "Infinity"}], "}"}]}], "]"}]}], 
+       "]"}]}], ",", "\[Alpha]ac"}], "]"}]}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", Cell["\<\
+Determine \[Gamma]ac through specifying correlation time of prior process:\
+\>"], "\[IndentingNewLine]", 
+ RowBox[{"s2", "=", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"Solve", "[", 
+     RowBox[{
+      RowBox[{"tauac", "\[Equal]", "tauf"}], ",", "\[Gamma]ac"}], "]"}], "//",
+     "Simplify"}], "//", "Apart"}]}]}], "Input",
+ CellChangeTimes->{{3.698574896197466*^9, 3.698574926291807*^9}, {
+  3.698574957325712*^9, 3.6985752385564137`*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["\<\
+Determine \[Alpha]ac through specifying correlation time of window tauw:\
+\>"],
+  TextCell[
+  "Determine \[Alpha]ac through specifying correlation time of window \
+tauw:"]]], "Output",
+ CellChangeTimes->{{3.698574919281248*^9, 3.6985749265638857`*^9}, 
+   3.6985749629652367`*^9, {3.69857500041516*^9, 3.6985750570509453`*^9}, {
+   3.698575140714365*^9, 3.698575238760489*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"{", 
+   RowBox[{"\[Alpha]ac", "\[Rule]", 
+    FractionBox["\[Pi]", 
+     RowBox[{"4", " ", 
+      SuperscriptBox["tauw", "2"]}]]}], "}"}], "}"}]], "Output",
+ CellChangeTimes->{{3.698574919281248*^9, 3.6985749265638857`*^9}, 
+   3.6985749629652367`*^9, {3.69857500041516*^9, 3.6985750570509453`*^9}, {
+   3.698575140714365*^9, 3.698575238807371*^9}}],
+
+Cell[BoxData[
+ InterpretationBox[Cell["\<\
+Determine \[Gamma]ac through specifying correlation time of prior process:\
+\>"],
+  TextCell[
+  "Determine \[Gamma]ac through specifying correlation time of prior \
+process:"]]], "Output",
+ CellChangeTimes->{{3.698574919281248*^9, 3.6985749265638857`*^9}, 
+   3.6985749629652367`*^9, {3.69857500041516*^9, 3.6985750570509453`*^9}, {
+   3.698575140714365*^9, 3.698575238810939*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"{", 
+   RowBox[{"\[Gamma]ac", "\[Rule]", 
+    RowBox[{
+     FractionBox["\[Pi]", 
+      RowBox[{"4", " ", 
+       SuperscriptBox["tauf", "2"]}]], "-", 
+     FractionBox["\[Alpha]ac", "2"]}]}], "}"}], "}"}]], "Output",
+ CellChangeTimes->{{3.698574919281248*^9, 3.6985749265638857`*^9}, 
+   3.6985749629652367`*^9, {3.69857500041516*^9, 3.6985750570509453`*^9}, {
+   3.698575140714365*^9, 3.698575238814151*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"Reduce", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{
+       RowBox[{"(", 
+        RowBox[{
+         RowBox[{"s2", "[", 
+          RowBox[{"[", 
+           RowBox[{"1", ",", "1", ",", "2"}], "]"}], "]"}], "/.", "s1"}], 
+        ")"}], "[", 
+       RowBox[{"[", "1", "]"}], "]"}], ">", "0"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"tauw", ",", "tauf"}], "}"}]}], "]"}], "&&", 
+   RowBox[{"tauw", ">", "0"}], "&&", 
+   RowBox[{"tauf", ">", "0"}]}], "//", "Simplify"}]], "Input",
+ CellChangeTimes->{{3.698575243506524*^9, 3.69857528207675*^9}, {
+  3.698575355720522*^9, 3.698575418480031*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"tauf", ">", "0"}], "&&", 
+  RowBox[{
+   RowBox[{
+    SqrtBox["2"], " ", 
+    SqrtBox[
+     SuperscriptBox["tauw", "2"]]}], ">", "tauf"}], "&&", 
+  RowBox[{"tauw", ">", "0"}]}]], "Output",
+ CellChangeTimes->{{3.698575248090714*^9, 3.6985752823057327`*^9}, {
+  3.6985753637074957`*^9, 3.6985754013684883`*^9}}]
+}, Open  ]]
+},
+WindowSize->{1278, 1035},
+WindowMargins->{{Automatic, 0}, {Automatic, 0}},
+FrontEndVersion->"10.2 for Mac OS X x86 (32-bit, 64-bit Kernel) (July 29, \
+2015)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 3021, 91, 192, "Input"],
+Cell[3604, 115, 333, 6, 31, "Output"],
+Cell[3940, 123, 359, 6, 31, "Output"],
+Cell[4302, 131, 776, 24, 68, "Output"],
+Cell[5081, 157, 588, 17, 67, "Output"],
+Cell[5672, 176, 366, 6, 31, "Output"],
+Cell[6041, 184, 560, 16, 79, "Output"],
+Cell[6604, 202, 380, 10, 57, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[7021, 217, 707, 17, 81, "Input"],
+Cell[7731, 236, 452, 9, 31, "Output"],
+Cell[8186, 247, 395, 10, 62, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[8618, 262, 512, 13, 66, "Input"],
+Cell[9133, 277, 349, 6, 31, "Output"],
+Cell[9485, 285, 373, 10, 62, "Output"],
+Cell[9861, 297, 349, 9, 62, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[10247, 311, 502, 10, 116, "Input"],
+Cell[10752, 323, 288, 4, 31, "Output"],
+Cell[11043, 329, 188, 3, 47, "Output"],
+Cell[11234, 334, 314, 5, 31, "Output"],
+Cell[11551, 341, 168, 2, 28, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[11756, 348, 1438, 39, 117, "Input"],
+Cell[13197, 389, 297, 5, 31, "Output"],
+Cell[13497, 396, 329, 9, 62, "Output"],
+Cell[13829, 407, 330, 9, 62, "Output"],
+Cell[14162, 418, 309, 8, 62, "Output"],
+Cell[14474, 428, 333, 9, 57, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[14844, 442, 792, 19, 83, "Input"],
+Cell[15639, 463, 437, 7, 31, "Output"],
+Cell[16079, 472, 715, 19, 56, "Output"],
+Cell[16797, 493, 549, 14, 48, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[17383, 512, 1171, 31, 106, "Input"],
+Cell[18557, 545, 420, 9, 31, "Output"],
+Cell[18980, 556, 389, 9, 46, "Output"],
+Cell[19372, 567, 424, 9, 31, "Output"],
+Cell[19799, 578, 450, 11, 46, "Output"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[20286, 594, 641, 19, 28, "Input"],
+Cell[20930, 615, 343, 10, 40, "Output"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)

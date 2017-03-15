@@ -24,7 +24,7 @@
 \usepackage{tikz}
 
 % Break in equations...
-\allowdisplaybreaks
+% \allowdisplaybreaks
 
 % Commonly used sets
 \newcommand{\Z}{\mathbb{Z}}   % Integers
@@ -43,6 +43,7 @@
 \renewcommand{\Re}{\operatorname{Re}}
 \renewcommand{\Im}{\operatorname{Im}}
 \renewcommand{\max}{\operatorname{max}}
+\newcommand{\atan}{\operatorname{atan}}
 \newcommand{\argmax}{\operatorname{argmax}}
 \newcommand{\argmin}{\operatorname{argmin}}
 \newcommand{\tr}{\operatorname{tr}}
@@ -57,7 +58,8 @@
 \newcommand{\KL}{\operatorname{D}_{\text{KL}}}
 
 % Special math commands
-\renewcommand{\ss}[1]{_\mathit{#1}}       % Subscripts without spacing
+% \renewcommand{\ss}[1]{_\mathit{#1}}       % Subscripts without spacing
+\renewcommand{\ss}[1]{_\text{#1}}         % Subscripts in text
 \newcommand{\id}[1]{\, \mathrm{d} #1}     % Straight 'd' in integral
 \newcommand{\sce}{\text{\sc{e}}}          % Scientific notation
 \newcommand{\cond}{\, | \,}               % Conditioning
@@ -247,6 +249,33 @@ In summary, the CGPCM models differentiable phenomena if $h(0)=0$ and non-differ
     % \vskip -0.2in
 \end{figure*}
 
+\subsection{Choice of Hyperparameters}
+Following \citet{Pavliotis:2012:Probabilistic_Perspective}, let the \textit{correlation time} $\tau$, or alternatively the \textit{length scale}, of a stationary process with kernel $k(r)$ be
+\begin{align*}
+    \tau = \frac{1}{k(0)}\int_0 k(r) \id{r}.
+\end{align*}
+
+Let $\tau\ss{ac}$ and $P\ss{ac}$ and $\tau\ss{c}$ and $P\ss{c}$ be respectively the correlation time and power of the process $f$ for the GPCM and CGPCM respectively. Then Appendix XX shows that $\tau_w=\sqrt{\pi/8 \alpha}$ and
+\begin{align*}
+    P\ss{ac} &= \sigma_{f,\text{ac}}^2\sqrt{\frac{\pi}{2\alpha\ss{ac}}},
+    &\tau\ss{ac} &= \sqrt{\frac{\pi}{2(\alpha\ss{ac} + 2 \gamma\ss{ac})}}  \\
+    P\ss{c} &= \sigma_{f,\text{c}}^2\sqrt{\frac{\pi}{8\alpha\ss{c}}},
+    &\tau\ss{c} &= \sqrt{\frac{2}{\pi(\alpha\ss{c} + 2 \gamma\ss{c})}} \\
+    &&&\phan{=}\atan\ll( \sqrt{\frac{\alpha\ss{c} + 2 \gamma\ss{c}}{\alpha\ss{c}}} \rr). \\
+\end{align*}
+It follows that $P\ss{c}=\frac{1}{2}P\ss{ac}$ and $\tau\ss{c}\approx \tau\ss{ac}$ if $\gamma\ss{c} \gg \alpha\ss{c}$, $\alpha\ss{c}=\alpha\ss{ac}$, $\gamma\ss{c}=\gamma\ss{ac}$, and $\sigma_{f,\text{c}}^2=\sigma_{f,\text{ac}}^2$. To allow for fair comparison, we require that $P\ss{ac}=P\ss{c}$ and $\tau\ss{ac}=\tau\ss{c}$. If we further choose $P\ss{ac}=P\ss{c}=1$ and $\sigma_{f,\text{ac}}^2=\sigma_{f,\text{c}}^2$, then we find that $\alpha\ss{c}=\frac{1}{4}\alpha\ss{ac}$, $\gamma\ss{c}=\frac{3}{8}\alpha\ss{ac}+ \gamma\ss{ac}$, and $\sigma_{f,\text{ac}}^2 = \sigma_{f,\text{c}}^2 = \sqrt{2\alpha\ss{ac}/\pi}$.
+
+To determine $\alpha\ss{ac}$ and $\gamma\ss{ac}$, we specify the correlation time $\tau_w$ of the window $w$ and the correlation time $\tau_f$ of the process $f$. Then Appendix XX shows that
+\begin{align*}
+    \alpha\ss{ac} &= \frac{\pi}{2} \cdot \frac{1}{2 \tau_w^2},
+    &\gamma\ss{ac} &= \frac{\pi}{2} \cdot \frac{1}{2 \tau^2_f} - \frac{1}{2} \alpha\ss{ac}.
+\end{align*}
+Since $\alpha\ss{ac} > 0$ and $\gamma\ss{ac} > 0$, it must hold that $\sqrt{2} \tau_w > \tau_f > 0$.
+
+Furthermore, for the GPCM, we let $t_u$ be evenly spaced from $-3\tau_w$ to $3 \tau_w$. For the CGPCM, we let $t_u$ be evenly spaced from zero to $6 \tau_w$, shifted two inter-point spacings $\Delta t_u$ to the left to account for derivatives of $h$ at zero.
+
+Finally, we let $t_z$ be evenly spaced on the domain of interest, and choose $\omega$ such that $s$'s correlation time $\tau_s$ equals twice $t_z$'s inter-point spacing $\Delta t_z$: $\omega = \pi / 8 \Delta t_z^2$.
+
 
 \section{Inference}
 \label{sec:inference}
@@ -301,6 +330,7 @@ Again, setting the variations $\delta \mathcal{L} / \delta q(u)$ and $\delta \ma
 \end{align}
 which are computed in \cref{app:computation_quz}.
 As opposed to \cref{eq:qu,eq:qz}, \cref{eq:qu-smf,eq:qz-smf} are uncoupled, but $q(u)$'s moments are now intractable. We can, however, evaluate $q(u)$. We therefore use elliptical slice sampling (ESS) \cite{Murray:2010:Elliptical_Slice_Sampling} to sample from $q(u)$ and use these samples to approximate $q(f, u, z)$. To help mixing the Markov chain, we initialise the sampler with the MF approximation.
+
 
 \section{Experiments}
 We test the CGPCM by applying it to synthetic and real-world signals. We show that in certain situations the causality constraint provides an useful inductive bias that leads to better predictions.
