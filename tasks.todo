@@ -1,23 +1,21 @@
 Code:
     Bugs:
     Refactor:
-        ☐ Proper plotting @started
-        ☐ Make plots friendly for colour blind people @started
+        ☐ Plotting code
+        ☐ Make plots friendly for colour-blind people
         ☐ Relative to absolute frequencies in PSD
-        ☐ Group handling by plots
-        ☐ Flexible groups
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
         ☐ Show actual log likelihood during sampling
         ☐ Store LLs
+        ☐ Redo prediction @critical
     Experiments:
-        ☐ New TIMIT predictions
-        ☐ Arctic Sea Ice Extent
-        ☐ Stocks
+        ☐ HRIR @started
+        ☐ TIMIT
+        ☐ Sea Ice
+        ☐ Currency
         ☐ OU toy example
-        ☐ NIPS thing: planatary occlusion, exoplanets
-        ☐ Chaotic time series: Doing Farmer, Francesco, chaotic attractors
 
 Doc:
     ☐ Coz comments
@@ -25,9 +23,16 @@ Doc:
     ☐ Add supplementary material
     ☐ More details for experiments
 
+ Notes:
+     Further possible experiments:
+         ☐ Data concerning exoplanets from a NIPS paper
+         ☐ Chaotic time series
+
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Group handling by plots, return groups as a list instead of path @done (17-03-16 17:28) @project(Code / Refactor)
+ ✓ Toy @done (17-03-16 14:19) @project(Code / Experiments)
  ✓ File name management system @critical @done (17-03-15 17:54) @project(Code / Features)
  ✓ Why learner scale???? @critical @done (17-03-12 01:02) @project(Code / Bugs)
  ✓ Good illustrative toy example @critical @started @done (17-03-10 18:49) @project(Code / Experiments)

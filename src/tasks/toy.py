@@ -1,4 +1,4 @@
-from core.exp import Task, TaskConfig, TaskOptions
+from core.exp import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
 
@@ -9,7 +9,7 @@ class Experiment(Task):
     """
 
     def generate_config(self, args):
-        options = TaskOptions()
+        options = Options('toy')
         options.add_option('causal-sample', 'generate a causal sample')
         options.add_option('causal-model', 'use the causal model')
         options.add_value_option('resample', int,
@@ -18,27 +18,27 @@ class Experiment(Task):
         options.parse(args)
 
         return TaskConfig(name='Toy Experiment',
-                          seed=1025 if options['causal'] else 1030,
-                          fn=options.fn(group_by=['causal'], prefix='toy'),
+                          seed=1025 if options['causal-sample'] else 1030,
+                          fp=options.fp(groups=[['causal-sample']]),
 
                           # Training options
-                          iters_pre=0,
+                          iters_pre=400,
                           iters=2000,
                           iters_post=0,
                           samps=400,
 
                           # Sample options
-                          causal=options['causal'],
+                          causal=options['causal-sample'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
                           n=400,
                           nx=120,
                           nh=41,
-                          noise=1e-4 if options['causal'] else .5,
-                          noise_init=1e-4 if options['causal'] else 1e-2,
+                          noise=1e-4 if options['causal-sample'] else .5,
+                          noise_init=1e-4 if options['causal-sample'] else 1e-2,
 
-                          tau_w=0.12 if options['causal'] else 0.04,
-                          tau_f=0.12 if options['causal'] else 0.04,
+                          tau_w=0.12 if options['causal-sample'] else 0.04,
+                          tau_f=0.12 if options['causal-sample'] else 0.04,
                           data_scale=.75)
 
     def load(self, sess):

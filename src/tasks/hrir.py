@@ -1,4 +1,4 @@
-from core.exp import Task, TaskConfig, TaskOptions
+from core.exp import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
 
@@ -9,32 +9,36 @@ class Experiment(Task):
     """
 
     def generate_config(self, args):
-        options = TaskOptions()
+        options = Options('hrir')
         options.add_option('causal-model', 'use the causal model')
+        options.add_value_option('resample', value_type=int, default=0,
+                                 desc='number of times to resample')
         options.parse(args)
 
         return TaskConfig(name='HRIR',
                           seed=0,
-                          fn=options.fn(prefix='hrir'),
+                          fp=options.fp(),
 
                           # Training options
-                          iters_pre=50,
+                          iters_pre=200,
                           iters=500,
                           iters_post=0,
-                          samps=0,
+                          samps=200,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=500,
-                          nx=200,
-                          nh=101,
+                          n=300,
+                          nx=150,
+                          nh=81,
                           noise_init=1e-4,
                           tau_w=1e-3,
-                          tau_f=1e-4)
+                          tau_f=1.5e-4,
+                          resample=options['resample'])
 
     def load(self, sess):
         # Load data
-        f, k, h = data.load_hrir(n=self.config.n)
+        f, k, h = data.load_hrir(n=self.config.n,
+                                 resample=self.config.resample)
         e = f
         self._set_data(h=h, f=f, e=f, k=k)
 

@@ -193,7 +193,7 @@ class Data(object):
         return cls(t, y)
 
 
-def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav'):
+def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
     """
     Load HRIR data.
 
@@ -207,7 +207,8 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav'):
 
     # Take extra `len(h.x)` points to avoid transition effects
     t = np.arange(n + len(h.x)) * dt
-    x = Data(t, np.random.randn(n + len(h.x)))
+    for i in range(resample + 1):
+        x = Data(t, np.random.randn(n + len(h.x)))
     x /= x.std  # Make sure noise is unity variance
 
     # Convolve and take the right fragment
@@ -311,3 +312,38 @@ def load_akm(sess, causal, n=250, nh=31, tau_w=.1, tau_f=.05, resample=0):
     psd = Data(util.fft_freq(len(psd)), psd)
 
     return f, k, h, psd
+
+
+def load_seaice():
+    import pandas as pd
+
+    import datetime
+
+    def year_fraction(date):
+        start = datetime.date(date.year, 1, 1).toordinal()
+
+        year_length = datetime.date(date.year + 1, 1, 1).toordinal() - start
+
+        decimal_date = date.year + float(
+            date.toordinal() - start) / year_length
+
+        return decimal_date
+
+    ### Read in daily data
+
+    names = ['Year', 'Month', 'Day', 'Extent', 'Missing', 'Source Data']
+
+    df = pd.read_csv('/home/scott/DATA/N_seaice_extent_daily_v2.1.csv',
+                     skiprows=2, names=names)
+
+    dec_date = np.zeros(len(df))
+
+    for j, i in enumerate(df.index):
+        df1 = df[df.index == i]
+
+        dec_date[j] = year_fraction(
+            datetime.date(df1.Year, df1.Month, df1.Day))
+
+    df['decimal_date'] = dec_date
+
+

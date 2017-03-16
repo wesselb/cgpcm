@@ -3,6 +3,7 @@ import numpy as np
 
 from par import Parametrisable
 from plot import Plotter2D
+from options import Options
 import out
 import learn
 import util
@@ -62,123 +63,11 @@ class Task(object):
         del self.mod
 
 
-class TaskOptions(object):
-    """
-    Options for task.
-    """
-
-    def __init__(self):
-        self._options = []
-
-    def add_option(self, name, desc='no description available'):
-        """
-        Add a boolean option.
-
-        :param name: name of options
-        :param desc: description of option
-        """
-        self._options.append({'has_value': False,
-                              'name': name.lower(),
-                              'value': False,
-                              'description': desc,
-                              'required': False})
-
-    def add_value_option(self, name, value_type,
-                         desc='no description available', required=False):
-        """
-        Add an option with a value.
-
-        :param name: name of option
-        :param value_type: type of option, should be callable
-        :param desc: description of option
-        :param required: option is required
-        """
-        self._options.append({'has_value': True,
-                              'name': name.lower(),
-                              'value_type': value_type,
-                              'value': None,
-                              'description': desc,
-                              'required': required})
-
-    def _get_option(self, name):
-        for option in self._options:
-            if name == option['name']:
-                return option
-        raise RuntimeError('option "{}" not found'.format(name))
-
-    def parse(self, args):
-        """
-        Parse arguments.
-
-        :param args: arguments
-        """
-        self._options = sorted(self._options, key=lambda x: x['name'])
-        self._parse_help(args)
-        self._parse_args(args)
-        self._parse_required()
-
-    def _parse_required(self):
-        missing = []
-        for option in self._options:
-            if option['required'] and option['value'] is None:
-                missing.append(option['name'])
-        if len(missing) == 1:
-            raise RuntimeError('missing option "{}"'.format(missing[0]))
-        elif len(missing) > 1:
-            missing_string = ', '.join(['"{}"'.format(x) for x in missing])
-            raise RuntimeError('missing options {}'.format(missing_string))
-
-    def _parse_args(self, args):
-        it = iter(args)
-        for arg in it:
-            option = self._get_option(arg)
-            if option['has_value']:
-                option['value'] = option['value_type'](next(it))
-            else:
-                option['value'] = True
-
-    def _parse_help(self, args):
-        if 'help' in args:
-            out.section('options for task')
-            for option in self._options:
-                out.section(option['name'])
-                out.kv('description', option['description'])
-                out.kv('type', 'value' if option['has_value'] else 'bool')
-                out.kv('required', 'yes' if option['required'] else 'no')
-                out.section_end()
-            out.section_end()
-            exit()
-
-    def __getitem__(self, name):
-        return self._get_option(name)['value']
-
-    def fn(self, group_by=None, prefix=''):
-        group_names = [] if group_by is None else sorted(group_by)
-        fn_names = sorted(set([x['name'] for x in self._options])
-                          - set(group_names))
-
-        if prefix:
-            prefix += '_'  # Add separator
-
-        group_part = self._fn_opts_to_str(map(self._get_option, group_names))
-        if group_part:
-            prefix += group_part + '/'
-
-        return prefix + self._fn_opts_to_str(map(self._get_option, fn_names))
-
-    def _fn_opts_to_str(self, xs):
-        def to_str(x): return ('y' if x else 'n') if type(x) == bool \
-            else str(x)
-
-        return ','.join(['{}={}'.format(x['name'], to_str(x['value']))
-                         for x in xs])
-
-
 class TaskConfig(Parametrisable):
     """
     Configuration for a task.
     """
-    _required_pars = ['fn', 'seed', 'iters', 'iters_pre', 'samps', 'name']
+    _required_pars = ['fp', 'seed', 'iters', 'iters_pre', 'samps', 'name']
 
 
 def train(sess, task, debug_options):
@@ -275,7 +164,8 @@ def train(sess, task, debug_options):
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=task.data['samples'])
         task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
-                                                  samples_h=task.data['samples'],
+                                                  samples_h=task.data[
+                                                      'samples'],
                                                   psd=True)
         task.data['h_pred_smf'] = mod.predict_h(task.data['h'].x,
                                                 samples_h=task.data['samples'],
@@ -283,19 +173,20 @@ def train(sess, task, debug_options):
         out.section_end()
 
 
-def plot_full(tasks, options):
+def plot_full(tasks, args):
     """
     Fully plot a single task.
 
     :param tasks: tasks
-    :param options: options
+    :param args: arguments
     :return: `Plotter2D` instance
     """
+    options = Options('full')
+    options.add_value_option('index', value_type=int, default=0,
+                             desc='index of task to plot')
+    options.parse(args)
 
-    if len(tasks) != 1:
-        raise RuntimeError('can only plot a single task')
-    else:
-        task = tasks[0]
+    task = tasks[options['index']]
 
     def do_plot(p, x, x_pred, x_noisy=None, inducing_points=None):
         mu, lower, upper, std = x_pred
@@ -318,7 +209,7 @@ def plot_full(tasks, options):
         p.show_legend()
 
     p = Plotter2D(figure_size=(20, 7))
-    p.figure('Results')
+    p.figure()
 
     p.subplot(2, 3, 1)
     p.title('Filter')
@@ -335,7 +226,7 @@ def plot_full(tasks, options):
     do_plot(p, task.data['f'], task.data['f_pred'], x_noisy=task.data['e'],
             inducing_points=task.data['tx'])
 
-    if 'h_pref_smf' in task.data:
+    if 'h_pred_smf' in task.data:
         p.subplot(2, 3, 4)
         p.title('Filter')
         do_plot(p, task.data['h'], task.data['h_pred_smf'],
@@ -351,21 +242,26 @@ def plot_full(tasks, options):
         do_plot(p, task.data['f'], task.data['f_pred_smf'],
                 x_noisy=task.data['e'], inducing_points=task.data['tx'])
 
-    return p, task.config.fn
+    return p, options.fp(ignore=['index']) + task.config.fp
 
 
-def plot_compare(tasks, options):
+def plot_compare(tasks, args):
     """
     Compare the GPCM and CGPCM.
 
     :param tasks: tasks
-    :param options: options
+    :param args: arguments
     :return: `Plotter2D` instance
     """
-    if len(tasks) != 2:
-        raise RuntimeError('can only compare two tasks')
-    else:
-        task1, task2 = tasks
+    options = Options('compare')
+    options.add_value_option('index1', value_type=int, default=0,
+                             desc='index of first plot in comparison')
+    options.add_value_option('index2', value_type=int, default=1,
+                             desc='index of second plot in comparison')
+    options.add_option('big', 'show big plot')
+    options.parse(args)
+
+    task1, task2 = tasks[options['index1']], tasks[options['index2']]
 
     # Config
     truth_colour = '#7b3294'
@@ -375,8 +271,9 @@ def plot_compare(tasks, options):
     marker_size = 2
     inducing_point_size = 2
 
-    p = Plotter2D(figure_size=(24, 5) if 'big' in options else (12, 6),
+    p = Plotter2D(figure_size=(24, 5) if options['big'] else (12, 6),
                   font_size=12, figure_toolbar='none', grid_colour='none')
+    p.figure()
 
     def plot_pred(p, pred, label, colour):
         mu, lower, upper, std = pred
@@ -480,10 +377,8 @@ def plot_compare(tasks, options):
     p.lims(x=(0, max(freq_filter(task1.data['psd']).x)))
     p.lims(y=(-10, 20))
 
-    group1, fn1 = task1.config.fn.split('/')
-    group2, fn2 = task2.config.fn.split('/')
-
-    return p, '{}/{}_versus_{}'.format(group1, fn1, fn2)
+    return p, options.fp(groups=[['big']], ignore=['index1', 'index2']) \
+           + (task1.config.fp & task2.config.fp)
 
 
 plot_choices = ['full', 'compare']
@@ -491,7 +386,7 @@ plot_calls = {'full': plot_full,
               'compare': plot_compare}
 
 
-def plot(choice, tasks, options):
+def plot(choice, tasks, args):
     """
     Plot a task.
 
@@ -499,7 +394,7 @@ def plot(choice, tasks, options):
 
     :param choice: choice
     :param tasks: tasks
-    :param options: plot options
+    :param args: plot arguments
     :return `Plotter2D` instance and file name
     """
-    return plot_calls[choice](tasks, options)
+    return plot_calls[choice](tasks, args)

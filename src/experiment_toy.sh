@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
 
+opts=$@
 from_resample=0
-to_resample=5
+to_resample=100
 
 for (( i = $from_resample; i <= $to_resample; i++ )); do
     # Causal sample
-    task="toy resample $i causal-sample"
-    ./train.py -t $task causal-model
-    ./train.py -t $task
-    ./plot.py full -t $task causal-model
-    ./plot.py full -t $task
-    ./plot.py compare -t $task causal-model -t $task
+    ./core.py -t toy resample $i causal-sample causal-model \
+              -t toy resample $i causal-sample \
+              -p full index 0 \
+              -p full index 1 \
+              -p compare index1 0 index2 1 \
+              $opts
 
     # Acausal sample
-    task="toy resample $i"
-    ./train.py -t $task causal-model
-    ./train.py -t $task
-    ./plot.py full -t $task causal-model
-    ./plot.py full -t $task
-    ./plot.py compare -t $task causal-model -t $task
+    ./core.py -t toy resample $i causal-model \
+              -t toy resample $i \
+              -p full index 0 \
+              -p full index 1 \
+              -p compare index1 0 index2 1 \
+              $opts
 done

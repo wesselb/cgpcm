@@ -106,7 +106,7 @@ class ESS(object):
         :return: samples
         """
         samples = []
-        fetches_config = [{'name': 'log likelihood', 'modifier': '.2e'},
+        fetches_config = [{'name': 'log likelihood', 'modifier': '.0f'},
                           {'name': 'attempts', 'modifier': 'd'},
                           {'name': 'time/attempt',
                            'modifier': '.2f',

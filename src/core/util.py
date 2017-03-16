@@ -3,6 +3,7 @@ import scipy.stats
 import numpy as np
 import tensorflow as tf
 import os
+import pickle
 
 from tfutil import shape
 
@@ -185,3 +186,20 @@ def mkdirs(path):
     dir_path = os.path.dirname(path)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
+
+
+def map_pickle(transformation, fns):
+    """
+    Apply a function on the content of a pickled file or list of pickled files.
+    Ignores incorrect paths.
+
+    :param transformation: function
+    :param fns: path or list of paths
+    """
+    fns = [fns] if type(fns) == str else fns
+    for fn in fns:
+        if os.path.isfile(fn):
+            with open(fn) as f:
+                content = pickle.load(f)
+            with open(fn, 'w') as f:
+                pickle.dump(transformation(content), f)
