@@ -1,4 +1,4 @@
-from core.exp import Task, TaskConfig, Options
+from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
 
@@ -35,7 +35,8 @@ class Experiment(Task):
                           nx=120,
                           nh=41,
                           noise=1e-4 if options['causal-sample'] else .5,
-                          noise_init=1e-4 if options['causal-sample'] else 1e-2,
+                          noise_init=1e-4 if options[
+                              'causal-sample'] else 1e-2,
 
                           tau_w=0.12 if options['causal-sample'] else 0.04,
                           tau_f=0.12 if options['causal-sample'] else 0.04,
@@ -43,17 +44,17 @@ class Experiment(Task):
 
     def load(self, sess):
         # Load data
-        f, k, h, psd = data.load_akm(sess=sess,
-                                     n=self.config.n,
-                                     nh=self.config.nh,
-                                     tau_w=self.config.tau_w \
-                                           * self.config.data_scale,
-                                     tau_f=self.config.tau_f \
-                                           * self.config.data_scale,
-                                     causal=self.config.causal,
-                                     resample=self.config.resample)
+        f, k, h = data.load_akm(sess=sess,
+                                n=self.config.n,
+                                nh=self.config.nh,
+                                tau_w=self.config.tau_w \
+                                      * self.config.data_scale,
+                                tau_f=self.config.tau_f \
+                                      * self.config.data_scale,
+                                causal=self.config.causal,
+                                resample=self.config.resample)
         e = f.make_noisy(self.config.noise)
-        self._set_data(h=h, k=k, f=f, e=e, psd=psd)
+        self._set_data(h=h, k=k, f=f, e=e)
 
         # Construct model
         mod = VCGPCM.from_recipe(sess=sess,

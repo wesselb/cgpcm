@@ -5,8 +5,8 @@ import argparse
 from core.cgpcm import AKM
 from core.plot import Plotter2D
 from core.kernel import DEQ
-from core.dist import Normal
-from core.tfutil import *
+from core.distribution import Normal
+from core.tf_util import *
 from core.util import *
 from core.data import Data
 import core.out as out
@@ -45,23 +45,23 @@ def h_inv(h):
 
 
 parser = argparse.ArgumentParser(description='Plot interpolation of filters.')
-parser.add_argument('--compute', action='store_true',
+parser.add_argument('-c', '--compute', action='store_true',
                     help='compute interpolation')
-parser.add_argument('--show', action='store_true', help='show plots')
+parser.add_argument('-s', '--show', action='store_true', help='show plots')
 args = parser.parse_args()
 
 # Config
 fn_cache = 'output/cache/interpolation_data.pickle'
 sess = Session()
-seed(28)
+seed(29)
 
 # Construct model and kernel
 mod = AKM.from_recipe(sess=sess,
                       e=Data(np.linspace(0, 1, 150), None),
                       nx=0,
                       nh=51,
-                      k_len=.1,
-                      k_wiggles=1,
+                      tau_w=.1,
+                      tau_f=.1,
                       causal=True)
 kernel = DEQ(s2=1., alpha=mod.alpha, gamma=mod.gamma)
 
@@ -76,7 +76,7 @@ h_to /= h_to.energy_causal ** .5
 t = np.linspace(0, 1, 250)
 th = np.linspace(0, .6, 301)
 tk = np.linspace(-.6, .6, 301)
-fracs = np.linspace(0, .6, 5)
+fracs = np.linspace(0, .5, 5)
 num_fracs = len(fracs)
 
 if args.compute:
@@ -95,34 +95,35 @@ if args.compute:
 
         ks.append(mod.k(tk).y)
         fs.append(mod.f().y)
-        hs.append(mod.h(th, assert_positive_at_index=50).y)
+        hs.append(mod.h(th).y)
     with open(fn_cache, 'w') as f:
         pickle.dump((ks, fs, hs), f)
 else:
     with open(fn_cache) as f:
         ks, fs, hs = pickle.load(f)
 
+
 # Plotting
 out.section('plotting')
-p = Plotter2D(figure_size=(9, 2.5), font_size=13)
+p = Plotter2D(figure_size=(9, 2.5), font_size=13, line_width=1)
 p.figure('Kernels')
 for i in range(num_fracs):
     p.subplot(3, num_fracs, i + 1)
     p.plot(th, th * 0, line_colour='k')
-    p.plot(th, hs[i], line_width=1.5)
+    p.plot(th, hs[i])
     p.hide_ticks(x=True, y=True)
     if i == 0:
         p.labels(y='$h$')
 for i in range(num_fracs):
     p.subplot(3, num_fracs, num_fracs + i + 1)
     p.plot(tk, tk * 0, line_colour='k')
-    p.plot(tk, ks[i], line_width=1.5)
+    p.plot(tk, ks[i])
     p.hide_ticks(x=True, y=True)
     if i == 0:
         p.labels(y='$k_{f\,|\,h}$')
 for i in range(num_fracs):
     p.subplot(3, num_fracs, 2 * num_fracs + i + 1)
-    p.plot(t, fs[i], line_width=1.5)
+    p.plot(t, fs[i])
     p.hide_ticks(x=True, y=True)
     if i == 0:
         p.labels(y='$f\,|\,h$')

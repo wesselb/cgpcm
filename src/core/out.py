@@ -1,5 +1,7 @@
 import sys
 
+import util
+
 level = 0
 total_width = 25
 width = 25
@@ -79,3 +81,22 @@ def eat(num=1):
     control_erase_line = '\x1b[2K'
     for i in range(num):
         sys.stdout.write(control_erase_line + control_up_line)
+
+
+def dict_(d, numeric_mod=''):
+    """
+    Show a dictionary.
+
+    :param d: dictionary
+    :param numeric_mod: print modifier of numeric values
+    """
+    for k, v in sorted(d.items(), key=lambda x: x[0]):
+        if type(v) == dict:
+            section(k)
+            dict_(v, numeric_mod=numeric_mod)
+            section_end()
+        else:
+            if util.is_numeric(v):
+                kv(k, v, mod=numeric_mod)
+            else:
+                kv(k, v)

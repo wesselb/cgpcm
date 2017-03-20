@@ -8,6 +8,8 @@ with warnings.catch_warnings():
     warnings.simplefilter('ignore')
     import matplotlib.pyplot as plt
 
+import util
+
 
 def to_rbga(color, alpha=1.0):
     """
@@ -91,6 +93,24 @@ class Plotter(object):
         self.plt = plt
         self._first = True
         self.plots = []
+        self.x_scale = 1
+        self.y_scale = 1
+        self.z_scale = 1
+        self.x_shift = 0
+        self.y_shift = 0
+        self.z_shift = 0
+
+    def transform_x(self, x):
+        return (x + self.x_shift) * self.x_scale
+
+    def transform_y(self, y):
+        return (y + self.y_shift) * self.y_scale
+
+    def transform_z(self, z):
+        return (z + self.z_shift) * self.z_scale
+
+    def config(self, **kw_args):
+        self._config.update(kw_args)
 
     def _map(self, mapping, kw_args):
         config = dict(self._config)
@@ -110,6 +130,7 @@ class Plotter(object):
         mpl.rc('font',
                family=self._config['font_family'],
                size=self._config['font_size'])
+        mpl.rc('text', usetex=True)
         return self
 
     def _config_figure(self, *args, **kw_args):
@@ -128,6 +149,7 @@ class Plotter(object):
         return self
 
     def save(self, fn, *args, **kw_args):
+        util.mkdirs(fn)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             self.fig.savefig(fn, *args, **kw_args)
@@ -157,11 +179,11 @@ class Plotter(object):
 
     def lims(self, x=None, y=None, z=None):
         if x is not None:
-            self.ax.set_xlim(*x)
+            self.ax.set_xlim(*map(self.transform_x, x))
         if y is not None:
-            self.ax.set_ylim(*y)
+            self.ax.set_ylim(*map(self.transform_y, y))
         if z is not None:
-            self.ax.set_zlim(*z)
+            self.ax.set_zlim(*map(self.transform_z, z))
         return self
 
     def subplot(self, *args, **kw_args):
@@ -194,11 +216,11 @@ class Plotter(object):
 
     def ticks_arange(self, x=None, y=None, z=None):
         if x is not None:
-            self.ax.xaxis.set_ticks(np.arange(*x))
+            self.ax.xaxis.set_ticks(np.arange(*map(self.transform_x, x)))
         if y is not None:
-            self.ax.yaxis.set_ticks(np.arange(*y))
+            self.ax.yaxis.set_ticks(np.arange(*map(self.transform_y, y)))
         if z is not None:
-            self.ax.xaxis.set_ticks(np.arange(*z))
+            self.ax.zaxis.set_ticks(np.arange(*map(self.transform_z, z)))
 
 
 class Plotter2D(Plotter):
@@ -232,7 +254,7 @@ class Plotter2D(Plotter):
                                       top='off')
         return self
 
-    def plot(self, *args, **kw_args):
+    def plot(self, x, y=None, *args, **kw_args):
         self._check_first_figure()
         mapping = {'linewidth': 'line_width',
                    'linestyle': 'line_style',
@@ -242,28 +264,49 @@ class Plotter2D(Plotter):
                    'markeredgecolor': 'marker_colour',
                    'markersize': 'marker_size',
                    'label': 'label'}
-        p = plt.plot(*args, **self._map(mapping, kw_args))
+        if y is None:
+            p = plt.plot(self.transform_y(x),
+                         *args, **self._map(mapping, kw_args))
+        else:
+            p = plt.plot(self.transform_x(x),
+                         self.transform_y(y),
+                         *args, **self._map(mapping, kw_args))
         self.plots.append(p)
         return self
 
-    def scatter(self, *args, **kw_args):
+    def scatter(self, x, y, *args, **kw_args):
         self._check_first_figure()
         mapping = {'marker': 'marker_style',
                    'c': 'marker_colour',
                    'edgecolors': 'marker_colour',
                    's': 'marker_size',
                    'label': 'label'}
-        p = plt.scatter(*args, **self._map(mapping, kw_args))
+        p = plt.scatter(self.x_scale * x,
+                        self.y_scale * y,
+                        *args, **self._map(mapping, kw_args))
         self.plots.append(p)
         return self
 
     def fill(self, x, y1, y2, *args, **kw_args):
+        # Check which bound is upper bound
+        if np.all(y1 >= y2):
+            upper = y1
+            lower = y2
+        elif np.all(y2 >= y1):
+            upper = y2
+            lower = y1
+        else:
+            raise ValueError('either y1 >= y2 or y2 >= y1')
+
         self._check_first_figure()
         mapping = {'alpha': 'fill_alpha',
                    'edgecolor': 'val:none',
                    'facecolor': 'fill_colour',
                    'interpolate': 'val:True'}
-        p = plt.fill_between(x, y1, y2, *args, **self._map(mapping, kw_args))
+        p = plt.fill_between(self.transform_x(x),
+                             self.transform_y(lower),
+                             self.transform_y(upper),
+                             *args, **self._map(mapping, kw_args))
         self.plots.append(p)
         return self
 
@@ -309,14 +352,17 @@ class Plotter3D(Plotter):
         self.cb.ax.tick_params(right='off')
         return self
 
-    def plot_surface(self, *args, **kw_args):
+    def plot_surface(self, x, y, z, *args, **kw_args):
         self._check_first_figure()
         mapping = {'rstride': 'surface_rstride',
                    'cstride': 'surface_cstride',
                    'cmap': 'cmap',
                    'linewidth': 'surface_line_width',
                    'antialiased': 'surface_antialiased'}
-        self.ax.plot_surface(*args, **self._map(mapping, kw_args))
+        self.ax.plot_surface(self.transform_x(x),
+                             self.transform_y(y),
+                             self.transform_z(z),
+                             *args, **self._map(mapping, kw_args))
         return self
 
     def view(self, elevation, azimuth):

@@ -89,7 +89,7 @@ class Options(object):
 
     def _parse_help(self, args):
         if 'help' in args:
-            out.section('options for task')
+            out.section('available options')
             out.kv('name', self._name)
             for option in self._options:
                 out.section(option['name'])
@@ -109,7 +109,7 @@ class Options(object):
 
         :param groups: list of groups of option names to group by
         :param ignore: list of names to ignore
-        :return: `FilePath` instance
+        :return: :class:`core.options.FilePath` instance
         """
         ignore = [] if ignore is None else ignore
         groups = [] if groups is None else groups

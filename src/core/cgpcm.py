@@ -1,14 +1,14 @@
 from learn import map_progress
-from par import Parametrisable
-from dist import Normal
+from parametrisable import Parametrisable
+from distribution import Normal
 from kernel import DEQ
 from sample import ESS
-from tfutil import *
+from tf_util import *
 from util import inf, length_scale, zero_pad, fft_freq, is_numeric, \
-    nearest_index, lower_perc, upper_perc
-from data import Data
+    lower_perc, upper_perc
+import data
 import util
-import eq
+import exponentiated_quadratic as eq
 
 
 class CGPCM(Parametrisable):
@@ -44,7 +44,7 @@ class CGPCM(Parametrisable):
         :param causal: causal model
         :param causal_id: causal interdomain transformation
         :param noise_init: initialisation of noise
-        :return: CGPCM instance
+        :return: :class:`core.cgpcm.CGPCM` instance
         """
         # Trainable variables
         vars = {}
@@ -324,8 +324,8 @@ class AKM(CGPCM):
 
         # Check whether PSD must be computed
         if psd:
-            samples = map_progress(lambda x: util.psd(zero_pad(x, psd_pad),
-                                                      axis=0),
+            samples = map_progress(lambda x: util.fft_db(zero_pad(x, psd_pad),
+                                                         axis=0),
                                    samples,
                                    name='transforming samples')
         samples = np.concatenate(samples, axis=1)
@@ -347,9 +347,9 @@ class AKM(CGPCM):
         else:
             x = t
 
-        return Data(x, mu), \
-               [Data(x, lower) for lower in lowers], \
-               [Data(x, upper) for upper in uppers]
+        return data.Data(x, mu), \
+               [data.Data(x, lower) for lower in lowers], \
+               [data.Data(x, upper) for upper in uppers]
 
     def sample_h(self, h=None):
         """
@@ -392,26 +392,18 @@ class AKM(CGPCM):
         a = self._a(self.t)
         K = reg(a + trmul(tile(outer(self.h_draw) - self.iKh, [n, n]), Ahh))
         f = self.s2_f ** .5 * tf.squeeze(mul(tf.cholesky(K), self.e_draw))
-        return Data(self.t, self._run(f))
+        return data.Data(self.t, self._run(f))
 
-    def h(self, t, assert_positive_at_index=None):
+    def h(self, t):
         """
         Construct filter.
 
         :param t: points to evaluate process at
-        :param assert_positive_at_index: index at which to assert that the
-                                         process is positive
         :return: filter
         """
         Kfu = self.kernel_h(t, self.th)
         h = self._run(tf.squeeze(mul(Kfu, self.h_draw)))
-
-        # Set h to correct sign
-        if assert_positive_at_index is None:
-            assert_positive_at_index = nearest_index(t, 0)
-        h = h * np.sign(h[assert_positive_at_index])
-
-        return Data(t, h)
+        return data.Data(t, h)
 
     def k(self, t):
         """
@@ -424,7 +416,7 @@ class AKM(CGPCM):
         Ahh_k = self._Ahh_center(t)
         a_k = self._a_center(t)
         k = a_k + trmul(tile(outer(self.h_draw) - self.iKh, nk), Ahh_k)
-        return Data(t, self._run(self.s2_f * k))
+        return data.Data(t, self._run(self.s2_f * k))
 
 
 class VCGPCM(CGPCM):
@@ -457,18 +449,19 @@ class VCGPCM(CGPCM):
                                             self.mats['Ahx'], adj_a=True), 0)
         return mu, self.Kx + self.s2_f / self.s2 * S
 
-    def elbo(self, smf=False):
+    def elbo(self, smf=False, sample_h=None):
         """
         Construct the ELBO.
 
-        :param smf: stochastic approximation of SMF approximation via
-                    reparametrisation
+        :param smf: stochastic approximation of SMF approximation
+        :param sample_h: sample to use in SMF approximation
         :return: ELBO
         """
         if smf:
-            # Stochastic approximation via reparametrisation
-            h_samp = self.h.sample()
-            mu, S = self._qz_natural(h_samp, outer(h_samp))
+            # Stochastic approximation of SMF approximation
+            if sample_h is None:
+                sample_h = self.h.sample()
+            mu, S = self._qz_natural(sample_h, outer(sample_h))
         else:
             mu, S = self._qz_natural(self.h.mean, self.h.m2)
         L = tf.cholesky(reg(S))
@@ -483,6 +476,22 @@ class VCGPCM(CGPCM):
                                                  self.h.m2))) / 2. \
                - self.h.kl(self.h_prior)
         return elbo
+
+    def elbo_smf(self, samples_h):
+        """
+        Estimate the ELBO for the SMF approximation.
+
+        :param samples_h: samples for the filter
+        :return: ELBO for the SMF approximation
+        """
+        sample_h = placeholder(shape(self.h.sample()))
+        elbo = self.elbo(smf=True, sample_h=sample_h)
+        elbos = map_progress(lambda x: self._run(elbo,
+                                                 feed_dict={sample_h: x}),
+                             samples_h,
+                             name='estimating ELBO for the SMF approximation '
+                                  'using MC')
+        return np.mean(elbos), np.std(elbos) / len(sample_h) ** .5
 
     def predict_k(self, t, samples_h=200, psd=False, normalise=True,
                   psd_pad=1000):
@@ -518,7 +527,7 @@ class VCGPCM(CGPCM):
 
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [util.psd(zero_pad(sample, psd_pad), axis=0)
+            samples = [util.fft_db(zero_pad(sample, psd_pad), axis=0)
                        for sample in samples]
 
         samples = np.concatenate(samples, axis=1)
@@ -533,21 +542,19 @@ class VCGPCM(CGPCM):
         else:
             x = t
 
-        return Data(x, mu), \
-               Data(x, lower), \
-               Data(x, upper), \
-               Data(x, std)
+        return data.Data(x, mu), \
+               data.Data(x, lower), \
+               data.Data(x, upper), \
+               data.Data(x, std)
 
-    def predict_h(self, t, samples_h=200, assert_positive_at_index=None,
-                  normalise=True):
+    def predict_h(self, t, samples_h=200, normalise=True, correct_signs=False):
         """
         Predict filter.
 
         :param t: point to predict filter at
         :param samples_h: samples in Monte-Carlo estimation
-        :param assert_positive_at_index: index at which to assert that
-                                         the filter is positive
         :param normalise: normalise prediction
+        :param correct_signs: correct signs of samples
         :return: predicted filter
         """
         if is_numeric(samples_h):
@@ -560,14 +567,13 @@ class VCGPCM(CGPCM):
         samples = map_progress(lambda x: self._run(mu, feed_dict={h: x}),
                                samples_h,
                                name='filter prediction using MC')
-
-        # Set samples to correct sign
-        if assert_positive_at_index is None:
-            assert_positive_at_index = nearest_index(t, 0)
-        samples = [sample * np.sign(sample[assert_positive_at_index])
-                   for sample in samples]
-
         samples = np.concatenate(samples, axis=1)
+
+        if correct_signs:
+            # Set samples to correct sign
+            samples *= util.sign_smart(samples.T)[None, :]
+
+        # Compute statistics
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
@@ -576,18 +582,18 @@ class VCGPCM(CGPCM):
         # Check whether to normalise prediction
         if normalise:
             if self.causal:
-                scale = Data(t, mu).energy_causal ** .5
+                scale = data.Data(t, mu).energy_causal ** .5
             else:
-                scale = Data(t, mu).energy ** .5
+                scale = data.Data(t, mu).energy ** .5
             mu /= scale
             lower /= scale
             upper /= scale
             std /= scale
 
-        return Data(t, mu), \
-               Data(t, lower), \
-               Data(t, upper), \
-               Data(t, std)
+        return data.Data(t, mu), \
+               data.Data(t, lower), \
+               data.Data(t, upper), \
+               data.Data(t, std)
 
     def predict_f(self, t, samples_h=50):
         """
@@ -601,7 +607,7 @@ class VCGPCM(CGPCM):
         :return: predicted function
         """
         n = shape(t)[0]
-        mats = self._construct_model_matrices(Data(t, None))
+        mats = self._construct_model_matrices(data.Data(t, None))
         mats = {k: self._run(mats[k]) for k in ['a', 'Ahh', 'Ahx', 'Axx']}
 
         if is_numeric(samples_h):
@@ -646,10 +652,10 @@ class VCGPCM(CGPCM):
         mu = np.mean(np.concatenate(samples_mu, axis=1), axis=1)
         var = np.mean(np.concatenate(samples_var, axis=1), axis=1)
 
-        return Data(t, mu), \
-               Data(t, mu - 2 * var ** .5), \
-               Data(t, mu + 2 * var ** .5), \
-               Data(t, var ** .5)
+        return data.Data(t, mu), \
+               data.Data(t, mu - 2 * var ** .5), \
+               data.Data(t, mu + 2 * var ** .5), \
+               data.Data(t, var ** .5)
 
     def sample(self, iters=200, burn=None):
         """

@@ -4,7 +4,7 @@ from tensorflow.contrib.opt.python.training.external_optimizer import \
     ScipyOptimizerInterface as SciPyOpt
 
 import out
-from tfutil import *
+from tf_util import *
 
 
 class Progress(object):

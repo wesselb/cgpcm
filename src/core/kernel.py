@@ -1,7 +1,7 @@
 import abc
 
-from tfutil import *
-from par import Parametrisable
+from tf_util import *
+from parametrisable import Parametrisable
 
 
 class Kernel(Parametrisable):

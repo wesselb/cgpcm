@@ -32,7 +32,7 @@ class ESS(object):
         Move sampler to a new state.
 
         :param x: new state
-        :param log_lik: log likelihood at new state
+        :param log_lik: log-likelihood at new state
         """
         self._x = x
         if log_lik is None:
@@ -40,9 +40,9 @@ class ESS(object):
 
     def update(self, log_lik):
         """
-        Update the log likelihood function.
+        Update the log-likelihood function.
 
-        :param log_lik: log likelihood
+        :param log_lik: log-likelihood
         """
         self._log_lik = log_lik
 
@@ -106,7 +106,7 @@ class ESS(object):
         :return: samples
         """
         samples = []
-        fetches_config = [{'name': 'log likelihood', 'modifier': '.0f'},
+        fetches_config = [{'name': 'pseudo-log-likelihood', 'modifier': '.0f'},
                           {'name': 'attempts', 'modifier': 'd'},
                           {'name': 'time/attempt',
                            'modifier': '.2f',

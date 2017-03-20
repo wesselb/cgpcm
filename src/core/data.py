@@ -1,7 +1,7 @@
 import scipy.io as sio
 import scipy.io.wavfile as sio_wav
 
-from tfutil import *
+from tf_util import *
 import util
 import cgpcm
 import kernel
@@ -44,16 +44,6 @@ class Data(object):
         """
         return self._split(range(start, start + length))
 
-    def filter(self, f):
-        """
-        Select parts of the data according to a filter.
-
-        :param f: filter
-        :return: selected data
-        """
-        filtered = filter(lambda (i, x): f(x), enumerate(self.x))
-        return self._split(zip(*filtered)[0])  # Select indices
-
     def _split(self, i_in):
         i_in = sorted(i_in)
         i_out = sorted(list(set(range(self.n)) - set(i_in)))
@@ -67,17 +57,23 @@ class Data(object):
         :param y: predictions
         :return: standardised means squared error
         """
-        return util.smse(y, self.y)
+        return util.smse(self._to_y(y), self.y)
 
-    def mll(self, mu, std):
+    def mll(self, mu, std, x_max=np.inf):
         """
         Compute the mean log loss for some predictions.
 
         :param mu: mean of predictions
         :param std: standard deviation of predictions
+        :param x_max: maximum absolute value of x to evaluate for
         :return: mean log loss
         """
-        return util.mll(mu, std, self.y)
+        def process(x):
+            d = Data(self.x, self._to_y(x))
+            d = d[np.abs(d.x) <= x_max]
+            return d.y
+
+        return util.mll(process(mu), process(std), process(self))
 
     def make_noisy(self, var):
         """
@@ -96,6 +92,60 @@ class Data(object):
         :return: positive part of data
         """
         return self._split(self.x >= 0)[0]
+
+    def shift(self, delta_x):
+        """
+        Shift the data by some amount.
+
+        :param delta_x: amount to shift by
+        :return: shifted data
+        """
+        return Data(self.x + delta_x, self.y)
+
+    def autocorrelation(self):
+        """
+        Compute autocorrelation of the data.
+
+        :return: autocorrelation
+        """
+        dist = self.x[-1] - self.x[0]
+        return Data(np.linspace(-dist, dist, 2 * len(self.x) - 1),
+                    np.convolve(self.y[::-1], self.y))
+
+    def fft_db(self):
+        """
+        Compute the modulus of the DFT in decibel. Assuming that the
+        data is evenly spaced.
+
+        :return: amplitude of spectrum in decibel and sampling frequency
+        """
+        spec = util.fft_db(util.zero_pad(self.y, 1000))
+        return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
+
+    def equals_approx(self, other):
+        """
+        Check whether data set is approximately equal to another data set.
+
+        :param other: other data set
+        :return: equal
+        """
+        return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
+
+    def at(self, other_x):
+        """
+        Find the data at some new x values through interpolation.
+
+        :param other_x: new x values
+        :return: new data
+        """
+        return Data(other_x, np.interp(other_x, self.x, self.y))
+
+    @property
+    def dx(self):
+        """
+        Assuming that `x` is evenly spaced, that spacing.
+        """
+        return self.x[1] - self.x[0]
 
     @property
     def energy(self):
@@ -124,6 +174,42 @@ class Data(object):
         Standard deviation of data.
         """
         return np.std(self.y, ddof=1)
+
+    @property
+    def len(self):
+        """
+        Number of data points.
+        """
+        return len(self.x)
+
+    @property
+    def max(self):
+        """
+        Maximum of data.
+        """
+        return max(self.y)
+
+    @property
+    def min(self):
+        """
+        Minimum of data.
+        """
+        return min(self.y)
+
+    @property
+    def domain(self):
+        """
+        Domain of data.
+        """
+        return min(self.x), max(self.x)
+
+    @property
+    def range(self):
+        """
+        Range of data.
+        """
+        return min(self.y), max(self.y)
+
 
     def _assert_compat(self, other):
         if not np.allclose(self.x, other.x):
@@ -164,7 +250,7 @@ class Data(object):
         return self.__mul__(other)
 
     def __getitem__(self, item):
-        return self.y[item]
+        return Data(self.x[item], self.y[item])
 
     @classmethod
     def from_gp(cls, sess, kernel, t):
@@ -199,27 +285,28 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
 
     :param n: number of response data points
     :param h_wav_fn: HRIR WAV file
+    :param resample: number of times to resample
     :return: data for function, filter, and noise
     """
     # Load data
     h = Data.from_wav(h_wav_fn)
-    dt = h.x[1] - h.x[0]
+    h.x -= 1.05e-3  # Shift according to results of `hrir_shift.py`
 
-    # Take extra `len(h.x)` points to avoid transition effects
-    t = np.arange(n + len(h.x)) * dt
+    # Take `h.len` extra points to avoid transition effects
+    t = np.arange(n + h.len) * h.dx
     for i in range(resample + 1):
-        x = Data(t, np.random.randn(n + len(h.x)))
+        x = Data(t, np.random.randn(n + h.len))
     x /= x.std  # Make sure noise is unity variance
 
     # Convolve and take the right fragment
-    f = Data(t, np.convolve(h.y, x.y)).fragment(n, len(h.x))[0]
+    f = Data(t, np.convolve(h.y, x.y)).fragment(n, h.len)[0]
 
-    k = Data(np.linspace(-h.x[-1], h.x[-1],  2 * len(h.x) - 1),
-             np.convolve(h.y[::-1], h.y))
+    # Compute exact kernel
+    k = h.autocorrelation()
 
     # Normalise
     h /= h.energy ** .5
-    k /= max(k.y)
+    k /= k.max
     f /= f.std
 
     return f, k, h
@@ -257,7 +344,7 @@ def load_gp_exp(sess, n=250, k_len=.1):
 
     # Normalise
     f -= f.mean
-    k /= max(k.y)
+    k /= k.max
     return f, k
 
 
@@ -275,7 +362,6 @@ def load_akm(sess, causal, n=250, nh=31, tau_w=.1, tau_f=.05, resample=0):
     :return: data for function, kernel, and filter, and parameters of the AKM
     """
     # Config
-    frac_tau_f_pos = .1
     k_stretch = 8  # Causal case will range from 0 to 6
     e = Data(np.linspace(0, 1, n), None)
 
@@ -295,23 +381,17 @@ def load_akm(sess, causal, n=250, nh=31, tau_w=.1, tau_f=.05, resample=0):
 
     # Construct data
     f = akm.f()
-    tk = np.linspace(-k_stretch * tau_w,
-                     k_stretch * tau_w, 301)
+    tk = np.linspace(-k_stretch * tau_w, k_stretch * tau_w, 301)
     k = akm.k(tk)
-    i = util.nearest_index(tk, frac_tau_f_pos * tau_f)
-    h = akm.h(tk, assert_positive_at_index=i)
+    h = akm.h(tk)
 
     # Normalise
     f -= f.mean
     f /= f.std
     h /= h.energy_causal ** .5
-    k /= max(k.y)
+    k /= k.max
 
-    # Compute PSD
-    psd = util.psd(util.zero_pad(k.y, 1000))
-    psd = Data(util.fft_freq(len(psd)), psd)
-
-    return f, k, h, psd
+    return f, k, h
 
 
 def load_seaice():
@@ -345,5 +425,3 @@ def load_seaice():
             datetime.date(df1.Year, df1.Month, df1.Day))
 
     df['decimal_date'] = dec_date
-
-

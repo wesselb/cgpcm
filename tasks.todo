@@ -1,21 +1,24 @@
 Code:
     Bugs:
     Refactor:
-        ☐ Plotting code
-        ☐ Make plots friendly for colour-blind people
-        ☐ Relative to absolute frequencies in PSD
+        ☐ Evaluate to Task abstract class
+        Plotting code:
+            ☐ Show inducing points @critical
+            ☐ Remove compare and full
+            ☐ Add option to compare smf again mf
+            ☐ Clean up TaskPlotter
+            ☐ Make plots friendly for colour-blind people
+            ☐ Refactor plot_compare into class
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
-        ☐ Show actual log likelihood during sampling
-        ☐ Store LLs
-        ☐ Redo prediction @critical
     Experiments:
         ☐ HRIR @started
         ☐ TIMIT
         ☐ Sea Ice
         ☐ Currency
         ☐ OU toy example
+        ☐ CO2, get data!
 
 Doc:
     ☐ Coz comments
@@ -31,6 +34,16 @@ Doc:
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Check interpolation and other plots @done (17-03-20 19:24) @project(Code / Bugs)
+ ✓ Why filter uncertainty zero at zero @done (17-03-20 18:28) @project(Code / Bugs)
+ ✓ Set Fs during training @done (17-03-20 01:25) @project(Code / Refactor)
+ ✓ Module names @done (17-03-20 01:25) @project(Code / Refactor)
+ ✓ In HRIR, shift filter so that it fits best @started @done (17-03-20 01:25) @project(Code / Bugs)
+ ✓ Relative to absolute frequencies in PSD @done (17-03-18 15:41) @project(Code / Refactor)
+ ✓ Store LLs @done (17-03-18 14:09) @project(Code / Features)
+ ✓ Show actual log likelihood during sampling @done (17-03-18 14:09) @project(Code / Features)
+ ✓ Cluster filter samples using gmm @critical @done (17-03-17 21:12) @project(Code / Features)
+ ✓ Redo prediction @critical @done (17-03-17 19:25) @project(Code / Features)
  ✓ Group handling by plots, return groups as a list instead of path @done (17-03-16 17:28) @project(Code / Refactor)
  ✓ Toy @done (17-03-16 14:19) @project(Code / Experiments)
  ✓ File name management system @critical @done (17-03-15 17:54) @project(Code / Features)

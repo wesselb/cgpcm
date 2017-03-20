@@ -1,4 +1,4 @@
-from core.tfutil import *
+from core.tf_util import *
 
 
 class Normal(object):

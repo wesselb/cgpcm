@@ -1,6 +1,6 @@
 import operator
 
-from tfutil import *
+from tf_util import *
 from util import is_numeric, is_inf
 
 
@@ -131,7 +131,7 @@ class Factor(object):
 
 class Term(object):
     """
-    Product of a constant and multiple `Factor` objects.
+    Product of a constant and multiple :class:`core.eq.Factor` objects.
 
     :param const: constant
     :param \*factors: factors
@@ -254,7 +254,7 @@ class Term(object):
 
 class Poly(object):
     """
-    Sum of several `Term` objects.
+    Sum of several :class:`core.eq.Term` objects.
 
     :param \*terms: terms
     """

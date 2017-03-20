@@ -1,6 +1,6 @@
 import unittest
 
-from eq import *
+from exponentiated_quadratic import *
 from util import inf
 
 

@@ -4,7 +4,7 @@ import argparse
 from core.cgpcm import AKM
 from core.plot import Plotter2D
 from core.util import *
-from core.tfutil import *
+from core.tf_util import *
 from core.data import Data
 import core.out as out
 
@@ -13,7 +13,7 @@ def plot(p, k, psd):
     mu, lowers, uppers = k
     for lower, upper in zip(lowers, uppers):
         p.fill(lower.x, lower.y, upper.y, fill_alpha=.01, fill_colour='b')
-    p.plot(mu.x, mu.y, line_width=1.5, line_colour='b')
+    p.plot(mu.x, mu.y, line_width=1, line_colour='b')
     p.hide_ticks(x=True)
     if psd:
         p.lims(x=(-.05, .05), y=(-20, 30))
@@ -22,8 +22,8 @@ def plot(p, k, psd):
 
 
 parser = argparse.ArgumentParser(description='Plot prior kernel or PSD.')
-parser.add_argument('--psd', action='store_true', help='plot PSD')
-parser.add_argument('--show', action='store_true', help='show plots')
+parser.add_argument('-p', '--psd', action='store_true', help='plot PSD')
+parser.add_argument('-s', '--show', action='store_true', help='show plots')
 args = parser.parse_args()
 
 # Initialise
@@ -33,8 +33,8 @@ recipe_c = {'sess': sess,
             'e': Data(np.linspace(0, 1, 150), None),
             'nx': 0,
             'nh': 51,
-            'k_len': .1,
-            'k_wiggles': 1,
+            'tau_w': .1,
+            'tau_f': .1,
             'causal': True}
 recipe_ac = dict2(recipe_c, causal=False)
 

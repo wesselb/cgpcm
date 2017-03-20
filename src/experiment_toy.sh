@@ -2,7 +2,7 @@
 
 opts=$@
 from_resample=0
-to_resample=100
+to_resample=40
 
 for (( i = $from_resample; i <= $to_resample; i++ )); do
     # Causal sample

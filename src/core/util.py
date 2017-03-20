@@ -1,3 +1,5 @@
+from scipy.optimize import minimize_scalar
+from sklearn import mixture
 import colorsys
 import scipy.stats
 import numpy as np
@@ -5,7 +7,7 @@ import tensorflow as tf
 import os
 import pickle
 
-from tfutil import shape
+from tf_util import shape
 
 # Some handy constants
 lower_perc = 100 * scipy.stats.norm.cdf(-2)
@@ -78,9 +80,10 @@ def fft_freq(*args, **kw_args):
     return np.fft.fftshift(np.fft.fftfreq(*args, **kw_args))
 
 
-def psd(*args, **kw_args):
+def fft_db(*args, **kw_args):
     """
-    Similar to `np.fft.fft`, but computes the PSD in dB instead.
+    Similar to :func:`core.util.fft`, but returns the absolute value of the
+    result in decibel.
     """
     return 10 * np.log10(np.abs(fft(*args, **kw_args)))
 
@@ -128,6 +131,8 @@ def mll(mu, std, y):
     :param y: references
     :return: mean log loss
     """
+    # Filter out absolutely certain data points
+    mu, std, y = mu[std > 0], std[std > 0], y[std > 0]
     return .5 * np.mean(np.log(2 * np.pi * std ** 2)
                         + (mu - y) ** 2 / std ** 2)
 
@@ -203,3 +208,56 @@ def map_pickle(transformation, fns):
                 content = pickle.load(f)
             with open(fn, 'w') as f:
                 pickle.dump(transformation(content), f)
+
+
+def sign_smart(samples):
+    """
+    Assuming that all samples are similar up to a negation, this function
+    determines those negations. Samples must be a matrix where the rows
+    correspond to observations.
+
+    :param samples: samples
+    :return: relative signs of samples
+    """
+    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full')
+    gmm.fit(samples)
+    return 2 * gmm.predict(samples) - 1
+
+
+def sign_reference(sample, reference):
+    """
+    Set the sign of a sample according to a reference. The arguments must be
+    instances of :class:`core.data.Data`.
+
+    :param sample: sample
+    :param reference: reference
+    :return: sign
+    """
+
+    def dist(x):
+        return np.sum((np.interp(reference.x, x.x, x.y) - reference.y) ** 2)
+
+    return 1 if dist(sample) < dist(-sample) else -1
+
+
+def optimal_shift(sample, reference, bounds=None):
+    """
+    Find the amount by which a sample should be shifted so that it is closest
+    to a reference. The arguments be be instances of :class:`core.data.Data`.
+
+    :param sample: sample
+    :param reference: reference
+    :param bounds: bounds on shift
+    :return: amount by which to shift `sample`
+    """
+
+    def loss(delta_x):
+        return np.sum((np.interp(reference.x,
+                                 sample.x + delta_x,
+                                 sample.y) - reference.y) ** 2)
+
+    if bounds is None:
+        delta_x = minimize_scalar(loss).x
+    else:
+        delta_x = minimize_scalar(loss, method='bounded', bounds=bounds).x
+    return delta_x
