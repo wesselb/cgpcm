@@ -24,14 +24,14 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=200,
-                          iters=1000,
+                          iters=2000,
                           iters_post=0,
                           samps=500,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=500,
-                          nx=200,
+                          n=600,
+                          nx=300,
                           nh=121,
                           noise_init=2e-3,
                           tau_w=1e-3,
