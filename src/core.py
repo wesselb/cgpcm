@@ -16,11 +16,12 @@ import core.experiment as exp
 sys.modules['core.exp'] = exp
 
 
-def fetch(specifications):
+def fetch(specifications, remote):
     """
     Fetch tasks from their specifications.
 
     :param specifications: specifications
+    :param remote: use remote cache
     :return: tasks
     """
     out.section('fetching tasks')
@@ -33,7 +34,8 @@ def fetch(specifications):
         try:
             module = importlib.import_module('tasks.{}'.format(task_name))
             fp = module.Experiment(options=task_options).config.fp
-            path = 'tasks/cache/' + str(fp) + '.pickle'
+            path = 'tasks/{}cache/'.format('remote/' if remote else '') \
+                   + str(fp) + '.pickle'
             with open(path) as f:
                 fetched_tasks.append(pickle.load(f))
         except IOError:
@@ -111,6 +113,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--show', action='store_true', help='show plots')
     parser.add_argument('--stats', action='store_true',
                         help='show statistics of tasks')
+    parser.add_argument('-r', '--remote', action='store_true',
+                        help='use remote cache')
 
     args = parser.parse_args()
 
@@ -141,7 +145,7 @@ if __name__ == '__main__':
             out.section_end()
 
     if args.stats or args.plot:
-        fetched_tasks = fetch(args.task)
+        fetched_tasks = fetch(args.task, remote=args.remote)
 
     # Showing statistics
     if args.stats:
