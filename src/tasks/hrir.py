@@ -24,9 +24,9 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=200,
-                          iters=2000,
+                          iters=1000,
                           iters_post=0,
-                          samps=1000,
+                          samps=500,
 
                           # Model options
                           causal_model=options['causal-model'],
@@ -56,49 +56,4 @@ class Experiment(Task):
                                  noise_init=self.config.noise_init)
         self._set_model(mod)
 
-    def report(self):
-        report = {'parameters': {'s2': self.data['s2'],
-                                 's2_f': self.data['s2_f'],
-                                 'alpha': self.data['alpha'],
-                                 'gamma': self.data['gamma'],
-                                 'ELBO MF': self.data['elbo_mf']}}
-        if 'elbo_smf' in self.data:
-            if len(self.data['elbo_smf']) == 3:
-                report['parameters']['ELBO SMF'] = self.data['elbo_smf'][0]
-            else:
-                report['parameters']['ELBO SMF'] = \
-                    {'estimate': self.data['elbo_smf'][0],
-                     'estimated std': self.data['elbo_smf'][1]}
 
-        def report_key(key_base, filter=lambda x: x):
-            key = key_base + '_pred'
-            ref = filter(self.data[key_base])
-            report = {'SMSE': {'MF': ref.smse(filter(self.data[key][0]))},
-                      'MLL': {'MF': ref.mll(filter(self.data[key][0]),
-                                            filter(self.data[key][3]))}}
-            if key + '_smf' in self.data:
-                report['SMSE']['SMF'] = \
-                    ref.smse(filter(self.data[key + '_smf'][0]))
-                report['MLL']['SMF'] = \
-                    ref.mll(filter(self.data[key + '_smf'][0]),
-                            filter(self.data[key + '_smf'][3]))
-            return report
-
-        def filter_twosided(x):
-            return x[np.abs(x.x) <= 2 * self.config.tau_w]
-
-        def filter_onesided(x):
-            return x[np.logical_and(x.x >= 0, x.x <= 2 * self.config.tau_w)]
-
-        # Correct filters
-        correct_filter(self, 'h_pred', 'h')
-        if 'h_pred_smf' in self.data:
-            correct_filter(self, 'h_pred_smf', 'h')
-
-        report.update({'prediction': {'function': report_key('f'),
-                                      'kernel': report_key('k',
-                                                           filter_twosided),
-                                      'filter': report_key('h',
-                                                           filter_onesided)}})
-
-        return report

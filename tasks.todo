@@ -5,7 +5,6 @@ Code:
         Plotting code:
             ☐ Show inducing points @critical
             ☐ Remove compare and full
-            ☐ Add option to compare smf again mf
             ☐ Clean up TaskPlotter
             ☐ Make plots friendly for colour-blind people
             ☐ Refactor plot_compare into class
@@ -34,6 +33,7 @@ Doc:
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Add option to compare smf again mf @done (17-03-21 12:20) @project(Code / Refactor / Plotting code)
  ✓ Check interpolation and other plots @done (17-03-20 19:24) @project(Code / Bugs)
  ✓ Why filter uncertainty zero at zero @done (17-03-20 18:28) @project(Code / Bugs)
  ✓ Set Fs during training @done (17-03-20 01:25) @project(Code / Refactor)

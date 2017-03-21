@@ -279,7 +279,9 @@ class CGPCM(Parametrisable):
             self.undo_precompute()
         if not self._precomputed:
             self.mats_symbolic = dict(self.mats)
-            self.mats = {k: self._run(v) for k, v in self.mats.items()}
+            ks, vs = zip(*self.mats.items())
+            vs = self._run(vs)
+            self.mats = {k: v for k, v in zip(ks, vs)}
             self._precomputed = True
 
     def undo_precompute(self):
@@ -491,7 +493,7 @@ class VCGPCM(CGPCM):
                              samples_h,
                              name='estimating ELBO for the SMF approximation '
                                   'using MC')
-        return np.mean(elbos), np.std(elbos) / len(sample_h) ** .5
+        return np.mean(elbos), np.std(elbos) / len(samples_h) ** .5
 
     def predict_k(self, t, samples_h=200, psd=False, normalise=True,
                   psd_pad=1000):

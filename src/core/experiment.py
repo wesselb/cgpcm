@@ -41,13 +41,6 @@ class Task(object):
         """
         pass
 
-    @abc.abstractmethod
-    def report(self):
-        """
-        Evaluate performance after prediction.
-        """
-        pass
-
     def _set_data(self, h=None, k=None, f=None, e=None):
         self.data['h'] = h
         self.data['k'] = k
@@ -74,6 +67,65 @@ class Task(object):
                           'mu': sess.run(self.mod.h.mean),
                           'var': sess.run(self.mod.h.var)})
         del self.mod
+
+    def report(self):
+        def from_data(key):
+            return self.data[key] if key in self.data else 'missing'
+
+        report = {'parameters': {'s2': from_data('s2'),
+                                 's2_f': from_data('s2_f'),
+                                 'alpha': from_data('alpha'),
+                                 'gamma': from_data('gamma'),
+                                 'ELBO MF': from_data('elbo_mf')},
+                  'training': {'iters pre': self.config.iters_pre,
+                               'iters': self.config.iters,
+                               'iters post': self.config.iters_post,
+                               'samples': self.config.samps,
+                               'n': self.config.n,
+                               'nx': self.config.nx,
+                               'nh': self.config.nh,
+                               'tau_w': self.config.tau_w,
+                               'tau_f': self.config.tau_f}}
+        if 'elbo_smf' in self.data:
+            if len(self.data['elbo_smf']) == 3:
+                report['parameters']['ELBO SMF'] = self.data['elbo_smf'][0]
+            else:
+                report['parameters']['ELBO SMF'] = \
+                    {'estimate': self.data['elbo_smf'][0],
+                     'estimated std': self.data['elbo_smf'][1]}
+
+        def report_key(key_base, filter=lambda x: x):
+            key = key_base + '_pred'
+            ref = filter(self.data[key_base])
+            report = {'SMSE': {'MF': ref.smse(filter(self.data[key][0]))},
+                      'MLL': {'MF': ref.mll(filter(self.data[key][0]),
+                                            filter(self.data[key][3]))}}
+            if key + '_smf' in self.data:
+                report['SMSE']['SMF'] = \
+                    ref.smse(filter(self.data[key + '_smf'][0]))
+                report['MLL']['SMF'] = \
+                    ref.mll(filter(self.data[key + '_smf'][0]),
+                            filter(self.data[key + '_smf'][3]))
+            return report
+
+        def filter_twosided(x):
+            return x[np.abs(x.x) <= 2 * self.config.tau_w]
+
+        def filter_onesided(x):
+            return x[np.logical_and(x.x >= 0, x.x <= 2 * self.config.tau_w)]
+
+        # Correct filters
+        correct_filter(self, 'h_pred', 'h')
+        if 'h_pred_smf' in self.data:
+            correct_filter(self, 'h_pred_smf', 'h')
+
+        report.update({'prediction': {'function': report_key('f'),
+                                      'kernel': report_key('k',
+                                                           filter_twosided),
+                                      'filter': report_key('h',
+                                                           filter_onesided)}})
+
+        return report
 
 
 class TaskConfig(Parametrisable):
@@ -416,6 +468,9 @@ def plot_compare2(tasks, args):
                   grid_colour='none')
     p.figure()
 
+
+    tau_ws = 3
+
     # Process first task
     task1 = tasks[options['index1']]
     data1, pt1 = task1.data, TaskPlotter(p, task1)
@@ -450,9 +505,13 @@ def plot_compare2(tasks, args):
         p.x_scale = 1
         x_unit = 's'
 
+    data1['tx_data'] = Data(data1['tx'], 0 * data1['tx'])
+    data1['th_data'] = Data(data1['th'], 0 * data1['th'])
+
     # Function
     p.subplot2grid((2, 6), (0, 0), colspan=6)
     p.x_shift = -data1['f'].x[0]
+    pt1.marker('tx_data', 'k')
     pt1.marker('f', 'truth', 'Truth')
     if not data1['f'].equals_approx(data1['e']):
         pt1.marker('e', 'observation', 'Observations')
@@ -464,16 +523,17 @@ def plot_compare2(tasks, args):
     p.labels(y='$f\,|\,h$', x='$t$ ({})'.format(x_unit))
     p.x_shift = 0
 
-    pt1.bound(x_min=0, x_max=2 * task1.config.tau_w)
+    pt1.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
     if task2:
-        pt2.bound(x_min=0, x_max=2 * task1.config.tau_w)
+        pt2.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
 
     # Kernel
     if options['no-psd']:
         p.subplot2grid((2, 6), (1, 0), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 0), colspan=2)
-    p.lims(x=(0, 2 * task1.config.tau_w))
+    p.lims(x=(0, tau_ws * task1.config.tau_w))
+    pt1.marker('th_data', 'k')
     pt1.line('k', 'truth')
     pt1.fill('k_pred' + add1, 'task1')
     if task2:
@@ -485,7 +545,8 @@ def plot_compare2(tasks, args):
         p.subplot2grid((2, 6), (1, 3), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 2), colspan=2)
-    p.lims(x=(0, 2 * task1.config.tau_w))
+    p.lims(x=(0, tau_ws * task1.config.tau_w))
+    pt1.marker('th_data', 'k')
     pt1.line('h', 'truth')
     if options['correct-h']:
         correct_filter(task1, 'h_pred' + add1, 'h')
