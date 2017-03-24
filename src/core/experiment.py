@@ -115,9 +115,9 @@ class Task(object):
             return x[np.logical_and(x.x >= 0, x.x <= 2 * self.config.tau_w)]
 
         # Correct filters
-        correct_filter(self, 'h_pred', 'h')
+        correct_filter(self, 'h_pred', 'h_pred', 'h')
         if 'h_pred_smf' in self.data:
-            correct_filter(self, 'h_pred_smf', 'h')
+            correct_filter(self, 'h_pred_smf', 'h_pred_smf', 'h')
 
         report.update({'prediction': {'function': report_key('f'),
                                       'kernel': report_key('k',
@@ -245,13 +245,15 @@ def train(sess, task, debug_options):
         task.data['elbo_smf'] = mod.elbo_smf(samples)
 
 
-def correct_filter(task, key, reference_key):
+def correct_filter(task, key, out_key, reference_key, soft=False):
     """
     Correct the filter in a task.
 
     :param task: task
     :param key: key of predicted filter
+    :param out_key: key of corrected predicted filter
     :param reference_key: key of true filter
+    :param soft: soft correction: only adjust sign
     """
     mean, lower, upper, std = task.data[key]
     x_orig = mean.x
@@ -263,14 +265,17 @@ def correct_filter(task, key, reference_key):
     lower, upper = (lower, upper) if sign > 0 else (-upper, -lower)
 
     # Shift
-    delta = util.optimal_shift(mean, ref, bounds=(-10 * ref.dx,
-                                                  10 * ref.dx))
+    if not soft:
+        delta = util.optimal_shift(mean, ref, bounds=(-10 * ref.dx,
+                                                      10 * ref.dx))
+    else:
+        delta = 0
 
     # Save
-    task.data[key] = mean.shift(delta).at(x_orig), \
-                     lower.shift(delta).at(x_orig), \
-                     upper.shift(delta).at(x_orig), \
-                     std.shift(delta).at(x_orig)
+    task.data[out_key] = mean.shift(delta).at(x_orig), \
+                         lower.shift(delta).at(x_orig), \
+                         upper.shift(delta).at(x_orig), \
+                         std.shift(delta).at(x_orig)
 
 
 class TaskPlotter(object):
@@ -456,10 +461,13 @@ def plot_compare2(tasks, args):
                              desc='index of second plot in comparison')
     options.add_option('big', 'show big plot')
     options.add_option('correct-h', 'correct prediction for h')
+    options.add_option('soft-correct-h', 'correct sign of prediction for h')
     options.add_option('ms', 'rescale to milliseconds')
     options.add_option('no-psd', 'no-psd')
     options.add_option('mf1', 'plot instead MF prediction for first task')
     options.add_option('mf2', 'plot instead MF prediction for second task')
+    options.add_option('mp', 'zero phase the reference')
+    options.add_option('2side-h', 'plot both sides of the filter')
     options.parse(args)
 
     p = Plotter2D(figure_size=(20, 10) if options['big'] else (12, 6),
@@ -468,8 +476,7 @@ def plot_compare2(tasks, args):
                   grid_colour='none')
     p.figure()
 
-
-    tau_ws = 3
+    tau_ws = 2
 
     # Process first task
     task1 = tasks[options['index1']]
@@ -523,18 +530,31 @@ def plot_compare2(tasks, args):
     p.labels(y='$f\,|\,h$', x='$t$ ({})'.format(x_unit))
     p.x_shift = 0
 
-    pt1.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
-    if task2:
-        pt2.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
+    if options['2side-h']:
+        pt1.bound(x_min=-tau_ws * task1.config.tau_w,
+                  x_max=tau_ws * task1.config.tau_w)
+        if task2:
+            pt2.bound(x_min=-tau_ws * task1.config.tau_w,
+                      x_max=tau_ws * task1.config.tau_w)
+    else:
+        pt1.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
+        if task2:
+            pt2.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
 
     # Kernel
     if options['no-psd']:
         p.subplot2grid((2, 6), (1, 0), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 0), colspan=2)
-    p.lims(x=(0, tau_ws * task1.config.tau_w))
+    if options['2side-h']:
+        p.lims(x=(-tau_ws * task1.config.tau_w, tau_ws * task1.config.tau_w))
+    else:
+        p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'k')
     pt1.line('k', 'truth')
+    data1['k_emp'] = data1['f'].autocorrelation()
+    data1['k_emp'] /= data1['k_emp'].max
+    pt1.line('k_emp', 'observation')
     pt1.fill('k_pred' + add1, 'task1')
     if task2:
         pt2.fill('k_pred' + add2, 'task2')
@@ -545,16 +565,30 @@ def plot_compare2(tasks, args):
         p.subplot2grid((2, 6), (1, 3), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 2), colspan=2)
-    p.lims(x=(0, tau_ws * task1.config.tau_w))
+    if options['2side-h']:
+        p.lims(x=(-tau_ws * task1.config.tau_w, tau_ws * task1.config.tau_w))
+    else:
+        p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'k')
-    pt1.line('h', 'truth')
+    if options['mp']:
+        data1['h_mp'] = data1['h'].minimum_phase()
+        data1['h_mp'] /= data1['h_mp'].energy ** .5
+        pt1.line('h_mp', 'truth')
+    else:
+        pt1.line('h', 'truth')
     if options['correct-h']:
-        correct_filter(task1, 'h_pred' + add1, 'h')
-    pt1.fill('h_pred' + add1, 'task1')
+        correct_filter(task1, 'h_pred' + add1, 'h2_pred' + add1, 'h',
+                       soft=options['soft-correct-h'])
+        pt1.fill('h2_pred' + add1, 'task1')
+    else:
+        pt1.fill('h_pred' + add1, 'task1')
     if task2:
         if options['correct-h']:
-            correct_filter(task2, 'h_pred' + add2, 'h')
-        pt2.fill('h_pred' + add2, 'task2')
+            correct_filter(task2, 'h_pred' + add2, 'h2_pred' + add2, 'h',
+                           soft=options['soft-correct-h'])
+            pt2.fill('h2_pred' + add2, 'task2')
+        else:
+            pt2.fill('h_pred' + add2, 'task2')
     p.labels(y='$h$', x='$t$ ({})'.format(x_unit))
 
     if not options['no-psd']:
@@ -599,7 +633,8 @@ def plot_compare2(tasks, args):
 
     # Return `Plotter2D` instance and file path
     fp = options.fp(ignore=['index1', 'index2', 'big', 'correct-h', 'ms',
-                            'no-psd', 'mf1', 'mf2'])
+                            'no-psd', 'mf1', 'mf2', 'soft-correct-h',
+                            '2side-h', 'mp'])
     if task2:
         fp += task1.config.fp & task2.config.fp
     else:

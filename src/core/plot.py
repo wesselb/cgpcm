@@ -9,6 +9,7 @@ with warnings.catch_warnings():
     import matplotlib.pyplot as plt
 
 import util
+import data
 
 
 def to_rbga(color, alpha=1.0):
@@ -264,6 +265,11 @@ class Plotter2D(Plotter):
                    'markeredgecolor': 'marker_colour',
                    'markersize': 'marker_size',
                    'label': 'label'}
+
+        # Unpack if instance of `core.Data` is provided
+        if y is None and type(x) == data.Data:
+            x, y = x.x, x.y
+
         if y is None:
             p = plt.plot(self.transform_y(x),
                          *args, **self._map(mapping, kw_args))

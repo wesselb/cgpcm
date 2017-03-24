@@ -114,7 +114,7 @@ if __name__ == '__main__':
     parser.add_argument('--stats', action='store_true',
                         help='show statistics of tasks')
     parser.add_argument('-r', '--remote', action='store_true',
-                        help='use remote cache')
+                        help='use remote task cache')
 
     args = parser.parse_args()
 
@@ -171,5 +171,5 @@ if __name__ == '__main__':
         out.section_end()
 
     # Showing plots
-    if len(args.plot) > 0 and args.show:
+    if args.plot and args.show:
         plt.show()

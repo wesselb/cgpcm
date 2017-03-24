@@ -1,5 +1,6 @@
 import scipy.io as sio
 import scipy.io.wavfile as sio_wav
+import scipy.signal as signal
 
 from tf_util import *
 import util
@@ -16,14 +17,14 @@ class Data(object):
     """
 
     def __init__(self, x, y=None):
-        self.x = x
-        self.n = shape(x)[0]
+        self.x = np.squeeze(x)
+        self.n = len(self.x)
         if y is None:
             # Data is missing
             self.y = np.zeros(shape(x))
             self.y.fill(np.nan)
         else:
-            self.y = y
+            self.y = np.squeeze(y)
 
     def subsample(self, n):
         """
@@ -139,6 +140,28 @@ class Data(object):
         :return: new data
         """
         return Data(other_x, np.interp(other_x, self.x, self.y))
+
+    def zero_phase(self):
+        """
+        Transform signal to zero-phase form.
+
+        :return: zero-phase form
+        """
+        y = np.fft.ifft(np.abs(np.fft.fft(self.y)))
+        y = np.real(np.fft.fftshift(y))
+        x = self.dx * np.arange(self.n)
+        x -= x[self.n / 2]
+        return Data(x, y)
+
+    def minimum_phase(self):
+        """
+        Transform signal to minimum-phase form.
+
+        :return: minimum-phase form
+        """
+        log_mag = np.log(np.abs(np.fft.fft(self.y)))
+        y = np.real(np.fft.ifft(np.exp(signal.hilbert(log_mag).conj())))
+        return Data(self.dx * np.arange(len(y)), y)
 
     @property
     def dx(self):
@@ -290,7 +313,6 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
     """
     # Load data
     h = Data.from_wav(h_wav_fn)
-    h.x -= 1.05e-3  # Shift according to results of `hrir_shift.py`
 
     # Take `h.len` extra points to avoid transition effects
     t = np.arange(n + h.len) * h.dx

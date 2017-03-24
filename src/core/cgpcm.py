@@ -50,11 +50,11 @@ class CGPCM(Parametrisable):
         vars = {}
 
         # Config
-        k_stretch = 3
+        tau_ws = 2
         causal_extra_points = 2
 
         # Acausal parameters
-        alpha = length_scale(tau_w)
+        alpha = 2 * length_scale(tau_w)
         gamma = length_scale(tau_f) - .5 * alpha
         s2_f, vars['s2_f'] = var_pos(to_float((2 * alpha / np.pi) ** .5))
 
@@ -82,14 +82,14 @@ class CGPCM(Parametrisable):
 
         # Inducing points for filter
         if causal:
-            th = np.linspace(0, 2 * k_stretch * tau_w, nh)
+            th = np.linspace(0, 2 * tau_ws * tau_w, nh)
             dth = th[1] - th[0]
             # Extra inducing points to account for derivatives at zero
             th -= dth * causal_extra_points
             th = constant(th)
         else:
-            th = constant(np.linspace(-k_stretch * tau_w,
-                                      k_stretch * tau_w, nh))
+            th = constant(np.linspace(-tau_ws * tau_w,
+                                      tau_ws * tau_w, nh))
 
         # Initial observation noise
         s2, vars['s2'] = var_pos(to_float(noise_init))
@@ -562,6 +562,7 @@ class VCGPCM(CGPCM):
         if is_numeric(samples_h):
             h = self.h.sample()
             samples_h = [self._run(h) for i in range(samples_h)]
+        n = len(samples_h)
 
         h = placeholder(shape(self.h.sample()))
         Kfu = self.kernel_h(t, self.th)
@@ -569,28 +570,37 @@ class VCGPCM(CGPCM):
         samples = map_progress(lambda x: self._run(mu, feed_dict={h: x}),
                                samples_h,
                                name='filter prediction using MC')
-        samples = np.concatenate(samples, axis=1)
 
+        # Check whether to correct the signs of the samples
         if correct_signs:
-            # Set samples to correct sign
+            samples = np.concatenate(samples, axis=1)  # Pack
             samples *= util.sign_smart(samples.T)[None, :]
+            samples = np.split(samples, n, 1)  # Unpack
+
+        def process(sample):
+            y = data.Data(t, sample)
+            if self.causal:
+                y = y.positive_part()
+            y = y.minimum_phase()
+
+            # Check whether to normalise predictions
+            if normalise:
+                y /= y.energy ** .5
+
+            return y.y[:, None]
+
+        samples = [process(sample) for sample in samples]
+        if self.causal:
+            t = data.Data(t).positive_part().minimum_phase().x
+        else:
+            t = data.Data(t).minimum_phase().x
 
         # Compute statistics
+        samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
-
-        # Check whether to normalise prediction
-        if normalise:
-            if self.causal:
-                scale = data.Data(t, mu).energy_causal ** .5
-            else:
-                scale = data.Data(t, mu).energy ** .5
-            mu /= scale
-            lower /= scale
-            upper /= scale
-            std /= scale
 
         return data.Data(t, mu), \
                data.Data(t, lower), \
