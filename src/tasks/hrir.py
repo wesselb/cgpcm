@@ -24,18 +24,18 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=200,
-                          iters=2000,
+                          iters=200,
                           iters_post=0,
-                          samps=500,
+                          samps=200,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=600,
-                          nx=300,
-                          nh=121,
-                          noise_init=2e-3,
+                          n=200,
+                          nx=100,
+                          nh=101,
+                          noise_init=1e-3,
                           tau_w=1e-3,
-                          tau_f=.2e-3,
+                          tau_f=.1e-3,
                           resample=options['resample'])
 
     def load(self, sess):
@@ -55,5 +55,3 @@ class Experiment(Task):
                                  causal=self.config.causal_model,
                                  noise_init=self.config.noise_init)
         self._set_model(mod)
-
-
