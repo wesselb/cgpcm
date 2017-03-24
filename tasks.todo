@@ -1,9 +1,11 @@
 Code:
     Bugs:
+        ☐ Normalisation cosistently sample-wise or at prediction @critical
+        ☐ Normalisation in zero phase settings
     Refactor:
         ☐ Evaluate to Task abstract class
+        ☐ Zero padding using FFT
         Plotting code:
-            ☐ Show inducing points @critical
             ☐ Remove compare and full
             ☐ Clean up TaskPlotter
             ☐ Make plots friendly for colour-blind people
@@ -11,7 +13,9 @@ Code:
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
+        ☐ Predict given a model @critical Then repredict toy problems
     Experiments:
+        ☐ Toy @started
         ☐ HRIR @started
         ☐ TIMIT
         ☐ Sea Ice
@@ -26,13 +30,19 @@ Doc:
     ☐ More details for experiments
 
  Notes:
+     ☐ Haar measure theory
+     ☐ Integrate over phases
+     ☐ Resolve identifiability in model
+     ☐ Zero phase/minimum phase
      Further possible experiments:
          ☐ Data concerning exoplanets from a NIPS paper
          ☐ Chaotic time series
 
 
+
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Show inducing points @critical @done (17-03-22 11:18) @project(Code / Refactor / Plotting code)
  ✓ Add option to compare smf again mf @done (17-03-21 12:20) @project(Code / Refactor / Plotting code)
  ✓ Check interpolation and other plots @done (17-03-20 19:24) @project(Code / Bugs)
  ✓ Why filter uncertainty zero at zero @done (17-03-20 18:28) @project(Code / Bugs)
