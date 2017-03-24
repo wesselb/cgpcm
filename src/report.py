@@ -121,10 +121,10 @@ def report_prediction(key):
                                  ['prediction', key, 'MLL', 'SMF'])}
 
 
-data_sets = {'hrir100': {'seeds': [102, 103, 104, 105, 106, 107, 108, 109, 112,
-                                   113, 114],
+data_sets = {'hrir100': {'seeds': [100, 101, 102, 103, 105, 107, 108, 109, 110,
+                                   111, 112, 113, 114, 116, 117, 120],
                          'base_path': 'output/stats/hrir/causal-model={},'
-                                      'post=n,resample={}.pickle'},
+                                      'resample={}.pickle'},
              'hrir200': {'seeds': [200, 201, 202, 203, 204, 206],
                          'base_path': 'output/stats/hrir/causal-model={},'
                                       'resample={}.pickle'}}
