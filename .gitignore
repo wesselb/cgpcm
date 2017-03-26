@@ -2,6 +2,8 @@
 src/iterate.dat
 src/debug.ctl
 *.pickle
+*.so
+*.o
 
 # Auxilary scripts
 src/experiments.sh
