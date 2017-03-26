@@ -546,8 +546,9 @@ class EQ(object):
         # Evaluate CDF for all `x1` and `x2`
         orig_shape = shape(mu1)
         num = reduce(operator.mul, orig_shape, 1)
-        xs = tf.reshape(tf.stack([x1, x2], axis=-1), [num, 2])
-        cdf_part = tf.reshape(bvn_cdf2(xs, rho), orig_shape)
+        x1 = tf.reshape(x1, [num])
+        x2 = tf.reshape(x2, [num])
+        cdf_part = tf.reshape(bvn_cdf(x1, x2, rho), orig_shape)
 
         # Compute exponentiated part
         quad_form = .5 * (ia11 * b1 ** 2 + ia22 * b2 ** 2 + 2 * ia12 * b1 * b2)

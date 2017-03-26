@@ -6,13 +6,6 @@ from tensorflow.python.framework import ops
 
 import config
 
-from rpy2.robjects import r
-from rpy2.robjects.packages import importr
-import rpy2.robjects.numpy2ri
-
-rpy2.robjects.numpy2ri.activate()
-importr('pbivnorm')
-
 
 def pw_dists2(x, y, output_norms=False):
     """
@@ -420,75 +413,48 @@ class Session(object):
         return self.sess.close()
 
 
-def _bvn_cdf(x, mu, var):
-    """
-    Bivariate normal CDF.
-
-    :param x: matrix where rows correspond to points
-    :param mu: mean as a row vector
-    :param var: variance
-    :return: CDF evaluated at the rows of `x`
-    """
-    x -= mu
-    x /= np.sqrt(np.diag(var))
-    rho = var[0, 1] / np.sqrt(var[0, 0] * var[1, 1])
-    return _bvn_cdf2(x, rho)
+bvn_cdf_op = tf.load_op_library('core/bvn_cdf.so').bvn_cdf
 
 
-def _bvn_cdf2(x, rho):
+def bvn_cdf(x, y, rho):
     """
     Standard bivariate normal CDF.
 
-    :param x: matrix where rows correspond to points
-    :param rho: correlation
-    :return: CDF evaluated at the rows of `x`
+    :param x: vector of xs
+    :param y: vector of ys
+    :param rho: correlation coefficient
+    :return: vector of CDFs
     """
-    return r.pbivnorm(x, rho=rho)
+    return bvn_cdf_op(x, y, rho)
 
 
-def _bvn_cdf2_grad(op, grad):
+@ops.RegisterGradient("BvnCdf")
+def _bvn_cdf_grad(op, grad):
     """
-    TensorFlow gradient for `bvn_cdf2`.
+    TensorFlow gradient for `bvn_cdf`.
 
     :param op: operation
     :param grad: initial gradient
     :return: gradient
     """
-    xs = op.inputs[0][:, 0]
-    ys = op.inputs[0][:, 1]
-    rho = op.inputs[1]
+    xs = op.inputs[0]
+    ys = op.inputs[1]
+    rho = op.inputs[2]
     q = tf.sqrt(1 - rho ** 2)
 
     pdfs = 1 / (2 * np.pi * q) \
            * tf.exp(-(xs ** 2 - 2 * rho * xs * ys + ys ** 2)
                     / (2 * (1 - rho ** 2)))
-    grad_rho = sum(grad * pdfs)
+    grad_rho = sum(grad * pdfs, axis=0)
 
     dist_z = tf_dists.Normal(to_float(0), to_float(1))
     dist_x = tf_dists.Normal(rho * xs, q)
     dist_y = tf_dists.Normal(rho * ys, q)
-    grad_x = tf.stack([grad, grad], axis=-1) \
-             * tf.stack([dist_z.prob(xs) * dist_x.cdf(ys),
-                         dist_z.prob(ys) * dist_y.cdf(xs)], axis=-1)
 
-    return [grad_x, grad_rho]
+    grad_x = grad * dist_z.prob(xs) * dist_x.cdf(ys)
+    grad_y = grad * dist_z.prob(ys) * dist_y.cdf(xs)
 
-
-def bvn_cdf2(x, rho, name=None):
-    """
-    TensorFlow operation for standard bivariate normal CDF.
-
-    :param x: matrix where rows correspond to points
-    :param rho: correlation
-    :param name: name of operation
-    :return: CDF evaluated at the rows of `x`
-    """
-    with ops.name_scope(name, 'bvn_cdf2', [x]) as name:
-        return py_func(_bvn_cdf2,
-                       [x, rho],
-                       [config.dtype],
-                       grad=_bvn_cdf2_grad,
-                       name=name)[0]
+    return [grad_x, grad_y, grad_rho]
 
 
 def py_func(*args, **kw_args):
