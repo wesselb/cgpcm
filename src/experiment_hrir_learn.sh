@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-from_resample=100
-to_resample=120
+from_resample=$1
+to_resample=$2
 
 for (( i = $from_resample; i <= $to_resample; i++ )); do
     ./core.py -t hrir resample $i causal-model \

@@ -7,7 +7,7 @@ import core.data as data
 f, k, h = data.load_hrir(1000)
 
 print 'GO'
-h = h.minimum_phase()
+h = h.zero_pad(1000).minimum_phase()
 print 'Finished'
 
 p = plot.Plotter2D()

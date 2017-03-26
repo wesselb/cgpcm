@@ -175,6 +175,8 @@ def train(sess, task, debug_options):
                       {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
                       {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
                       {'name': 'gamma', 'tensor': mod.gamma,
+                       'modifier': '.2e'},
+                      {'name': 'alpha', 'tensor': mod.alpha,
                        'modifier': '.2e'}]
     learn.minimise_lbfgs(sess, -elbo,
                          vars=[mod.vars['mu'], mod.vars['var']],
@@ -570,12 +572,14 @@ def plot_compare2(tasks, args):
     else:
         p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'k')
-    if options['mp']:
-        data1['h_mp'] = data1['h'].minimum_phase()
-        data1['h_mp'] /= data1['h_mp'].energy ** .5
-        pt1.line('h_mp', 'truth')
-    else:
-        pt1.line('h', 'truth')
+    # if options['mp']:
+    data1['h'] = data1['h'].minimum_phase()
+    #     data1['h_mp'] /= data1['h_mp'].energy ** .5
+    #     pt1.line('h_mp', 'truth')
+    # else:
+    pt1.line('h', 'truth')
+    data1['h_pred_smf'] = list(data1['h_pred_smf'])
+    data1['h_pred_smf'][0] = data1['h_pred_smf'][0].minimum_phase()
     if options['correct-h']:
         correct_filter(task1, 'h_pred' + add1, 'h2_pred' + add1, 'h',
                        soft=options['soft-correct-h'])

@@ -24,8 +24,8 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=200,
-                          iters=200,
-                          iters_post=0,
+                          iters=500,
+                          iters_post=50,
                           samps=200,
 
                           # Model options

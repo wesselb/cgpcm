@@ -153,6 +153,20 @@ class Data(object):
         x -= x[self.n / 2]
         return Data(x, y)
 
+    def zero_pad(self, n):
+        """
+        Zero pad the signal.
+
+        :param n: number of points to add
+        :return: zero-padded signal
+        """
+        x_app = self.dx * np.arange(1, n + 1)
+        y_app = np.zeros(n)
+        return Data(np.concatenate((self.x[0] - x_app[::-1],
+                                    self.x,
+                                    self.x[-1] + x_app[::-1])),
+                    np.concatenate((y_app, self.y, y_app)))
+
     def minimum_phase(self):
         """
         Transform signal to minimum-phase form.
