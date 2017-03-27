@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-from_resample=0
-to_resample=40
+from_resample=$1
+to_resample=$2
+opts=${@:3:${#}}
 
 for (( i = $from_resample; i <= $to_resample; i++ )); do
     # Causal sample
@@ -10,7 +11,7 @@ for (( i = $from_resample; i <= $to_resample; i++ )); do
               -p compare2 index1 0 index2 0 mf1 \
               -p compare2 index1 1 index2 1 mf1 \
               -p compare2 index1 0 index2 1 \
-              --learn
+              $opts
 
     # Acausal sample
     ./core.py -t toy resample $i causal-model \
@@ -18,5 +19,5 @@ for (( i = $from_resample; i <= $to_resample; i++ )); do
               -p compare2 index1 0 index2 0 mf1 \
               -p compare2 index1 1 index2 1 mf1 \
               -p compare2 index1 0 index2 1 \
-              --learn
+              $opts
 done

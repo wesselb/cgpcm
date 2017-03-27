@@ -114,10 +114,8 @@ class Task(object):
         def filter_onesided(x):
             return x[np.logical_and(x.x >= 0, x.x <= 2 * self.config.tau_w)]
 
-        # Correct filters
-        correct_filter(self, 'h_pred', 'h_pred', 'h')
-        if 'h_pred_smf' in self.data:
-            correct_filter(self, 'h_pred_smf', 'h_pred_smf', 'h')
+        # Correct reference filter
+        self.data['h'] = self.data['h'].minimum_phase()
 
         report.update({'prediction': {'function': report_key('f'),
                                       'kernel': report_key('k',
