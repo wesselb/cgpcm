@@ -548,6 +548,7 @@ class EQ(object):
         num = reduce(operator.mul, orig_shape, 1)
         x1 = tf.reshape(x1, [num])
         x2 = tf.reshape(x2, [num])
+        rho *= ones(shape(x1))
         cdf_part = tf.reshape(bvn_cdf(x1, x2, rho), orig_shape)
 
         # Compute exponentiated part
