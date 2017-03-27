@@ -173,9 +173,23 @@ class Data(object):
 
         :return: minimum-phase form
         """
-        log_mag = np.log(np.abs(np.fft.fft(self.y)))
-        y = np.real(np.fft.ifft(np.exp(signal.hilbert(log_mag).conj())))
-        return Data(self.dx * np.arange(len(y)), y)
+        mag = np.abs(np.fft.fft(self.y))
+        spec = np.exp(signal.hilbert(np.log(mag)).conj())
+        y = np.real(np.fft.ifft(spec))
+        return Data(np.linspace(self.x[0], self.x[-1], len(y)), y)
+
+    def interpolate_fft(self, factor=2):
+        """
+        Use the FFT to interpolate.
+        
+        :param factor: factor by which to interpolate
+        :return: interpolated data
+        """
+        spec = np.fft.fftshift(np.fft.fft(self.y))
+        spec = util.zero_pad(spec, (factor - 1) * (self.n / 2))
+        y = np.real(np.fft.ifft(np.fft.fftshift(spec)))
+        scale = float(len(y)) / self.n
+        return Data(np.linspace(self.x[0], self.x[-1], len(y)), scale * y)
 
     @property
     def dx(self):
