@@ -125,7 +125,8 @@ data_sets = {'hrir100': {'seeds': [100, 101, 102, 103, 105, 107, 108, 109, 110,
                                    111, 112, 113, 114, 116, 117, 120],
                          'base_path': 'output/stats/hrir/causal-model={},'
                                       'resample={}.pickle'},
-             'hrir200': {'seeds': [200, 201, 202, 203, 204, 206],
+             'hrir200': {'seeds': [210, 211, 212, 213, 214, 215, 216, 217, 218,
+                                   219, 220, 221, 223, 224, 225, 226],
                          'base_path': 'output/stats/hrir/causal-model={},'
                                       'resample={}.pickle'}}
 
