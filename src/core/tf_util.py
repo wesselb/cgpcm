@@ -1,10 +1,17 @@
 import tensorflow as tf
 import numpy as np
-import tensorflow.contrib.distributions as tf_dists
+import os
+import imp
 from tensorflow.python.client import timeline
-from tensorflow.python.framework import ops
 
 import config
+
+
+# Load bivariate normal CDF
+os.environ['BVN_CDF'] = os.environ['BVN_CDF_REPO']
+bvn_cdf = imp.load_source('bvn_cdf',
+                          os.path.join(os.environ['BVN_CDF_REPO'],
+                                       'bvn_cdf.py')).bvn_cdf
 
 
 def pw_dists2(x, y, output_norms=False):
@@ -411,50 +418,6 @@ class Session(object):
         Alias for `tf.Session.close`.
         """
         return self.sess.close()
-
-
-bvn_cdf_op = tf.load_op_library('core/bvn_cdf.so').bvn_cdf
-
-
-def bvn_cdf(x, y, rho):
-    """
-    Standard bivariate normal CDF.
-
-    :param x: vector of xs
-    :param y: vector of ys
-    :param rho: correlation coefficient
-    :return: vector of CDFs
-    """
-    return bvn_cdf_op(x, y, rho)
-
-
-@ops.RegisterGradient("BvnCdf")
-def _bvn_cdf_grad(op, grad):
-    """
-    TensorFlow gradient for `bvn_cdf`.
-
-    :param op: operation
-    :param grad: initial gradient
-    :return: gradient
-    """
-    xs = op.inputs[0]
-    ys = op.inputs[1]
-    rho = op.inputs[2]
-    q = tf.sqrt(1 - rho ** 2)
-
-    pdfs = 1 / (2 * np.pi * q) \
-           * tf.exp(-(xs ** 2 - 2 * rho * xs * ys + ys ** 2)
-                    / (2 * (1 - rho ** 2)))
-    grad_rho = sum(grad * pdfs, axis=0)
-
-    dist_z = tf_dists.Normal(to_float(0), to_float(1))
-    dist_x = tf_dists.Normal(rho * xs, q)
-    dist_y = tf_dists.Normal(rho * ys, q)
-
-    grad_x = grad * dist_z.prob(xs) * dist_x.cdf(ys)
-    grad_y = grad * dist_z.prob(ys) * dist_y.cdf(xs)
-
-    return [grad_x, grad_y, grad_rho]
 
 
 def py_func(*args, **kw_args):
