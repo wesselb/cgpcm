@@ -1,5 +1,6 @@
 Code:
     Bugs:
+        ☐ Store data for model reconstruction @critical
     Refactor:
         ☐ Data class to incorporate uncertainty
         ☐ Make plots friendly for colour-blind people
@@ -18,15 +19,11 @@ Code:
 
 Doc:
     ☐ Coz comments
-    ☐ Show data set for HRIR
     ☐ Add supplementary material
     ☐ More details for experiments
 
  Notes:
-     ☐ Haar measure theory
-     ☐ Integrate over phases
-     ☐ Resolve identifiability in model
-     ☐ Zero phase/minimum phase
+     ☐ Resolve identifiability in model: integrate over phases, or specify phase
      Further possible experiments:
          ☐ Data concerning exoplanets from a NIPS paper
          ☐ Chaotic time series

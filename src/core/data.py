@@ -143,8 +143,6 @@ class Data(object):
         :param other: other data set
         :return: equal
         """
-        print np.sum(np.abs(self.x - other.x))
-        print np.sum(np.abs(self.y - other.y))
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
     def at(self, other_x):

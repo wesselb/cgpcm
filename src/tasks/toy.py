@@ -13,7 +13,7 @@ class Experiment(Task):
         options.add_option('causal-sample', 'generate a causal sample')
         options.add_option('causal-model', 'use the causal model')
         options.add_value_option('resample', int,
-                                 'number of times to resamples',
+                                 'number of times to resample',
                                  required=True)
         options.parse(args)
 

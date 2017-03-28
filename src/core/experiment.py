@@ -6,6 +6,7 @@ from plot import Plotter2D
 from options import Options
 from data import Data
 from cgpcm import VCGPCM
+from tf_util import *
 import out
 import learn
 
@@ -247,13 +248,14 @@ def mod_from_task(sess, task, debug_options):
                              nx=task.config.nx,
                              nh=task.config.nh,
                              tau_w=task.config.tau_w,
-                             tau_f=task.config.tau_f,
-                             causal=task.config.causal,
+                             tau_f=task.config.tau_f * task.config.data_scale,
+                             causal=task.config.causal_model,
                              noise_init=task.config.noise_init)
+    initialise_uninitialised_variables(sess)
 
     # Restore variables
     for var_name in mod.vars.keys():
-        mod.vars[var_name].assign(task.data['vars'][var_name])
+        sess.run(mod.vars[var_name].assign(task.data['vars'][var_name]))
 
     # Precompute matrices
     out.state('precomputing')
@@ -277,7 +279,10 @@ def predict(sess, task, mod, debug_options):
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
     task.data['psd_pred'] = mod.predict_k(task.data['k'].x, psd=True)
     task.data['psd_pred_fs'] = 1. / task.data['k'].dx
-    task.data['h_pred'] = mod.predict_h(task.data['h'].x)
+    task.data['h_mp_pred'] = mod.predict_h(task.data['h'].x,
+                                           phase_transform='minimum_phase')
+    task.data['h_zp_pred'] = mod.predict_h(task.data['h'].x,
+                                           phase_transform='zero_phase')
     out.section_end()
 
     # ELBO for MF
@@ -295,8 +300,14 @@ def predict(sess, task, mod, debug_options):
                                                   samples_h=samples,
                                                   psd=True)
         task.data['psd_pref_smf_fs'] = 1. / task.data['k'].dx
-        task.data['h_pred_smf'] = mod.predict_h(task.data['h'].x,
-                                                samples_h=samples)
+        task.data['h_mp_pred_smf'] = mod.predict_h(task.data['h'].x,
+                                                   samples_h=samples,
+                                                   phase_transform='minimum_'
+                                                                   'phase')
+        task.data['h_zp_pred_smf'] = mod.predict_h(task.data['h'].x,
+                                                   samples_h=samples,
+                                                   phase_transform='zero_'
+                                                                   'phase')
         out.section_end()
 
         # ELBO for SMF
@@ -440,10 +451,12 @@ def plot_compare(tasks, args):
                              desc='index of second plot in comparison')
     options.add_option('big', 'show big plot')
     options.add_option('ms', 'rescale to milliseconds')
-    options.add_option('no-psd', 'no-psd')
+    options.add_option('no-psd', 'no PSD')
     options.add_option('mf0', 'plot instead MF prediction for first task')
     options.add_option('mf1', 'plot instead MF prediction for second task')
-    options.add_option('mp', 'minimum phase the reference')
+    options.add_option('zp', 'plot zero-phase prediction of filter')
+    options.add_value_option('tau-ws', desc='number of tau_w\'s to plot',
+                             value_type=float, default=2)
     options.parse(args)
 
     p = Plotter2D(figure_size=(20, 10) if options['big'] else (12, 6),
@@ -452,7 +465,7 @@ def plot_compare(tasks, args):
                   grid_colour='none')
     p.figure()
 
-    tau_ws = 2
+    tau_ws = options['tau-ws']
 
     # Process first task
     task1 = tasks[options['index0']]
@@ -487,9 +500,6 @@ def plot_compare(tasks, args):
     else:
         p.x_scale = 1
         x_unit = 's'
-
-    if options['mp']:
-        data1['h'] = data1['h'].minimum_phase()
 
     data1['tx_data'] = Data(data1['tx'], 0 * data1['tx'])
     data1['th_data'] = Data(data1['th'], 0 * data1['th'])
@@ -537,11 +547,13 @@ def plot_compare(tasks, args):
         p.subplot2grid((2, 6), (1, 2), colspan=2)
     p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'k')
-    pt1.line('h', 'truth')
-    data1['h_pred_smf'] = list(data1['h_pred_smf'])
-    data1['h_pred_smf'][0] = data1['h_pred_smf'][0].minimum_phase()
-    pt1.fill('h_pred' + add1, 'task1')
-    pt2.fill('h_pred' + add2, 'task2')
+    data1['h_mp'] = data1['h'].minimum_phase()
+    data1['h_zp'] = data1['h'].zero_phase()
+    pt1.line('h_{}'.format('zp' if options['zp'] else 'mp'), 'truth')
+    pt1.fill('h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add1),
+             'task1')
+    pt2.fill('h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add2),
+             'task2')
     p.labels(y='$h$', x='$t$ ({})'.format(x_unit))
 
     if not options['no-psd']:
@@ -586,7 +598,7 @@ def plot_compare(tasks, args):
 
     # Return `Plotter2D` instance and file path
     fp = options.fp(ignore=['index0', 'index1', 'ms', 'no-psd', 'mf0', 'mf1',
-                            'mp'])
+                            'zp', 'big', 'tau-ws'])
     if task2:
         fp += task1.config.fp & task2.config.fp
     else:

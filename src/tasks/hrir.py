@@ -2,7 +2,6 @@ import numpy as np
 
 from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
-from core.experiment import correct_filter
 import core.data as data
 
 

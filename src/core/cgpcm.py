@@ -407,9 +407,9 @@ class AKM(CGPCM):
         h = self._run(tf.squeeze(mul(Kfu, self.h_draw)))
 
         if self.causal:
-            return data.Data(t, h).positive_part().minimum_phase()
+            return data.Data(t, h).positive_part()
         else:
-            return data.Data(t, h).minimum_phase()
+            return data.Data(t, h)
 
     def k(self, t):
         """
@@ -553,13 +553,16 @@ class VCGPCM(CGPCM):
                data.Data(x, upper), \
                data.Data(x, std)
 
-    def predict_h(self, t, samples_h=200, normalise=True):
+    def predict_h(self, t, samples_h=200, normalise=True,
+                  phase_transform='minimum_phase'):
         """
         Predict filter.
 
         :param t: point to predict filter at
         :param samples_h: samples in Monte-Carlo estimation
         :param normalise: normalise prediction
+        :param phase_transform: phase transform, must be a method of
+                                :class:`core.data.Data`
         :return: predicted filter
         """
         if is_numeric(samples_h):
@@ -571,12 +574,13 @@ class VCGPCM(CGPCM):
         mu = mul(Kfu, h)
         samples = map_progress(lambda x: self._run(mu, feed_dict={h: x}),
                                samples_h,
-                               name='filter prediction using MC')
+                               name='filter prediction using MC '
+                                    '(transform: {})'.format(phase_transform))
 
         def process(sample):
             y = data.Data(t, sample)
             y = y.positive_part() if self.causal else y
-            y = y.minimum_phase()
+            y = getattr(y, phase_transform)()
 
             # Check whether to normalise predictions
             if normalise:
@@ -584,14 +588,12 @@ class VCGPCM(CGPCM):
 
             return y.y[:, None]  # Make column vectors again
 
-        # Process samples: normalisation and phase transformatino
+        # Process samples: normalisation and phase transformation
         samples = [process(sample) for sample in samples]
 
         # Find corresponding times
-        if self.causal:
-            t = data.Data(t).positive_part().minimum_phase().x
-        else:
-            t = data.Data(t).minimum_phase().x
+        t = data.Data(t).positive_part() if self.causal else data.Data(t)
+        t = getattr(t, phase_transform)().x
 
         # Compute statistics
         samples = np.concatenate(samples, axis=1)

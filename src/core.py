@@ -34,6 +34,7 @@ def fetch(specifications, remote):
     :return: tasks
     """
     out.section('fetching tasks')
+    out.kv('from remote', 'yes' if remote else 'no')
     fetched_tasks = []
     for specification in specifications:
         task_name, task_options = specification[0], specification[1:]
