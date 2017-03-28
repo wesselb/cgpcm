@@ -31,7 +31,7 @@ class Experiment(Task):
                           causal=options['causal-sample'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
-                          n=4000,
+                          n=400,
                           nx=150,
                           nh=41,
                           noise=0 if options['causal-sample'] else .5,
