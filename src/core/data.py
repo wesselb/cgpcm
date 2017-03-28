@@ -10,14 +10,15 @@ import kernel
 
 class Data(object):
     """
-    Data.
+    A one-dimensional time series.
 
-    :param t: times
+    :param x: times
     :param y: values, set to None in case of missing data
     """
 
     def __init__(self, x, y=None):
         self.x = np.squeeze(x)
+        self._evenly_spaced = np.isclose(max(np.abs(np.diff(self.x, n=2))), 0)
         self.n = len(self.x)
         if y is None:
             # Data is missing
@@ -25,6 +26,10 @@ class Data(object):
             self.y.fill(np.nan)
         else:
             self.y = np.squeeze(y)
+
+    def _assert_evenly_spaced(self):
+        if not self._evenly_spaced:
+            raise AssertionError('data must be evenly spaced')
 
     def subsample(self, n):
         """
@@ -109,19 +114,27 @@ class Data(object):
 
         :return: autocorrelation
         """
-        dist = self.x[-1] - self.x[0]
-        return Data(np.linspace(-dist, dist, 2 * len(self.x) - 1),
+        self._assert_evenly_spaced()
+        return Data(np.linspace(-self.max_lag,
+                                self.max_lag,
+                                2 * self.n - 1),
                     np.convolve(self.y[::-1], self.y))
 
-    def fft_db(self):
+    def fft_db(self, split_freq=True):
         """
-        Compute the modulus of the DFT in decibel. Assuming that the
-        data is evenly spaced.
+        Compute the modulus of the DFT in decibel.
 
-        :return: amplitude of spectrum in decibel and sampling frequency
+        :param split_freq: return spectrum in relative frequency and
+                           additionally return sampling frequency, else
+                           return spectrum in absolute frequency
+        :return: log spectrum and possibly sampling frequency
         """
+        self._assert_evenly_spaced()
         spec = util.fft_db(util.zero_pad(self.y, 1000))
-        return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
+        if split_freq:
+            return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
+        else:
+            return Data(util.fft_freq(len(spec)) / self.dx, spec)
 
     def equals_approx(self, other):
         """
@@ -130,11 +143,13 @@ class Data(object):
         :param other: other data set
         :return: equal
         """
+        print np.sum(np.abs(self.x - other.x))
+        print np.sum(np.abs(self.y - other.y))
         return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
 
     def at(self, other_x):
         """
-        Find the data at some new x values through interpolation.
+        Find the data at some new x values through linear interpolation.
 
         :param other_x: new x values
         :return: new data
@@ -147,6 +162,7 @@ class Data(object):
 
         :return: zero-phase form
         """
+        self._assert_evenly_spaced()
         y = np.fft.ifft(np.abs(np.fft.fft(self.y)))
         y = np.real(np.fft.fftshift(y))
         x = self.dx * np.arange(self.n)
@@ -160,6 +176,7 @@ class Data(object):
         :param n: number of points to add
         :return: zero-padded signal
         """
+        self._assert_evenly_spaced()
         x_app = self.dx * np.arange(1, n + 1)
         y_app = np.zeros(n)
         return Data(np.concatenate((self.x[0] - x_app[::-1],
@@ -173,10 +190,11 @@ class Data(object):
 
         :return: minimum-phase form
         """
+        self._assert_evenly_spaced()
         mag = np.abs(np.fft.fft(self.y))
         spec = np.exp(signal.hilbert(np.log(mag)).conj())
         y = np.real(np.fft.ifft(spec))
-        return Data(np.linspace(self.x[0], self.x[-1], len(y)), y)
+        return Data(self.x, y)
 
     def interpolate_fft(self, factor=2):
         """
@@ -185,6 +203,7 @@ class Data(object):
         :param factor: factor by which to interpolate
         :return: interpolated data
         """
+        self._assert_evenly_spaced()
         spec = np.fft.fftshift(np.fft.fft(self.y))
         spec = util.zero_pad(spec, (factor - 1) * (self.n / 2))
         y = np.real(np.fft.ifft(np.fft.fftshift(spec)))
@@ -194,9 +213,18 @@ class Data(object):
     @property
     def dx(self):
         """
-        Assuming that `x` is evenly spaced, that spacing.
+        Spacing of data.
         """
+        self._assert_evenly_spaced()
         return self.x[1] - self.x[0]
+
+    @property
+    def max_lag(self):
+        """
+        Maximum lag in data.
+        """
+        self._assert_evenly_spaced()
+        return self.x[-1] - self.x[0]
 
     @property
     def energy(self):
@@ -204,13 +232,6 @@ class Data(object):
         Energy of data.
         """
         return np.trapz(self.y ** 2, self.x)
-
-    @property
-    def energy_causal(self):
-        """
-        Energy of data, assuming that the data is causal.
-        """
-        return self.positive_part().energy
 
     @property
     def mean(self):
@@ -261,10 +282,9 @@ class Data(object):
         """
         return min(self.y), max(self.y)
 
-
     def _assert_compat(self, other):
         if not np.allclose(self.x, other.x):
-            raise ValueError('Data objects must be compatible')
+            raise ValueError('data objects must be compatible')
 
     def _to_y(self, other):
         if type(other) is Data:
@@ -435,10 +455,14 @@ def load_akm(sess, causal, n=250, nh=31, tau_w=.1, tau_f=.05, resample=0):
     k = akm.k(tk)
     h = akm.h(tk)
 
+    # Discard negative part of filter if model is causal
+    if causal:
+        h = h.positive_part()
+
     # Normalise
     f -= f.mean
     f /= f.std
-    h /= h.energy_causal ** .5
+    h /= h.energy ** .5
     k /= k.max
 
     return f, k, h

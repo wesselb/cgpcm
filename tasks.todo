@@ -1,19 +1,12 @@
 Code:
     Bugs:
-        ☐ Normalisation cosistently sample-wise or at prediction @critical
-        ☐ Normalisation in zero phase settings
     Refactor:
-        ☐ Evaluate to Task abstract class
-        ☐ Zero padding using FFT
-        Plotting code:
-            ☐ Remove compare and full
-            ☐ Clean up TaskPlotter
-            ☐ Make plots friendly for colour-blind people
-            ☐ Refactor plot_compare into class
+        ☐ Data class to incorporate uncertainty
+        ☐ Make plots friendly for colour-blind people
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
-        ☐ Predict given a model @critical Then repredict toy problems
+        ☐ (Re)predict given a model @started
     Experiments:
         ☐ Toy @started
         ☐ HRIR @started
@@ -38,10 +31,17 @@ Doc:
          ☐ Data concerning exoplanets from a NIPS paper
          ☐ Chaotic time series
 
+Other:
+    ☐ Contribute bvn-cdf to TensorFlow
 
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Remove compare and full @done (17-03-28 12:17) @project(Code / Refactor / Plotting code)
+ ✓ Evaluate to Task abstract class @done (17-03-28 12:17) @project(Code / Refactor)
+ ✓ Clean up TaskPlotter @done (17-03-28 12:17) @project(Code / Refactor / Plotting code)
+ ✓ Zero padding using FFT @done (17-03-28 11:55) @project(Code / Refactor)
+ ✓ Gradient checking with tf.test @done (17-03-28 11:55) @project(Code / Refactor)
  ✓ Show inducing points @critical @done (17-03-22 11:18) @project(Code / Refactor / Plotting code)
  ✓ Add option to compare smf again mf @done (17-03-21 12:20) @project(Code / Refactor / Plotting code)
  ✓ Check interpolation and other plots @done (17-03-20 19:24) @project(Code / Bugs)

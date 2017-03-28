@@ -405,7 +405,11 @@ class AKM(CGPCM):
         """
         Kfu = self.kernel_h(t, self.th)
         h = self._run(tf.squeeze(mul(Kfu, self.h_draw)))
-        return data.Data(t, h)
+
+        if self.causal:
+            return data.Data(t, h).positive_part().minimum_phase()
+        else:
+            return data.Data(t, h).minimum_phase()
 
     def k(self, t):
         """
@@ -549,20 +553,18 @@ class VCGPCM(CGPCM):
                data.Data(x, upper), \
                data.Data(x, std)
 
-    def predict_h(self, t, samples_h=200, normalise=True, correct_signs=False):
+    def predict_h(self, t, samples_h=200, normalise=True):
         """
         Predict filter.
 
         :param t: point to predict filter at
         :param samples_h: samples in Monte-Carlo estimation
         :param normalise: normalise prediction
-        :param correct_signs: correct signs of samples
         :return: predicted filter
         """
         if is_numeric(samples_h):
             h = self.h.sample()
             samples_h = [self._run(h) for i in range(samples_h)]
-        n = len(samples_h)
 
         h = placeholder(shape(self.h.sample()))
         Kfu = self.kernel_h(t, self.th)
@@ -571,25 +573,21 @@ class VCGPCM(CGPCM):
                                samples_h,
                                name='filter prediction using MC')
 
-        # Check whether to correct the signs of the samples
-        if correct_signs:
-            samples = np.concatenate(samples, axis=1)  # Pack
-            samples *= util.sign_smart(samples.T)[None, :]
-            samples = np.split(samples, n, 1)  # Unpack
-
         def process(sample):
             y = data.Data(t, sample)
-            if self.causal:
-                y = y.positive_part()
+            y = y.positive_part() if self.causal else y
             y = y.minimum_phase()
 
             # Check whether to normalise predictions
             if normalise:
                 y /= y.energy ** .5
 
-            return y.y[:, None]
+            return y.y[:, None]  # Make column vectors again
 
+        # Process samples: normalisation and phase transformatino
         samples = [process(sample) for sample in samples]
+
+        # Find corresponding times
         if self.causal:
             t = data.Data(t).positive_part().minimum_phase().x
         else:

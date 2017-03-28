@@ -1,9 +1,9 @@
+from termcolor import colored
 import sys
 
 import util
 
 level = 0
-total_width = 25
 width = 25
 indenter = '    '
 
@@ -18,7 +18,16 @@ def state(msg):
 
     :param msg: messsage
     """
-    _out(indenter * level + '{{:{}}}\n'.format(width).format(msg))
+    _out(indenter * level + '{}\n'.format(msg))
+
+
+def error(msg):
+    """
+    State an error message.
+    
+    :param msg: error message
+    """
+    _out(colored('ERROR: {}\n'.format(msg), 'red'))
 
 
 def section(name):

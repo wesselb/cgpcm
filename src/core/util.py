@@ -68,22 +68,22 @@ def is_numeric(x):
 
 def fft(*args, **kw_args):
     """
-    Alias for `np.fft.fft` which afterwards applies `np.fft.fftshift`.
+    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift`.
     """
     return np.fft.fftshift(np.fft.fft(*args, **kw_args))
 
 
 def fft_freq(*args, **kw_args):
     """
-    Alias for `np.fft.fft_freq` which afterwards applies `np.fft.fftshift`.
+    Alias for `np.fft.fft_freq` that afterwards applies `np.fft.fftshift`.
     """
     return np.fft.fftshift(np.fft.fftfreq(*args, **kw_args))
 
 
 def fft_db(*args, **kw_args):
     """
-    Similar to :func:`core.util.fft`, but returns the absolute value of the
-    result in decibel.
+    Similar to :func:`core.util.fft`, but returns the modulus of the result in
+    decibel.
     """
     return 10 * np.log10(np.abs(fft(*args, **kw_args)))
 
@@ -209,55 +209,3 @@ def map_pickle(transformation, fns):
             with open(fn, 'w') as f:
                 pickle.dump(transformation(content), f)
 
-
-def sign_smart(samples):
-    """
-    Assuming that all samples are similar up to a negation, this function
-    determines those negations. Samples must be a matrix where the rows
-    correspond to observations.
-
-    :param samples: samples
-    :return: relative signs of samples
-    """
-    gmm = mixture.GaussianMixture(n_components=2, covariance_type='full')
-    gmm.fit(samples)
-    return 2 * gmm.predict(samples) - 1
-
-
-def sign_reference(sample, reference):
-    """
-    Set the sign of a sample according to a reference. The arguments must be
-    instances of :class:`core.data.Data`.
-
-    :param sample: sample
-    :param reference: reference
-    :return: sign
-    """
-
-    def dist(x):
-        return np.sum((np.interp(reference.x, x.x, x.y) - reference.y) ** 2)
-
-    return 1 if dist(sample) < dist(-sample) else -1
-
-
-def optimal_shift(sample, reference, bounds=None):
-    """
-    Find the amount by which a sample should be shifted so that it is closest
-    to a reference. The arguments be be instances of :class:`core.data.Data`.
-
-    :param sample: sample
-    :param reference: reference
-    :param bounds: bounds on shift
-    :return: amount by which to shift `sample`
-    """
-
-    def loss(delta_x):
-        return np.sum((np.interp(reference.x,
-                                 sample.x + delta_x,
-                                 sample.y) - reference.y) ** 2)
-
-    if bounds is None:
-        delta_x = minimize_scalar(loss).x
-    else:
-        delta_x = minimize_scalar(loss, method='bounded', bounds=bounds).x
-    return delta_x

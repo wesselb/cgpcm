@@ -24,8 +24,8 @@ class Experiment(Task):
                           # Training options
                           iters_pre=400,
                           iters=2000,
-                          iters_post=0,
-                          samps=400,
+                          iters_post=500,
+                          samps=500,
 
                           # Sample options
                           causal=options['causal-sample'],
@@ -34,7 +34,7 @@ class Experiment(Task):
                           n=400,
                           nx=120,
                           nh=41,
-                          noise=1e-4 if options['causal-sample'] else .5,
+                          noise=0 if options['causal-sample'] else .5,
                           noise_init=1e-4 if options[
                               'causal-sample'] else 1e-2,
 

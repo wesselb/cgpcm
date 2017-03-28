@@ -67,10 +67,10 @@ kernel = DEQ(s2=1., alpha=mod.alpha, gamma=mod.gamma)
 
 # Sample and normalise to unity energy
 th = sess.run(mod.th)
-h_from = Data(th, h_sample_conditioned(0)[:, 0])
-h_from /= h_from.energy_causal ** .5
-h_to = Data(th, h_sample()[:, 0])
-h_to /= h_to.energy_causal ** .5
+h_from = Data(th, h_sample_conditioned(0)[:, 0]).positive_part()
+h_from /= h_from.energy ** .5
+h_to = Data(th, h_sample()[:, 0]).positive_part()
+h_to /= h_to.energy ** .5
 
 # Compute filter, kernels, and samples
 t = np.linspace(0, 1, 250)
