@@ -18,21 +18,21 @@ class Experiment(Task):
         options.parse(args)
 
         return TaskConfig(name='Toy Experiment',
-                          seed=1060 if options['causal-sample'] else 1030,
+                          seed=1065 if options['causal-sample'] else 1030,
                           fp=options.fp(groups=[['causal-sample']]),
 
                           # Training options
                           iters_pre=400,
                           iters=2000,
-                          iters_post=500,
+                          iters_post=200,
                           samps=500,
 
                           # Sample options
                           causal=options['causal-sample'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
-                          n=200,
-                          nx=80,
+                          n=400,
+                          nx=150,
                           nh=41,
                           noise=0 if options['causal-sample'] else .5,
                           noise_init=1e-4 if options[
