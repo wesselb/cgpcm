@@ -18,7 +18,7 @@ class Experiment(Task):
         options.parse(args)
 
         return TaskConfig(name='Toy Experiment',
-                          seed=1025 if options['causal-sample'] else 1030,
+                          seed=1060 if options['causal-sample'] else 1030,
                           fp=options.fp(groups=[['causal-sample']]),
 
                           # Training options
@@ -31,15 +31,15 @@ class Experiment(Task):
                           causal=options['causal-sample'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
-                          n=400,
-                          nx=120,
+                          n=200,
+                          nx=80,
                           nh=41,
                           noise=0 if options['causal-sample'] else .5,
                           noise_init=1e-4 if options[
                               'causal-sample'] else 1e-2,
 
-                          tau_w=0.12 if options['causal-sample'] else 0.04,
-                          tau_f=0.12 if options['causal-sample'] else 0.04,
+                          tau_w=0.1 if options['causal-sample'] else 0.05,
+                          tau_f=0.1 if options['causal-sample'] else 0.05,
                           data_scale=.75)
 
     def load(self, sess):
