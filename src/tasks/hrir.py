@@ -25,12 +25,12 @@ class Experiment(Task):
                           iters_pre=200,
                           iters=1000,
                           iters_post=500,
-                          samps=2000,
+                          samps=1000,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=200,
-                          nx=100,
+                          n=500,
+                          nx=250,
                           nh=151,
                           noise_init=1e-3,
                           tau_w=1e-3,

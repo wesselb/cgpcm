@@ -38,8 +38,8 @@ class Experiment(Task):
                           noise_init=1e-4 if options[
                               'causal-sample'] else 1e-2,
 
-                          tau_w=0.08,
-                          tau_f=0.08 if options['causal-sample'] else 0.04,
+                          tau_w=0.1,
+                          tau_f=0.1 if options['causal-sample'] else 0.05,
                           data_scale=.75)
 
     def load(self, sess):
