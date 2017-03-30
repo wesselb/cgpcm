@@ -25,7 +25,7 @@ class Experiment(Task):
                           iters_pre=200,
                           iters=1000,
                           iters_post=500,
-                          samps=1000,
+                          samps=2000,
 
                           # Model options
                           causal_model=options['causal-model'],
