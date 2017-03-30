@@ -1,3 +1,4 @@
+from collections import namedtuple
 import scipy.io as sio
 import scipy.io.wavfile as sio_wav
 import scipy.signal as signal
@@ -346,6 +347,10 @@ class Data(object):
         y = y.astype(float)
         t = np.arange(shape(y)[0]) / float(fs)
         return cls(t, y)
+
+
+# Named tuple for bundling predictions
+UncertainData = namedtuple('UncertainData', 'mean lower upper std')
 
 
 def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):

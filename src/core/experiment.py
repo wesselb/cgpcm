@@ -1,10 +1,9 @@
 import abc
-import numpy as np
 
 from parametrisable import Parametrisable
 from plot import Plotter2D
 from options import Options
-from data import Data
+from data import Data, UncertainData
 from cgpcm import VCGPCM
 from tf_util import *
 import out
@@ -73,6 +72,12 @@ class Task(object):
         for var_name in self.mod.vars.keys():
             self.data['vars'][var_name] = sess.run(self.mod.vars[var_name])
 
+        # Store recipe
+        self.data['recipe'] = {}
+        for attr in ['e', 'nx', 'nh', 'tau_w', 'tau_f', 'causal', 'causal_id',
+                     'noise_init']:
+            self.data['recipe'][attr] = getattr(self.mod, attr)
+
         del self.mod
 
     def report(self):
@@ -127,14 +132,16 @@ class Task(object):
         def filter_onesided(x):
             return x[np.logical_and(x.x >= 0, x.x <= 2 * self.config.tau_w)]
 
-        # Correct reference filter
-        self.data['h'] = self.data['h'].minimum_phase()
-
+        self.data['h_mp'] = self.data['h'].minimum_phase()
+        self.data['h_zp'] = self.data['h'].zero_phase()
         report.update({'prediction': {'function': report_key('f'),
-                                      'kernel': report_key('k',
-                                                           filter_twosided),
-                                      'filter': report_key('h',
-                                                           filter_onesided)}})
+                                      'kernel':
+                                          report_key('k', filter_twosided),
+                                      'filter (zero phase)':
+                                          report_key('h_zp', filter_onesided),
+                                      'filter (minimum phase)':
+                                          report_key('h_mp', filter_onesided)
+                                      }})
 
         return report
 
@@ -247,21 +254,14 @@ def mod_from_task(sess, task, debug_options):
     :param debug_options: debug options
     :return: trained model
     """
-    mod = VCGPCM.from_recipe(sess=sess,
-                             e=task.data['e'],
-                             causal_id=task.data['causal_id'],
 
-                             nx=task.config.nx,
-                             nh=task.config.nh,
-                             tau_w=task.config.tau_w,
-                             tau_f=task.config.tau_f * task.config.data_scale,
-                             causal=task.config.causal_model,
-                             noise_init=task.config.noise_init)
+    # Construct model from recipe
+    mod = VCGPCM.from_recipe(sess=sess, **task.data['recipe'])
     initialise_uninitialised_variables(sess)
 
     # Restore variables
-    for var_name in mod.vars.keys():
-        sess.run(mod.vars[var_name].assign(task.data['vars'][var_name]))
+    for var_name, var_value in task.data['vars'].items():
+        sess.run(mod.vars[var_name].assign(var_value))
 
     # Precompute matrices
     out.state('precomputing')
@@ -327,18 +327,29 @@ class TaskPlotter(object):
     :param p: :class:`core.plot.Plotter2D` instance
     :param task: task
     """
-    _colours = {'truth': '#7b3294',
-                'observation': '#008837',
-                'task1': '#0571b0',
-                'task2': '#ca0020'}
+    _styles = {'truth': {'colour': '#7b3294',
+                         'line_style': '-.',
+                         'marker_style': 'o'},
+               'observation': {'colour': '#008837',
+                               'line_style': ':',
+                               'marker_style': '^'},
+               'task1': {'colour': '#0571b0',
+                         'line_style': '-',
+                         'marker_style': '*'},
+               'task2': {'colour': '#ca0020',
+                         'line_style': '--',
+                         'marker_style': '+'},
+               'inducing_points': {'colour': 'k',
+                                   'line_style': '-',
+                                   'marker_style': 's'}}
 
     def __init__(self, p, task):
         self._p = p
         self._task = task
         self._x_min = None
         self._x_max = None
-        p.config(line_width=1,
-                 marker_size=2,
+        p.config(line_width=1.5,
+                 marker_size=2.5,
                  fill_alpha=.25)
 
     @property
@@ -352,18 +363,6 @@ class TaskPlotter(object):
             # Then assume config.causal_model exists
             cgpcm = self._task.config.causal_model
         return 'CGPCM' if cgpcm else 'GPCM'
-
-    def colour(self, colour):
-        """
-        Get a colour by name or other encoding. Predefines a number of colours.
-        
-        :param colour: name of colour
-        :return: colour
-        """
-        if colour in self._colours:
-            return self._colours[colour]
-        else:
-            return colour
 
     def bound(self, x_min=None, x_max=None, key=None):
         """
@@ -394,52 +393,54 @@ class TaskPlotter(object):
 
         return process
 
-    def fill(self, key, colour, label=None, x_unit=1):
+    def fill(self, key, style, label=None, x_unit=1):
         """
         Plot a fill.
         
         :param key: key of data
-        :param colour: colour
+        :param style: style
         :param label: label
         :param x_unit: unit of x axis
         """
         mean, lower, upper, std = map(self._process_fun(x_unit),
                                       self._task.data[key])
         self._p.fill(lower.x, lower.y, upper.y,
-                     fill_colour=self.colour(colour))
+                     fill_colour=self._styles[style]['colour'])
         self._p.plot(mean.x, mean.y,
-                     line_colour=self.colour(colour),
+                     line_colour=self._styles[style]['colour'],
+                     line_style=self._styles[style]['line_style'],
                      label=label)
 
-    def line(self, key, colour, label=None, x_unit=1):
+    def line(self, key, style, label=None, x_unit=1):
         """
         Plot a line
         
         :param key: key of data
-        :param colour: colour
+        :param style: style
         :param label: label
         :param x_unit: unit of x axis
         """
         d = self._process_fun(x_unit)(self._task.data[key])
         self._p.plot(d.x, d.y,
-                     line_colour=self.colour(colour),
+                     line_colour=self._styles[style]['colour'],
+                     line_style=self._styles[style]['line_style'],
                      label=label)
 
-    def marker(self, key, colour, label=None, x_unit=1):
+    def marker(self, key, style, label=None, x_unit=1):
         """
         Plot markers.
         
         :param key: key of data
-        :param colour: colour
+        :param style: style
         :param label: label
         :param x_unit: unit of x axis
         """
         d = self._process_fun(x_unit)(self._task.data[key])
         self._p.plot(d.x, d.y,
                      line_style='none',
-                     label=label,
-                     marker_style='o',
-                     marker_colour=self.colour(colour))
+                     marker_style=self._styles[style]['marker_style'],
+                     marker_colour=self._styles[style]['colour'],
+                     label=label)
 
 
 def plot_compare(tasks, args):
@@ -513,7 +514,7 @@ def plot_compare(tasks, args):
     # Function
     p.subplot2grid((2, 6), (0, 0), colspan=6)
     p.x_shift = -data1['f'].x[0]
-    pt1.marker('tx_data', 'k')
+    pt1.marker('tx_data', 'inducing_points')
     pt1.marker('f', 'truth', 'Truth')
     if not data1['f'].equals_approx(data1['e']):
         pt1.marker('e', 'observation', 'Observations')
@@ -536,15 +537,17 @@ def plot_compare(tasks, args):
     else:
         p.subplot2grid((2, 6), (1, 0), colspan=2)
     p.lims(x=(0, tau_ws * task1.config.tau_w))
-    pt1.marker('th_data', 'k')
-    pt1.line('k', 'truth')
+    pt1.marker('th_data', 'inducing_points')
+    pt2.marker('th_data', 'inducing_points')
+    pt1.line('k', 'truth', 'Truth')
     data1['k_emp'] = data1['f'].autocorrelation()
     data1['k_emp'] /= data1['k_emp'].max
-    pt1.line('k_emp', 'observation')
-    pt1.fill('k_pred' + add1, 'task1')
+    pt1.line('k_emp', 'observation', 'Autocorrelation')
+    pt1.fill('k_pred' + add1, 'task1', name1)
     if task2:
-        pt2.fill('k_pred' + add2, 'task2')
+        pt2.fill('k_pred' + add2, 'task2', name1)
     p.labels(y='$k_{f\,|\,h}$', x='$t$ ({})'.format(x_unit))
+    p.show_legend()
 
     # Filter
     if options['no-psd']:
@@ -552,15 +555,18 @@ def plot_compare(tasks, args):
     else:
         p.subplot2grid((2, 6), (1, 2), colspan=2)
     p.lims(x=(0, tau_ws * task1.config.tau_w))
-    pt1.marker('th_data', 'k')
+    pt1.marker('th_data', 'inducing_points')
     data1['h_mp'] = data1['h'].minimum_phase()
     data1['h_zp'] = data1['h'].zero_phase()
-    pt1.line('h_{}'.format('zp' if options['zp'] else 'mp'), 'truth')
+    pt1.line('h_{}'.format('zp' if options['zp'] else 'mp'), 'truth', 'Truth')
     pt1.fill('h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add1),
-             'task1')
-    pt2.fill('h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add2),
-             'task2')
+             'task1', name1)
+    if task2:
+        pt2.fill(
+            'h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add2),
+            'task2', name2)
     p.labels(y='$h$', x='$t$ ({})'.format(x_unit))
+    p.show_legend()
 
     if not options['no-psd']:
         def extract_fs(data, psd_key, k_key):
@@ -595,16 +601,21 @@ def plot_compare(tasks, args):
         # PSD
         p.subplot2grid((2, 6), (1, 4), colspan=2)
         p.lims(x=(0, 1.5 / task1.config.tau_f))
-        pt1.line('psd', 'truth', x_unit=data1['psd_fs'])
-        pt1.fill('psd_pred_smf', 'task1', x_unit=fs1)
+        pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
+        data1['psd_emp'] = data1['k_emp'].fft_db(split_freq=False)
+        pt1.line('psd_emp', 'observation', label='Periodogram')
+        pt1.fill('psd_pred_smf', 'task1', x_unit=fs1, label=name1)
         if task2:
-            pt2.fill('psd_pred_smf', 'task2', x_unit=fs2)
-        p.labels(y='PSD of $f\,|\,h$ (dB)', x='Frequency ({})'.format(x_unit))
+            pt2.fill('psd_pred_smf', 'task2', x_unit=fs2, label=name2)
+        p.labels(y='PSD of $f\,|\,h$ (dB)',
+                 x='Frequency ({})'.format(x_unit))
         p.ax.set_ylim(bottom=-15)
+        p.show_legend()
 
     # Return `Plotter2D` instance and file path
-    fp = options.fp(ignore=['index0', 'index1', 'ms', 'no-psd', 'mf0', 'mf1',
-                            'zp', 'big', 'tau-ws'])
+    fp = options.fp(
+        ignore=['index0', 'index1', 'ms', 'no-psd', 'mf0', 'mf1',
+                'zp', 'big', 'tau-ws'])
     if task2:
         fp += task1.config.fp & task2.config.fp
     else:

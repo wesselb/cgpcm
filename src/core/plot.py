@@ -66,7 +66,7 @@ class Plotter(object):
                'font_family': 'Adobe Caslon Pro',
                'font_size': 11,
                'legend_colour': '0.95',
-               'legend_alpha': 0.8,
+               'legend_alpha': 0.6,
                'legend_location': 'upper right',
                'line_colour': 'undefined',
                'line_width': 1,

@@ -88,8 +88,7 @@ class CGPCM(Parametrisable):
             th -= dth * causal_extra_points
             th = constant(th)
         else:
-            th = constant(np.linspace(-tau_ws * tau_w,
-                                      tau_ws * tau_w, nh))
+            th = constant(np.linspace(-tau_ws * tau_w, tau_ws * tau_w, nh))
 
         # Initial observation noise
         s2, vars['s2'] = var_pos(to_float(noise_init))
@@ -97,11 +96,12 @@ class CGPCM(Parametrisable):
         # Initialise variables and construct
         initialise_uninitialised_variables(sess)
 
-        return cls(sess=sess, e=e, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
-                   gamma=gamma, omega=omega, vars=vars, causal=causal,
-                   causal_id=causal_id,
-                   # Also set some handy variables
-                   tau_w=tau_w, tau_f=tau_f, nh=nh, nx=nx)
+        return cls(sess=sess, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
+                   gamma=gamma, omega=omega, vars=vars,
+
+                   # Store recipe for reconstruction
+                   e=e, causal=causal, causal_id=causal_id, tau_w=tau_w,
+                   tau_f=tau_f, nh=nh, nx=nx, noise_init=noise_init)
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
@@ -548,10 +548,10 @@ class VCGPCM(CGPCM):
         else:
             x = t
 
-        return data.Data(x, mu), \
-               data.Data(x, lower), \
-               data.Data(x, upper), \
-               data.Data(x, std)
+        return data.UncertainData(mean=data.Data(x, mu),
+                                  lower=data.Data(x, lower),
+                                  upper=data.Data(x, upper),
+                                  std=data.Data(x, std))
 
     def predict_h(self, t, samples_h=200, normalise=True,
                   phase_transform='minimum_phase'):
@@ -602,10 +602,10 @@ class VCGPCM(CGPCM):
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
 
-        return data.Data(t, mu), \
-               data.Data(t, lower), \
-               data.Data(t, upper), \
-               data.Data(t, std)
+        return data.UncertainData(mean=data.Data(t, mu),
+                                  lower=data.Data(t, lower),
+                                  upper=data.Data(t, upper),
+                                  std=data.Data(t, std))
 
     def predict_f(self, t, samples_h=50):
         """
@@ -664,10 +664,10 @@ class VCGPCM(CGPCM):
         mu = np.mean(np.concatenate(samples_mu, axis=1), axis=1)
         var = np.mean(np.concatenate(samples_var, axis=1), axis=1)
 
-        return data.Data(t, mu), \
-               data.Data(t, mu - 2 * var ** .5), \
-               data.Data(t, mu + 2 * var ** .5), \
-               data.Data(t, var ** .5)
+        return data.UncertainData(mean=data.Data(t, mu),
+                                  lower=data.Data(t, mu - 2 * var ** .5),
+                                  upper=data.Data(t, mu + 2 * var ** .5),
+                                  std=data.Data(t, var ** .5))
 
     def sample(self, iters=200, burn=None):
         """
