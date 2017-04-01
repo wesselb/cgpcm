@@ -29,12 +29,12 @@ class Experiment(Task):
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=200,
-                          nx=100,
+                          n=300,
+                          nx=150,
                           nh=151,
                           noise_init=1e-3,
                           tau_w=1e-3,
-                          tau_f=.025e-3,
+                          tau_f=.05e-3,
                           resample=options['resample'])
 
     def load(self, sess):
