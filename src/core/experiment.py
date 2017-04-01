@@ -545,7 +545,7 @@ def plot_compare(tasks, args):
     pt1.line('k_emp', 'observation', 'Autocorrelation')
     pt1.fill('k_pred' + add1, 'task1', name1)
     if task2:
-        pt2.fill('k_pred' + add2, 'task2', name1)
+        pt2.fill('k_pred' + add2, 'task2', name2)
     p.labels(y='$k_{f\,|\,h}$', x='$t$ ({})'.format(x_unit))
     p.show_legend()
 

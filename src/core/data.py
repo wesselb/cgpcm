@@ -385,10 +385,11 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
     return f, k, h
 
 
-def load_timit_tobar2015():
+def load_timit_tobar2015(n):
     """
     Load TIMIT data set from Tobar et al. (2015).
 
+    :param n: number of data points, must be less or equal than 1750
     :return: data for function
     """
     mat = sio.loadmat('data/TIMIT_unknown.mat')
@@ -397,7 +398,7 @@ def load_timit_tobar2015():
     t = np.arange(shape(y)[0]) / fs
     f = Data(t, y).fragment(1750, start=11499)[0]
     f = (f - f.mean) / f.std
-    return f
+    return f.fragment(n)[0]
 
 
 def load_gp_exp(sess, n=250, k_len=.1):

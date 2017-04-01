@@ -128,6 +128,9 @@ data_sets = {'hrir100': {'seeds': [100, 101, 102, 103, 105, 107, 108, 109, 110,
              'hrir200': {'seeds': [210, 211, 212, 213, 214, 215, 216, 217, 218,
                                    219, 220, 221, 223, 224, 225, 226],
                          'base_path': 'output/stats/hrir/causal-model={},'
+                                      'resample={}.pickle'},
+             'hrir900': {'seeds': range(900, 905),
+                         'base_path': 'output/stats/hrir/causal-model={},'
                                       'resample={}.pickle'}}
 
 parser = argparse.ArgumentParser(description='Generate report.')
@@ -141,6 +144,8 @@ reports_gpcm = fetch([base_path.format('n', i) for i in seeds])
 out.dict_({'ELBO': report_mf_smf(['parameters', 'ELBO MF'],
                                  ['parameters', 'ELBO SMF'],
                                  loss=False),
-           'filter': report_prediction('filter'),
+           'filter (zero phase)': report_prediction('filter (zero phase)'),
+           'filter (minimum phase)':
+               report_prediction('filter (minimum phase)'),
            'kernel': report_prediction('kernel'),
            'function': report_prediction('function')}, numeric_mod='.3e')
