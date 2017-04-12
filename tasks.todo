@@ -1,32 +1,25 @@
 Code:
     Bugs:
-        ☐ Store data for model reconstruction @critical
     Refactor:
-        ☐ Data class to incorporate uncertainty
-        ☐ Make plots friendly for colour-blind people
+        ☐ Python notebook visualisation proper x axis @high
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
-        ☐ (Re)predict given a model @started
     Experiments:
-        ☐ Toy @started
-        ☐ HRIR @started
-        ☐ TIMIT
-        ☐ Sea Ice
+        ☐ HRIR: @started
+        ☐ TIMIT @next
+        ☐ OU @next
         ☐ Currency
-        ☐ OU toy example
-        ☐ CO2, get data!
+        ☐ Minerals
+        ☐ Crude oil / house prices
 
 Doc:
     ☐ Coz comments
     ☐ Add supplementary material
     ☐ More details for experiments
-
- Notes:
-     ☐ Resolve identifiability in model: integrate over phases, or specify phase
-     Further possible experiments:
-         ☐ Data concerning exoplanets from a NIPS paper
-         ☐ Chaotic time series
+    ☐ Reformulate in terms of bilinear operator
+    ☐ Note identificiability in model concerning phase
+    ☐ Principled derivation of initialisation of hypers
 
 Other:
     ☐ Contribute bvn-cdf to TensorFlow
@@ -34,6 +27,11 @@ Other:
 
 ＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿
 Archive:
+ ✓ Missing kernel and filter truth in plotting @done (17-04-12 21:08) @project(Code / Bugs)
+ ✓ Make plots friendly for colour-blind people @high @done (17-03-29 21:26) @project(Code / Refactor)
+ ✓ Data class to incorporate uncertainty @done (17-03-29 15:45) @project(Code / Refactor)
+ ✓ Store data for model reconstruction @critical @done (17-03-29 15:33) @project(Code / Bugs)
+ ✓ (Re)predict given a model @done (17-03-29 12:50) @project(Code / Features)
  ✓ Remove compare and full @done (17-03-28 12:17) @project(Code / Refactor / Plotting code)
  ✓ Evaluate to Task abstract class @done (17-03-28 12:17) @project(Code / Refactor)
  ✓ Clean up TaskPlotter @done (17-03-28 12:17) @project(Code / Refactor / Plotting code)
@@ -68,3 +66,4 @@ Archive:
  ✓ Scipy optimisation interface @done (17-03-07 16:35) @project(Code / Features)
  ✓ Normalise predictions @done (17-03-07 16:35) @project(Code / Features)
  ✓ h sign flipping @done (17-03-06 23:23) @project(Code / Bugs)
+ ✓ Toy @project(Code / Experiments)
