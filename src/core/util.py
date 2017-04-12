@@ -116,10 +116,9 @@ def smse(x, y):
     :param y: references
     :return: standardised mean squared error
     """
-    y_mean = np.mean(y)
-    y_var = np.mean((y - y_mean) ** 2)
+    naive_mse = np.mean((np.mean(y) - y) ** 2)
     mse = np.mean((x - y) ** 2)
-    return mse / y_var
+    return mse / naive_mse
 
 
 def mll(mu, std, y):
@@ -193,19 +192,15 @@ def mkdirs(path):
         os.makedirs(dir_path)
 
 
-def map_pickle(transformation, fns):
+def invert_perm(perm):
     """
-    Apply a function on the content of a pickled file or list of pickled files.
-    Ignores incorrect paths.
+    Invert a permutation.
 
-    :param transformation: function
-    :param fns: path or list of paths
+    :param perm: permutation
+    :return: inverse of permutation
     """
-    fns = [fns] if type(fns) == str else fns
-    for fn in fns:
-        if os.path.isfile(fn):
-            with open(fn) as f:
-                content = pickle.load(f)
-            with open(fn, 'w') as f:
-                pickle.dump(transformation(content), f)
-
+    n = len(perm)
+    inverse_perm = range(n)
+    for i in range(n):
+        inverse_perm[perm[i]] = i
+    return inverse_perm

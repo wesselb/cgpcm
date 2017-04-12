@@ -75,20 +75,6 @@ def eye(n):
     return tf.diag(tf.ones([n], dtype=config.dtype))
 
 
-def invert_perm(perm):
-    """
-    Invert a permutation.
-
-    :param perm: permutation
-    :return: inverse of permutation
-    """
-    n = len(perm)
-    inverse_perm = range(n)
-    for i in range(n):
-        inverse_perm[perm[i]] = i
-    return inverse_perm
-
-
 def randn(size):
     """
     Alias for `tf.random_normal`.
@@ -163,8 +149,8 @@ def trisolve3(a, b, c, lower_a=True, lower_c=True, adj_a=False, adj_c=False):
     :param c: :math:`C`
     :param lower_a: boolean whether `a` is lower triangular
     :param lower_c: boolean whether `c` is lower triangular
-    :param adj_a: boolean whether to adjoint `a`
-    :param adj_c: boolean whether to adjoint `c`
+    :param adj_a: adjoint `a`
+    :param adj_c: adjoint `c`
     :return: :math:`A^{-1}BC^{-1}`
     """
     return trisolve(a,
@@ -183,9 +169,9 @@ def mul3(a, b, c, adj_a=False, adj_b=False, adj_c=False):
     :param a: :math:`A`
     :param b: :math:`B`
     :param c: :math:`C`
-    :param adj_a: boolean whether to adjoint `a`
-    :param adj_b: boolean whether to adjoint `b`
-    :param adj_c: boolean whether to adjoint `c`
+    :param adj_a: adjoint `a`
+    :param adj_b: adjoint `b`
+    :param adj_c: adjoint `c`
     :return: :math:`ABC`
     """
     return mul(a, mul(b, c, adj_a=adj_b, adj_b=adj_c), adj_a=adj_a)
@@ -207,8 +193,8 @@ def trmul(a, b, adj_a=False, adj_b=False):
 
     :param a: :math:`A`
     :param b: :math:`B`
-    :param adj_a: boolean whether to adjoint `a`
-    :param adj_b: boolean whether to adjoint `b`
+    :param adj_a: adjoint `a`
+    :param adj_b: adjoint `b`
     :return: :math:`\operatorname{tr}(A^TB)`.
     """
     a = ctransp(a) if adj_a else a
@@ -306,27 +292,6 @@ def outer(a, b=None):
         return a * transp(b)
     else:
         return mul(a, b, adj_b=True)
-
-
-def get_var(name, offset=0):
-    """
-    Get a TensorFlow variable by name.
-
-    :param name: name of variable
-    :param offset: in the case of multiple variables having the same name, this
-                   parameter get be used to differentiate between those
-    :return: variable
-    """
-    vars = [x for x in tf.global_variables()
-            if x.name == '{}:{}'.format(name, offset)]
-    if len(vars) == 0:
-        raise RuntimeError('no TensorFlow variable with the name '
-                           '"{}:{}"'.format(name, offset))
-    elif len(vars) > 1:
-        raise RuntimeError('multiple TensorFlow variables with the name '
-                           '"{}:{}"'.format(name, offset))
-    else:
-        return vars[0]
 
 
 def placeholder(*args, **kw_args):

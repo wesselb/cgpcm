@@ -1,6 +1,6 @@
 class Parametrisable(object):
     """
-    Class whose keywords given to the constructor become attributes.
+    Class where keywords given to the constructor become attributes.
 
     Required parameters can be specified through overriding `_required_pars`.
     """

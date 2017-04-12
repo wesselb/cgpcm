@@ -116,10 +116,15 @@ class Data(object):
         :return: autocorrelation
         """
         self._assert_evenly_spaced()
+
+        # Zero nans to zero
+        y = self.y
+        y[np.isnan(y)] = 0
+
         return Data(np.linspace(-self.max_lag,
                                 self.max_lag,
                                 2 * self.n - 1),
-                    np.convolve(self.y[::-1], self.y))
+                    np.convolve(y[::-1], y))
 
     def fft_db(self, split_freq=True):
         """
@@ -237,14 +242,14 @@ class Data(object):
         """
         Mean of data.
         """
-        return np.mean(self.y)
+        return np.nanmean(self.y)
 
     @property
     def std(self):
         """
         Standard deviation of data.
         """
-        return np.std(self.y, ddof=1)
+        return np.nanstd(self.y, ddof=1)
 
     @property
     def len(self):
@@ -491,7 +496,7 @@ def load_seaice():
 
     names = ['Year', 'Month', 'Day', 'Extent', 'Missing', 'Source Data']
 
-    df = pd.read_csv('/home/scott/DATA/N_seaice_extent_daily_v2.1.csv',
+    df = pd.read_csv('data/seaice_extent_daily_v2.1.csv',
                      skiprows=2, names=names)
 
     dec_date = np.zeros(len(df))
@@ -503,3 +508,4 @@ def load_seaice():
             datetime.date(df1.Year, df1.Month, df1.Day))
 
     df['decimal_date'] = dec_date
+    return df

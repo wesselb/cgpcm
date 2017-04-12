@@ -127,16 +127,16 @@ class Task(object):
             return report
 
         def filter_twosided(x):
-            return x[np.abs(x.x) <= 2 * self.config.tau_w]
+            return x[np.abs(x.x) <= self.config.tau_w]
 
         def filter_onesided(x):
-            return x[np.logical_and(x.x >= 0, x.x <= 2 * self.config.tau_w)]
+            return x[np.logical_and(x.x >= 0, x.x <= self.config.tau_w)]
 
         self.data['h_mp'] = self.data['h'].minimum_phase()
         self.data['h_zp'] = self.data['h'].zero_phase()
         report.update({'prediction': {'function': report_key('f'),
                                       'kernel':
-                                          report_key('k', filter_twosided),
+                                          report_key('k', filter_onesided),
                                       'filter (zero phase)':
                                           report_key('h_zp', filter_onesided),
                                       'filter (minimum phase)':
@@ -404,6 +404,8 @@ class TaskPlotter(object):
         """
         mean, lower, upper, std = map(self._process_fun(x_unit),
                                       self._task.data[key])
+        lower = mean - 2 * std
+        upper = mean + 2 * std
         self._p.fill(lower.x, lower.y, upper.y,
                      fill_colour=self._styles[style]['colour'])
         self._p.plot(mean.x, mean.y,
@@ -510,6 +512,9 @@ def plot_compare(tasks, args):
 
     data1['tx_data'] = Data(data1['tx'], 0 * data1['tx'])
     data1['th_data'] = Data(data1['th'], 0 * data1['th'])
+    if task2:
+        data2['tx_data'] = Data(data2['tx'], 0 * data2['tx'])
+        data2['th_data'] = Data(data2['th'], 0 * data2['th'])
 
     # Function
     p.subplot2grid((2, 6), (0, 0), colspan=6)
@@ -538,7 +543,8 @@ def plot_compare(tasks, args):
         p.subplot2grid((2, 6), (1, 0), colspan=2)
     p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'inducing_points')
-    pt2.marker('th_data', 'inducing_points')
+    if task2:
+        pt2.marker('th_data', 'inducing_points')
     pt1.line('k', 'truth', 'Truth')
     data1['k_emp'] = data1['f'].autocorrelation()
     data1['k_emp'] /= data1['k_emp'].max
@@ -562,9 +568,8 @@ def plot_compare(tasks, args):
     pt1.fill('h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add1),
              'task1', name1)
     if task2:
-        pt2.fill(
-            'h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add2),
-            'task2', name2)
+        pt2.fill('h_{}_pred{}'.format('zp' if options['zp'] else 'mp', add2),
+                 'task2', name2)
     p.labels(y='$h$', x='$t$ ({})'.format(x_unit))
     p.show_legend()
 
