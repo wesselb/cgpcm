@@ -47,4 +47,8 @@ src/experiments.sh
 
 # Python
 *.pyc
+.ipynb_checkpoints
 
+# Large datasets
+src/data/KEMAR
+src/data/CIPIC
