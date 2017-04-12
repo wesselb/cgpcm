@@ -12,34 +12,41 @@ class Experiment(Task):
         options = Options('toy')
         options.add_option('causal-sample', 'generate a causal sample')
         options.add_option('causal-model', 'use the causal model')
+        options.add_option('test', 'small test experiment')
         options.add_value_option('resample', int,
                                  'number of times to resample',
-                                 required=True)
+                                 default=0)
         options.parse(args)
+
+        if options['test']:
+            tau_f = .25 if options['causal-sample'] else .125
+        else:
+            tau_f = .1 if options['causal-sample'] else .05
 
         return TaskConfig(name='Toy Experiment',
                           seed=1070 if options['causal-sample'] else 1030,
-                          fp=options.fp(groups=[['causal-sample']]),
+                          fp=options.fp(groups=[['causal-sample']],
+                                        ignore=['test']),
 
                           # Training options
-                          iters_pre=400,
-                          iters=2000,
-                          iters_post=400,
-                          samps=500,
+                          iters_pre=200 if options['test'] else 400,
+                          iters=500 if options['test'] else 2000,
+                          iters_post=50 if options['test'] else 400,
+                          samps=200 if options['test'] else 500,
 
                           # Sample options
                           causal=options['causal-sample'],
                           causal_model=options['causal-model'],
                           resample=options['resample'],
-                          n=400,
-                          nx=150,
+                          n=150 if options['test'] else 400,
+                          nx=60 if options['test'] else 150,
                           nh=41,
                           noise=0 if options['causal-sample'] else .5,
                           noise_init=1e-4 if options[
                               'causal-sample'] else 1e-2,
 
-                          tau_w=0.1,
-                          tau_f=0.1 if options['causal-sample'] else 0.05,
+                          tau_w=0.25 if options['test'] else 0.1,
+                          tau_f=tau_f,
                           data_scale=.75)
 
     def load(self, sess):
