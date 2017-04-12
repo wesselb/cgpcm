@@ -129,7 +129,10 @@ data_sets = {'hrir100': {'seeds': [100, 101, 102, 103, 105, 107, 108, 109, 110,
                                    219, 220, 221, 223, 224, 225, 226],
                          'base_path': 'output/stats/hrir/causal-model={},'
                                       'resample={}.pickle'},
-             'hrir900': {'seeds': range(900, 905),
+             'hrir900': {'seeds': range(900, 911),
+                         'base_path': 'output/stats/hrir/causal-model={},'
+                                      'resample={}.pickle'},
+             'hrir1000': {'seeds': range(1000, 1009) + range(1051, 1060),
                          'base_path': 'output/stats/hrir/causal-model={},'
                                       'resample={}.pickle'}}
 
