@@ -609,9 +609,9 @@ def plot_compare(tasks, args):
         pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
         data1['psd_emp'] = data1['k_emp'].fft_db(split_freq=False)
         pt1.line('psd_emp', 'observation', label='Periodogram')
-        pt1.fill('psd_pred_smf', 'task1', x_unit=fs1, label=name1)
+        pt1.fill('psd_pred' + add1, 'task1', x_unit=fs1, label=name1)
         if task2:
-            pt2.fill('psd_pred_smf', 'task2', x_unit=fs2, label=name2)
+            pt2.fill('psd_pred' + add2, 'task2', x_unit=fs2, label=name2)
         p.labels(y='PSD of $f\,|\,h$ (dB)',
                  x='Frequency ({})'.format(x_unit))
         p.ax.set_ylim(bottom=-30)
