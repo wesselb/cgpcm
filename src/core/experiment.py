@@ -41,7 +41,7 @@ class Task(object):
         """
         pass
 
-    def _set_data(self, h=None, k=None, f=None, e=None):
+    def _set_data(self, h, k, f, e):
         self.data['h'] = h
         self.data['k'] = k
         self.data['f'] = f
