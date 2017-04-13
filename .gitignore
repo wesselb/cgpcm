@@ -5,9 +5,6 @@ src/debug.ctl
 *.so
 *.o
 
-# Auxilary scripts
-src/experiments.sh
-
 # Core latex/pdflatex auxiliary files
 *.aux
 *.lof
