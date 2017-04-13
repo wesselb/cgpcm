@@ -286,7 +286,7 @@ class CGPCM(Parametrisable):
                              for k, v in self.mats.items()}
 
             # Feed the values for the placeholders globally
-            self.sess.feed_globally({self.mats_phs['k']: self._run(v)
+            self.sess.feed_globally({self.mats_phs[k]: self._run(v)
                                      for k, v in self.mats.items()})
 
             # Replace symbolic forms
@@ -305,7 +305,7 @@ class CGPCM(Parametrisable):
 
             # Remove feeding of placeholders globally
             for v in self.mats_phs.values():
-                del self.sess.feed_globally[v]
+                del self.sess.global_feed_dict[v]
 
             # Indicate that precomputation is reversed
             self._precomputed = False
