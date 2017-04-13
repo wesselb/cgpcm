@@ -68,9 +68,15 @@ def is_numeric(x):
 
 def fft(*args, **kw_args):
     """
-    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift`.
+    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift` and
+    normalises appropriately.
     """
-    return np.fft.fftshift(np.fft.fft(*args, **kw_args))
+    if 'axis' not in kw_args:
+        kw_args['axis'] = -1
+    if kw_args['axis'] == -1:
+        kw_args['axis'] = shape(args[0])[-1]
+    N = shape(args[0])[kw_args['axis']]
+    return np.fft.fftshift(np.fft.fft(*args, **kw_args)) / N
 
 
 def fft_freq(*args, **kw_args):
