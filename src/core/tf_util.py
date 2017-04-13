@@ -342,6 +342,7 @@ class Session(object):
         self.sess = tf.Session()
         self.run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         self.run_metadata = tf.RunMetadata()
+        self.global_feed_dict = {}
 
     def run(self, *args, **kw_args):
         """
@@ -353,6 +354,13 @@ class Session(object):
                 kw_args['options'] = self.run_options
                 kw_args['run_metadata'] = self.run_metadata
             del kw_args['debug']
+
+        # Parse feed dict, base on global feed dict
+        feed_dict = dict(self.global_feed_dict)
+        if 'feed_dict' in kw_args:
+            feed_dict.update(kw_args['feed_dict'])
+        kw_args['feed_dict'] = feed_dict
+
         return self.sess.run(*args, **kw_args)
 
     def report(self, fn='debug.ctl'):
@@ -383,6 +391,14 @@ class Session(object):
         Alias for `tf.Session.close`.
         """
         return self.sess.close()
+
+    def feed_globally(self, feed_dict):
+        """
+        Feed to all following calls to `core.tf_util.Session.run`.
+        
+        :param feed_dict: feed dictionary
+        """
+        self.global_feed_dict.update(feed_dict)
 
 
 def py_func(*args, **kw_args):

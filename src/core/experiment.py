@@ -614,7 +614,7 @@ def plot_compare(tasks, args):
             pt2.fill('psd_pred_smf', 'task2', x_unit=fs2, label=name2)
         p.labels(y='PSD of $f\,|\,h$ (dB)',
                  x='Frequency ({})'.format(x_unit))
-        p.ax.set_ylim(bottom=-15)
+        p.ax.set_ylim(bottom=-30)
         p.show_legend()
 
     # Return `Plotter2D` instance and file path
