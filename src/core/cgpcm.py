@@ -619,7 +619,7 @@ class VCGPCM(CGPCM):
         :return: predicted function
         """
         n = shape(t)[0]
-        mats = self._construct_model_matrices(data.Data(t, None))
+        mats = self._construct_model_matrices(data.Data(t))
         mats = {k: self._run(mats[k]) for k in ['a', 'Ahh', 'Ahx', 'Axx']}
 
         if is_numeric(samples_h):

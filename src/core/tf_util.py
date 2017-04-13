@@ -406,12 +406,11 @@ def py_func(*args, **kw_args):
     Extension of `tf.py_func` that also allows for gradient specification.
     Source: https://gist.github.com/harpone/3453185b41d8d985356cbe5e57d67342
     """
-    if 'grad' not in kw_args:
-        raise RuntimeError('must specify gradient')
-
     rnd_name = 'PyFuncGrad' + str(np.random.randint(0, int(1e8)))
-    tf.RegisterGradient(rnd_name)(kw_args['grad'])
-    del kw_args['grad']
+
+    if 'grad' in kw_args:
+        tf.RegisterGradient(rnd_name)(kw_args['grad'])
+        del kw_args['grad']
 
     g = tf.get_default_graph()
     with g.gradient_override_map({"PyFunc": rnd_name}):
