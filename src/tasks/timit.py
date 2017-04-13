@@ -36,7 +36,7 @@ class Experiment(Task):
     def load(self, sess):
         # Load data
         e, f = data.load_timit_tobar2015()
-        self._set_data(f=f, e=f,
+        self._set_data(f=f, e=e,
                        k=data.Data(np.linspace(-4 * self.config.tau_w,
                                                4 * self.config.tau_w,
                                                500)),
