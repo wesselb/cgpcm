@@ -441,7 +441,8 @@ class VCGPCM(CGPCM):
         self.vars['mu'] = mean_init
 
         # Variance
-        var_init = tf.Variable(tf.cholesky(self.h_prior.var), name='Sh')
+        # var_init = tf.Variable(tf.cholesky(self.h_prior.var), name='Sh')
+        var_init = tf.Variable(1e-2 * eye(shape(self.h_prior.var)[-1]), name='Sh')
         self.vars['var'] = var_init
 
         tf.variables_initializer([mean_init, var_init])
@@ -531,6 +532,7 @@ class VCGPCM(CGPCM):
         if normalise:
             samples = [sample / max(sample) for sample in samples]
 
+        psd_pad = 0
         # Check whether to predict kernel or PSD
         if psd:
             samples = [util.fft_db(zero_pad(sample, psd_pad), axis=0)
