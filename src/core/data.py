@@ -149,7 +149,11 @@ class Data(object):
         :param other: other data set
         :return: equal
         """
-        return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
+        try:
+            return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
+        except ValueError:
+            # If e.g. `other` has another shape
+            return False
 
     def at(self, other_x):
         """

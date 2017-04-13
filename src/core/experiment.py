@@ -546,7 +546,8 @@ def plot_compare(tasks, args):
     if task2:
         pt2.marker('th_data', 'inducing_points')
     pt1.line('k', 'truth', 'Truth')
-    data1['k_emp'] = data1['f'].autocorrelation()
+    if 'k_emp' not in data1:
+        data1['k_emp'] = data1['f'].autocorrelation()
     data1['k_emp'] /= data1['k_emp'].max
     pt1.line('k_emp', 'observation', 'Autocorrelation')
     pt1.fill('k_pred' + add1, 'task1', name1)
@@ -607,7 +608,8 @@ def plot_compare(tasks, args):
         p.subplot2grid((2, 6), (1, 4), colspan=2)
         p.lims(x=(0, 1.5 / task1.config.tau_f))
         pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
-        data1['psd_emp'] = data1['k_emp'].fft_db(split_freq=False)
+        if 'psd_emp' not in data1:
+            data1['psd_emp'] = data1['k_emp'].fft_db(split_freq=False)
         pt1.line('psd_emp', 'observation', label='Periodogram')
         pt1.fill('psd_pred' + add1, 'task1', x_unit=fs1, label=name1)
         if task2:
