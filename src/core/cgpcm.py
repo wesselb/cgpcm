@@ -278,21 +278,10 @@ class CGPCM(Parametrisable):
         if recompute and self._precomputed:
             self.undo_precompute()
         if not self._precomputed:
-            # Save symbolic forms
             self.mats_symbolic = dict(self.mats)
-
-            # Create placeholders to replace symbolic forms
-            self.mats_phs = {k: placeholder(shape(v))
-                             for k, v in self.mats.items()}
-
-            # Feed the values for the placeholders globally
-            self.sess.feed_globally({self.mats_phs[k]: self._run(v)
-                                     for k, v in self.mats.items()})
-
-            # Replace symbolic forms
-            self.mats = dict(self.mats_phs)
-
-            # Indicate that precomputation has happened
+            ks, vs = zip(*self.mats.items())
+            vs = self._run(vs)
+            self.mats = {k: v for k, v in zip(ks, vs)}
             self._precomputed = True
 
     def undo_precompute(self):
@@ -300,14 +289,7 @@ class CGPCM(Parametrisable):
         Revert precomputation of matrices.
         """
         if self._precomputed:
-            # Put symbolic forms back
             self.mats = self.mats_symbolic
-
-            # Remove feeding of placeholders globally
-            for v in self.mats_phs.values():
-                del self.sess.global_feed_dict[v]
-
-            # Indicate that precomputation is reversed
             self._precomputed = False
 
 
