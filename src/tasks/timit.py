@@ -21,17 +21,17 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=200,
-                          iters=500,
-                          iters_post=50,
-                          samps=200,
+                          iters=5000,
+                          iters_post=100,
+                          samps=1000,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          nx=150,
-                          nh=150,
+                          nx=200,
+                          nh=200,
                           noise_init=1e-3,
-                          tau_w=10e-3,
-                          tau_f=1e-3)
+                          tau_w=4e-2,
+                          tau_f=.5e-3)
 
     def load(self, sess):
         # Load data
@@ -39,10 +39,10 @@ class Experiment(Task):
         self._set_data(f=f, e=f,
                        k=data.Data(np.linspace(-4 * self.config.tau_w,
                                                4 * self.config.tau_w,
-                                               300)),
+                                               500)),
                        h=data.Data(np.linspace(0,
                                                2 * self.config.tau_w,
-                                               300)))
+                                               500)))
 
         # Construct model
         mod = VCGPCM.from_recipe(sess=sess,
