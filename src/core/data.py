@@ -121,6 +121,9 @@ class Data(object):
         y = self.y
         y[np.isnan(y)] = 0
 
+        # Ensure zero mean
+        y -= np.mean(y)
+
         return Data(np.linspace(-self.max_lag,
                                 self.max_lag,
                                 2 * self.n - 1),
@@ -152,7 +155,7 @@ class Data(object):
         try:
             return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
         except ValueError:
-            # If e.g. `other` has another shape
+            # If e.g. `other` has is of another shape
             return False
 
     def at(self, other_x):
