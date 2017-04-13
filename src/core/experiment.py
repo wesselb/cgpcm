@@ -404,8 +404,6 @@ class TaskPlotter(object):
         """
         mean, lower, upper, std = map(self._process_fun(x_unit),
                                       self._task.data[key])
-        lower = mean - 2 * std
-        upper = mean + 2 * std
         self._p.fill(lower.x, lower.y, upper.y,
                      fill_colour=self._styles[style]['colour'])
         self._p.plot(mean.x, mean.y,
@@ -616,7 +614,7 @@ def plot_compare(tasks, args):
             pt2.fill('psd_pred' + add2, 'task2', x_unit=fs2, label=name2)
         p.labels(y='PSD of $f\,|\,h$ (dB)',
                  x='Frequency ({})'.format(x_unit))
-        p.ax.set_ylim(bottom=-30)
+        # p.ax.set_ylim(bottom=-30)
         p.show_legend()
 
     # Return `Plotter2D` instance and file path
