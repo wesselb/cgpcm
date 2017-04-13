@@ -49,3 +49,6 @@ src/debug.ctl
 # Large datasets
 src/data/KEMAR
 src/data/CIPIC
+
+# Vim swap files
+*.swp
