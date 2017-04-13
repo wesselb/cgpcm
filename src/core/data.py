@@ -127,7 +127,7 @@ class Data(object):
         return Data(np.linspace(-self.max_lag,
                                 self.max_lag,
                                 2 * self.n - 1),
-                    np.convolve(y[::-1], y))
+                    np.convolve(y[::-1], y)) / (self.n - 1)
 
     def fft_db(self, split_freq=True):
         """
