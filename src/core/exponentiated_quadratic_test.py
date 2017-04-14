@@ -22,21 +22,21 @@ class TestEQ(unittest.TestCase):
         self.var_map = {'t3': constant(np.eye(2))}
 
     def test1(self):
-        ref = np.array([[55.8181, 11.7677],
-                        [11.7677, 55.8181]])
+        ref = np.array([[55.81808295, 11.76773162],
+                        [11.76773162, 55.81808295]])
         res = self.sess.run(self.exp1.integrate_box(('t1', -inf, 0),
                                                     ('t2', -inf, 0),
                                                     **self.var_map))
-        np.testing.assert_almost_equal(res, ref, decimal=4)
+        np.testing.assert_almost_equal(res, ref, decimal=6)
 
     def test2(self):
-        ref = np.array([[217.392, 318.354],
-                        [318.354, 217.392]])
+        ref = np.array([[217.3921457, 318.3540954],
+                        [318.3540954, 217.3921457]])
         box = [('t1', const(-1), const(2)), ('t2', self.t3, const(3))]
         res = self.sess.run(self.exp1.integrate_box(*box, **self.var_map))
-        np.testing.assert_almost_equal(res, ref, decimal=3)
+        np.testing.assert_almost_equal(res, ref, decimal=5)
 
     def test3(self):
-        ref = 65.7397
+        ref = 65.73974603
         res = self.sess.run(self.exp2.integrate_half('t1'))
-        np.testing.assert_almost_equal(res, ref, decimal=4)
+        np.testing.assert_almost_equal(res, ref)
