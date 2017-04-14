@@ -204,7 +204,9 @@ def train(sess, task, debug_options):
                       {'name': 'alpha', 'tensor': mod.alpha,
                        'modifier': '.2e'}]
     learn.minimise_lbfgs(sess, -elbo,
-                         vars=[mod.vars['mu'], mod.vars['var']],
+                         vars=[mod.vars['mu'],
+                               mod.vars['var'],
+                               mod.vars['s2_f']],
                          iters=task.config.iters_pre,
                          fetches_config=fetches_config,
                          name='pretraining using L-BFGS')
@@ -285,6 +287,7 @@ def predict(sess, task, mod, debug_options):
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
     task.data['psd_pred'] = mod.predict_k(task.data['k'].x, psd=True)
     task.data['psd_pred_fs'] = 1. / task.data['k'].dx
+    # task.data['psd_pred'] = mod.predict_psd(task.data['k'].x)
     task.data['h_mp_pred'] = mod.predict_h(task.data['h'].x,
                                            phase_transform='minimum_phase')
     task.data['h_zp_pred'] = mod.predict_h(task.data['h'].x,
@@ -302,6 +305,8 @@ def predict(sess, task, mod, debug_options):
                                                 samples_h=samples)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=samples)
+        # task.data['psd_pred_smf'] = mod.predict_psd(task.data['k'].x,
+        #                                             samples_h=samples)
         task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                   samples_h=samples,
                                                   psd=True)
