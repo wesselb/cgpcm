@@ -416,17 +416,6 @@ def py_func(*args, **kw_args):
         return tf.py_func(*args, **kw_args)
 
 
-def initialise_uninitialised_variables(sess):
-    """
-    Initialise uninitialised variables.
-
-    :param sess: TensorFlow session
-    """
-    for var in tf.global_variables():
-        if not sess.run(tf.is_variable_initialized(var)):
-            sess.run(tf.variables_initializer([var]))
-
-
 def vec_to_tril(x):
     """
     Convert a vector to a lower triangular matrix.

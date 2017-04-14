@@ -259,7 +259,7 @@ def mod_from_task(sess, task, debug_options):
 
     # Construct model from recipe
     mod = VCGPCM.from_recipe(sess=sess, **task.data['recipe'])
-    initialise_uninitialised_variables(sess)
+    sess.run(tf.global_variables_initializer())
 
     # Restore variables
     for var_name, var_value in task.data['vars'].items():

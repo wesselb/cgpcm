@@ -94,7 +94,7 @@ class CGPCM(Parametrisable):
         s2, vars['s2'] = var_pos(to_float(noise_init))
 
         # Initialise variables and construct
-        initialise_uninitialised_variables(sess)
+        sess.run(tf.variables_initializer(vars.values()))
 
         return cls(sess=sess, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
                    gamma=gamma, omega=omega, vars=vars,

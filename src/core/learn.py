@@ -123,7 +123,6 @@ def minimise_lbfgs(sess, objective, vars, iters, fetches_config=None,
                    options={'disp': False,
                             'maxiter': iters - 2},
                    var_list=vars)
-    initialise_uninitialised_variables(sess)
 
     # Perform minimisation
     progress = Progress(name=name, iters=iters, fetches_config=fetches_config)
