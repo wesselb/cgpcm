@@ -6,7 +6,6 @@ from tensorflow.python.client import timeline
 
 import config
 
-
 # Load bivariate normal CDF
 os.environ['BVN_CDF'] = os.environ['BVN_CDF_REPO']
 bvn_cdf = imp.load_source('bvn_cdf',
@@ -426,3 +425,34 @@ def initialise_uninitialised_variables(sess):
     for var in tf.global_variables():
         if not sess.run(tf.is_variable_initialized(var)):
             sess.run(tf.variables_initializer([var]))
+
+
+def vec_to_tril(x):
+    """
+    Convert a vector to a lower triangular matrix.
+
+    :param x: vector
+    :return: lower triangular matrix
+    """
+    if len(shape(x)) != 1:
+        raise ValueError('input must be rank 1')
+    n = shape(x)[0]
+    m = int(((1 + 8 * n) ** .5 - 1) / 2)
+    return tf.sparse_to_dense(sparse_indices=zip(*np.tril_indices(m)),
+                              output_shape=[m, m],
+                              sparse_values=x)
+
+
+def tril_to_vec(x):
+    """
+    Convert a lower triangular matrix to a vector
+
+    :param x: lower triangular matrix
+    :return: vector
+    """
+    if len(shape(x)) != 2:
+        raise ValueError('input must be rank 2')
+    if shape(x)[0] != shape(x)[1]:
+        raise ValueError('input must be square')
+    n = shape(x)[-1]
+    return tf.gather_nd(x, zip(*np.tril_indices(n)))
