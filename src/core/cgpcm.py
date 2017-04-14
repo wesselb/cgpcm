@@ -450,7 +450,6 @@ class VCGPCM(CGPCM):
         # Construct q(h)
         var = vec_to_tril(var_init)
         self.h = Normal(mul(var, var, adj_b=True), mean_init)
-                    
 
     def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
@@ -514,7 +513,7 @@ class VCGPCM(CGPCM):
         :param psd: predict PSD instead
         :param normalise: normalise prediction
         :param psd_pad: zero padding in the case of PSD
-        :return: predicted kernel
+        :return: predicted kernel or PSD
         """
         n = shape(t)[0]
         Ahh, a = self._run([self._Ahh_center(t),
@@ -552,6 +551,49 @@ class VCGPCM(CGPCM):
             x = fft_freq(shape(samples)[0])
         else:
             x = t
+
+        return data.UncertainData(mean=data.Data(x, mu),
+                                  lower=data.Data(x, lower),
+                                  upper=data.Data(x, upper),
+                                  std=data.Data(x, std))
+
+    def predict_psd(self, t, samples_h=200, normalise=True, psd_pad=1000):
+        """
+        Predict PSD.
+
+        :param t: points to predict kernel at
+        :param samples_h: samples in Monte-Carlo estimation
+        :param normalise: normalise prediction
+        :param psd_pad: zero padding
+        :return: predicted PSD
+        """
+        if is_numeric(samples_h):
+            h = self.h.sample()
+            samples_h = [self._run(h) for i in range(samples_h)]
+
+        h = placeholder(shape(self.h.sample()))
+        Kfu = self.kernel_h(t, self.th)
+        mu = mul(Kfu, h)
+        samples = map_progress(lambda x: self._run(mu, feed_dict={h: x}),
+                               samples_h,
+                               name='PSD prediction using MC')
+
+        samples = [data.Data(t, sample) for sample in samples]
+
+        if normalise:
+            samples = [sample / sample.max for sample in samples]
+
+        samples = [sample.autocorrelation().fft_db(split_freq=False)
+                   for sample in samples]
+
+        x = samples[0].x
+
+        samples = [sample.y[:, None] for sample in samples]
+        samples = np.concatenate(samples, axis=1)
+        mu = np.mean(samples, axis=1)
+        std = np.std(samples, axis=1)
+        lower = np.percentile(samples, lower_perc, axis=1)
+        upper = np.percentile(samples, upper_perc, axis=1)
 
         return data.UncertainData(mean=data.Data(x, mu),
                                   lower=data.Data(x, lower),
