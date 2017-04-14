@@ -24,7 +24,7 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=200,
-                          iters=5000,
+                          iters=500,
                           iters_post=200,
                           samps=200,
 
@@ -32,9 +32,9 @@ class Experiment(Task):
                           causal_model=options['causal-model'],
                           n=350,
                           nx=150,
-                          nh=50,
+                          nh=200,
                           noise_init=1e-3,
-                          tau_w=2e-2,
+                          tau_w=10e-2,
                           tau_f=1e-3)
 
     def load(self, sess):
