@@ -535,10 +535,15 @@ class VCGPCM(CGPCM):
         if normalise:
             samples = [sample / max(sample) for sample in samples]
 
+        # Determine x axis
+        if psd:
+            x = fft_freq(shape(samples[0])[0])
+        else:
+            x = t
+
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [util.fft_db(zero_pad(sample, psd_pad), axis=0)
-                       for sample in samples]
+            samples = [data.Data(x, sample).fft().real().abs().y[:, None] for sample in samples]
 
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
@@ -546,11 +551,13 @@ class VCGPCM(CGPCM):
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
 
-        # Determine x axis
+
+
+        # Convert to dB if necessary
         if psd:
-            x = fft_freq(shape(samples)[0])
-        else:
-            x = t
+            mu = data.Data(x, mu).db().y
+            lower = data.Data(x, lower).db().y
+            upper = data.Data(x, upper).db().y
 
         return data.UncertainData(mean=data.Data(x, mu),
                                   lower=data.Data(x, lower),
@@ -578,13 +585,13 @@ class VCGPCM(CGPCM):
                                samples_h,
                                name='PSD prediction using MC')
 
-        samples = [data.Data(t, sample) for sample in samples]
+        samples = [data.Data(t, sample).autocorrelation() for sample in samples]
 
         if normalise:
+            # scale = np.mean([sample.max for sample in samples])
             samples = [sample / sample.max for sample in samples]
 
-        samples = [sample.autocorrelation().fft_db(split_freq=False)
-                   for sample in samples]
+        samples = [sample.fft().real().abs() for sample in samples]
 
         x = samples[0].x
 
@@ -595,9 +602,9 @@ class VCGPCM(CGPCM):
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
 
-        return data.UncertainData(mean=data.Data(x, mu),
-                                  lower=data.Data(x, lower),
-                                  upper=data.Data(x, upper),
+        return data.UncertainData(mean=data.Data(x, mu).db(),
+                                  lower=data.Data(x, lower).db(),
+                                  upper=data.Data(x, upper).db(),
                                   std=data.Data(x, std))
 
     def predict_h(self, t, samples_h=200, normalise=True,
