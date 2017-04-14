@@ -91,7 +91,7 @@ def fft_db(*args, **kw_args):
     Similar to :func:`core.util.fft`, but returns the modulus of the result in
     decibel.
     """
-    return 10 * np.log10(np.abs(fft(*args, **kw_args)))
+    return 10 * np.log10(np.abs(np.real(fft(*args, **kw_args))))
 
 
 def zero_pad(x, num, axis=0):
@@ -103,6 +103,7 @@ def zero_pad(x, num, axis=0):
     :param num: number of zeros
     :return: zero-padded array
     """
+    num = 0
     zeros = np.zeros(num)
     dims = len(shape(x))
     add_before = max(axis, 0)

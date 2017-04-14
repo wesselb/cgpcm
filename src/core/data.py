@@ -150,7 +150,20 @@ class Data(object):
         """
         Compute the FFT.
         """
-        return Data(util.fft_freq(self.x), util.fft(self.y))
+        self._assert_evenly_spaced()
+        return Data(util.fft_freq(self.len), util.fft(self.y))
+
+    def abs(self):
+        """
+        Convert to modulus.
+        """
+        return Data(self.x, np.abs(self.y))
+
+    def real(self):
+        """
+        Convert to real.
+        """
+        return Data(self.x, np.real(self.y))
 
     def db(self):
         """
@@ -411,10 +424,11 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
     return f, k, h
 
 
-def load_timit_tobar2015():
+def load_timit_tobar2015(n=350):
     """
     Load TIMIT data set from Tobar et al. (2015).
 
+    :param n: number of points to subsample; the paper uses 350
     :return: subsampled data and full data
     """
     mat = sio.loadmat('data/TIMIT_unknown.mat')
@@ -423,7 +437,7 @@ def load_timit_tobar2015():
     t = np.arange(shape(y)[0]) / fs
     f = Data(t, y).fragment(1750, start=11499)[0]
     f = (f - f.mean) / f.std
-    return f.subsample(350)[0], f
+    return f.subsample(n)[0], f
 
 
 def load_gp_exp(sess, n=250, k_len=.1):

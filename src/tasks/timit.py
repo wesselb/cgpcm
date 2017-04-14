@@ -23,22 +23,23 @@ class Experiment(Task):
                           fp=options.fp(),
 
                           # Training options
-                          iters_pre=100,
-                          iters=100,
-                          iters_post=0,
-                          samps=0,
+                          iters_pre=200,
+                          iters=5000,
+                          iters_post=200,
+                          samps=200,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          nx=250,
-                          nh=150,
+                          n=350,
+                          nx=150,
+                          nh=50,
                           noise_init=1e-3,
-                          tau_w=3e-2,
-                          tau_f=.5e-3)
+                          tau_w=2e-2,
+                          tau_f=1e-3)
 
     def load(self, sess):
         # Load data
-        e, f = data.load_timit_tobar2015()
+        e, f = data.load_timit_tobar2015(self.config.n)
 
         # Subsample function to prevent graph explosion during prediction
         f_sub = f[::3]
@@ -54,10 +55,10 @@ class Experiment(Task):
 
         # Store data
         self._set_data(f=f_sub, e=e,
-                       k=data.Data(np.linspace(-4 * self.config.tau_w,
-                                               4 * self.config.tau_w,
-                                               1001)),
-                       h=data.Data(np.linspace(0,
+                       k=data.Data(np.linspace(-2 * self.config.tau_w,
+                                               2 * self.config.tau_w,
+                                               1501)),
+                       h=data.Data(np.linspace(-2 * self.config.tau_w,
                                                2 * self.config.tau_w,
                                                1000)))
 
