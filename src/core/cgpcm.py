@@ -50,7 +50,7 @@ class CGPCM(Parametrisable):
         vars = {}
 
         # Config
-        tau_ws = 2
+        tau_ws = 1
         causal_extra_points = 2
 
         # Acausal parameters
