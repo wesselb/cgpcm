@@ -445,7 +445,7 @@ class VCGPCM(CGPCM):
         self.vars['var'] = var_init
 
         # Initialise mean and variance variables
-        tf.variables_initializer([mean_init, var_init])
+        self._run(tf.variables_initializer([mean_init, var_init]))
 
         # Construct q(h)
         var = vec_to_tril(var_init)
