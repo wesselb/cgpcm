@@ -145,6 +145,18 @@ class Data(object):
         else:
             return Data(util.fft_freq(len(spec)) / self.dx, spec)
 
+    def fft(self):
+        """
+        Compute the FFT.
+        """
+        return Data(util.fft_freq(self.x), util.fft(self.y))
+
+    def db(self):
+        """
+        Convert to decibel.
+        """
+        return Data(self.x, 10 * np.log(np.abs(self.y)))
+
     def equals_approx(self, other):
         """
         Check whether data set is approximately equal to another data set.
