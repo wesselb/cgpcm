@@ -339,6 +339,15 @@ class TaskPlotter(object):
                'task2': {'colour': '#ca0020',
                          'line_style': '--',
                          'marker_style': '+'},
+               'alt1': {'colour': 'cyan',
+                        'line_style': '-',
+                        'marker_style': 'o'},
+               'alt2': {'colour': 'orange',
+                        'line_style': '-',
+                        'marker_style': 'o'},
+               'alt3': {'colour': 'green',
+                        'line_style': '-',
+                        'marker_style': 'o'},
                'inducing_points': {'colour': 'k',
                                    'line_style': '-',
                                    'marker_style': 's'}}
@@ -530,16 +539,16 @@ def plot_compare(tasks, args):
     p.labels(y='$f\,|\,h$', x='$t$ ({})'.format(x_unit))
     p.x_shift = 0
 
-    pt1.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
+    pt1.bound(x_min=-tau_ws * task1.config.tau_w, x_max=tau_ws * task1.config.tau_w)
     if task2:
-        pt2.bound(x_min=0, x_max=tau_ws * task1.config.tau_w)
+        pt2.bound(x_min=-tau_ws * task1.config.tau_w, x_max=tau_ws * task1.config.tau_w)
 
     # Kernel
     if options['no-psd']:
         p.subplot2grid((2, 6), (1, 0), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 0), colspan=2)
-    p.lims(x=(0, tau_ws * task1.config.tau_w))
+    p.lims(x=(-tau_ws * task1.config.tau_w, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'inducing_points')
     if task2:
         pt2.marker('th_data', 'inducing_points')
@@ -559,7 +568,7 @@ def plot_compare(tasks, args):
         p.subplot2grid((2, 6), (1, 3), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 2), colspan=2)
-    p.lims(x=(0, tau_ws * task1.config.tau_w))
+    p.lims(x=(-tau_ws * task1.config.tau_w, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'inducing_points')
     data1['h_mp'] = data1['h'].minimum_phase()
     data1['h_zp'] = data1['h'].zero_phase()
@@ -604,11 +613,24 @@ def plot_compare(tasks, args):
 
         # PSD
         p.subplot2grid((2, 6), (1, 4), colspan=2)
-        p.lims(x=(0, 1.5 / task1.config.tau_f))
+        p.lims(x=(0, 1 / task1.config.tau_f))
         pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
         if 'psd_emp' not in data1:
             data1['psd_emp'] = data1['k_emp'].fft_db(split_freq=False)
         pt1.line('psd_emp', 'observation', label='Periodogram')
+
+        ac1 = data1['f_pred'][0].autocorrelation()
+        data1['psd2'] = (ac1 / ac1.max).fft_db(split_freq=False)
+        pt1.line('psd2', 'alt1', label='From f pred')
+
+        ac2 = data1['h_mp_pred'][0].autocorrelation()
+        data1['psd3'] = (ac2 / ac2.max).fft_db(split_freq=False)
+        pt1.line('psd3', 'alt2', label='From h pred')
+
+        ac3 = data1['k_pred'][0]
+        data1['psd4'] = (ac3 / ac3.max).fft_db(split_freq=False)
+        pt1.line('psd4', 'alt3', label='From k pred')
+
         pt1.fill('psd_pred' + add1, 'task1', x_unit=fs1, label=name1)
         if task2:
             pt2.fill('psd_pred' + add2, 'task2', x_unit=fs2, label=name2)
