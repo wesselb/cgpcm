@@ -109,10 +109,11 @@ class Data(object):
         """
         return Data(self.x + delta_x, self.y)
 
-    def autocorrelation(self):
+    def autocorrelation(self, substract_mean=False):
         """
         Compute autocorrelation of the data.
 
+        :param substract_mean: substract mean from data
         :return: autocorrelation
         """
         self._assert_evenly_spaced()
@@ -121,8 +122,8 @@ class Data(object):
         y = self.y
         y[np.isnan(y)] = 0
 
-        # Ensure zero mean
-        y -= np.mean(y)
+        if substract_mean:
+            y -= np.mean(y)
 
         return Data(np.linspace(-self.max_lag,
                                 self.max_lag,
@@ -155,7 +156,7 @@ class Data(object):
         """
         Convert to decibel.
         """
-        return Data(self.x, 10 * np.log(np.abs(self.y)))
+        return Data(self.x, 10 * np.log10(np.abs(self.y)))
 
     def equals_approx(self, other):
         """
@@ -213,6 +214,7 @@ class Data(object):
 
         :return: minimum-phase form
         """
+        return self
         self._assert_evenly_spaced()
         mag = np.abs(np.fft.fft(self.y))
         spec = np.exp(signal.hilbert(np.log(mag)).conj())
