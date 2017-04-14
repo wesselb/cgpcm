@@ -212,8 +212,8 @@ class CGPCM(Parametrisable):
     def _init_kernels(self):
         # Stuff related to h
         self.kernel_h = DEQ(s2=1., alpha=self.alpha, gamma=self.gamma)
-        kh = reg(self.kernel_h(self.th))
-        self.Lh = tf.cholesky(kh)
+        self.Kh = reg(self.kernel_h(self.th))
+        self.Lh = tf.cholesky(self.Kh)
         self.iKh = cholinv(self.Lh)
         self.h_prior = Normal(self.iKh)
 
@@ -441,12 +441,16 @@ class VCGPCM(CGPCM):
         self.vars['mu'] = mean_init
 
         # Variance
-        # var_init = tf.Variable(tf.cholesky(self.h_prior.var), name='Sh')
-        var_init = tf.Variable(1e-2 * eye(shape(self.h_prior.var)[-1]), name='Sh')
+        var_init = tf.Variable(tril_to_vec(tf.cholesky(self.h_prior.var)))
         self.vars['var'] = var_init
 
+        # Initialise mean and variance variables
         tf.variables_initializer([mean_init, var_init])
-        self.h = Normal(mul(var_init, var_init, adj_a=True), mean_init)
+
+        # Construct q(h)
+        var = vec_to_tril(var_init)
+        self.h = Normal(mul(var, var, adj_b=True), mean_init)
+                    
 
     def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
@@ -532,7 +536,6 @@ class VCGPCM(CGPCM):
         if normalise:
             samples = [sample / max(sample) for sample in samples]
 
-        psd_pad = 0
         # Check whether to predict kernel or PSD
         if psd:
             samples = [util.fft_db(zero_pad(sample, psd_pad), axis=0)
