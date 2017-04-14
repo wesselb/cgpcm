@@ -1,12 +1,21 @@
 Code:
     Bugs:
+        ☐ PSD scale with zero padding @high
+            ☐ Enable zero padding again in util.zero_pad
+        ☐ Resolve choice of omega
+        ☐ Do not use s2_f estimate by MF, instead recompute to have unity prior variance for SMF!
+        ☐ Noise in PSD estimate @critical
     Refactor:
         ☐ Python notebook visualisation proper x axis @high
+        ☐ Get rid of the mess that is 'plot_compare'
+        ☐ Proper referencing commands in comments @low
     Optimisation:
         ☐ Expensive computation through precomputation
     Features:
+        ☐ Correction to lower noise floor on kernel estimation? Noise could be introduced from various matrix regularisation.
+        ☐ No transform of filter, reenable MP again @high
     Experiments:
-        ☐ HRIR: @started
+        ☐ HRIR @paused
         ☐ TIMIT @next
         ☐ OU @next
         ☐ Currency
