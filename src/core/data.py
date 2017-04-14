@@ -121,9 +121,6 @@ class Data(object):
         y = self.y
         y[np.isnan(y)] = 0
 
-        # Ensure zero mean
-        y -= np.mean(y)
-
         return Data(np.linspace(-self.max_lag,
                                 self.max_lag,
                                 2 * self.n - 1),
@@ -149,13 +146,26 @@ class Data(object):
         """
         Compute the FFT.
         """
-        return Data(util.fft_freq(self.x), util.fft(self.y))
+        self._assert_evenly_spaced()
+        return Data(util.fft_freq(self.len), util.fft(self.y))
+
+    def abs(self):
+        """
+        Convert to modulus.
+        """
+        return Data(self.x, np.abs(self.y))
+
+    def real(self):
+        """
+        Convert to real.
+        """
+        return Data(self.x, np.real(self.y))
 
     def db(self):
         """
         Convert to decibel.
         """
-        return Data(self.x, 10 * np.log(np.abs(self.y)))
+        return Data(self.x, 10 * np.log10(self.y))
 
     def equals_approx(self, other):
         """
