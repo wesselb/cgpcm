@@ -130,28 +130,32 @@ class Data(object):
                                 2 * self.n - 1),
                     np.convolve(y[::-1], y)) / (self.n - 1)
 
-    def fft_db(self, split_freq=True):
+    def fft_db(self, split_freq=False):
         """
-        Compute the modulus of the DFT in decibel.
+        Alias for `core.data.Data.fft` that afterwards applies
+        `core.data.Data.db`.
+        """
+        res = self.fft(split_freq=split_freq)
+        if type(res) == tuple:
+            return res[0].db(), res[1]
+        else:
+            return res.db()
 
+    def fft(self, split_freq=False):
+        """
+        Compute the FFT.
+        
         :param split_freq: return spectrum in relative frequency and
                            additionally return sampling frequency, else
                            return spectrum in absolute frequency
         :return: log spectrum and possibly sampling frequency
         """
         self._assert_evenly_spaced()
-        spec = util.fft_db(util.zero_pad(self.y, 1000))
+        spec = util.fft(util.zero_pad(self.y, 1000))
         if split_freq:
             return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
         else:
             return Data(util.fft_freq(len(spec)) / self.dx, spec)
-
-    def fft(self):
-        """
-        Compute the FFT.
-        """
-        self._assert_evenly_spaced()
-        return Data(util.fft_freq(self.len), util.fft(self.y))
 
     def abs(self):
         """
@@ -247,6 +251,18 @@ class Data(object):
         y = np.real(np.fft.ifft(np.fft.fftshift(spec)))
         scale = float(len(y)) / self.n
         return Data(np.linspace(self.x[0], self.x[-1], len(y)), scale * y)
+
+    def window(self, name='hamming'):
+        """
+        Apply a window.
+        
+        :param name: name of window
+        :return: windowed data
+        """
+        if name == 'none':
+            return self
+        w = signal.get_window(name, Nx=self.len)
+        return Data(self.x, self.y * w)
 
     @property
     def dx(self):
@@ -357,6 +373,9 @@ class Data(object):
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
+    def __pow__(self, power, modulo=None):
+        return Data(self.x, self.y.__pow__(power, modulo))
 
     def __getitem__(self, item):
         return Data(self.x[item], self.y[item])
