@@ -427,9 +427,9 @@ def vec_to_tril(x):
         raise ValueError('input must be rank 1')
     n = shape(x)[0]
     m = int(((1 + 8 * n) ** .5 - 1) / 2)
-    return tf.sparse_to_dense(sparse_indices=zip(*np.tril_indices(m)),
-                              output_shape=[m, m],
-                              sparse_values=x)
+    return tf.scatter_nd(indices=zip(*np.tril_indices(m)),
+                         shape=[m, m],
+                         updates=x)
 
 
 def tril_to_vec(x):
