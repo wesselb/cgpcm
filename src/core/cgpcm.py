@@ -446,13 +446,14 @@ class VCGPCM(CGPCM):
         # Variance
         var_init = tf.Variable(tril_to_vec(tf.cholesky(self.h_prior.var)))
         self.vars['var'] = var_init
+        self.var_scale, self.vars['var_scale'] = var_pos(to_float(1e-2))
 
         # Initialise mean and variance variables
-        self._run(tf.variables_initializer([mean_init, var_init]))
+        self._run(tf.variables_initializer([mean_init, var_init, self.vars['var_scale']]))
 
         # Construct q(h)
-        var = vec_to_tril(var_init)
-        self.h = Normal(reg(mul(var, var, adj_b=True)), mean_init)
+        var_init = vec_to_tril(var_init) * self.var_scale
+        self.h = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
 
     def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
@@ -558,20 +559,13 @@ class VCGPCM(CGPCM):
 
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [data.Data(x, sample).fft().real().abs().y[:, None] for
-                       sample in samples]
+            samples = [data.Data(x, sample).fft_db().y[:, None] for sample in samples]
 
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
-
-        # Convert to dB if necessary
-        if psd:
-            mu = data.Data(x, mu).db().y
-            lower = data.Data(x, lower).db().y
-            upper = data.Data(x, upper).db().y
 
         return data.UncertainData(mean=data.Data(x, mu),
                                   lower=data.Data(x, lower),
@@ -676,7 +670,7 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(t, upper),
                                   std=data.Data(t, std))
 
-    def predict_f(self, t, samples_h=50):
+    def predict_f(self, t, samples_h=50, precompute=True):
         """
         Predict function.
 
@@ -685,11 +679,15 @@ class VCGPCM(CGPCM):
 
         :param t: point at which to predict function
         :param samples_h: samples in Monte-Carlo estimation
+        :param precompute: perform precomputation
         :return: predicted function
         """
         n = shape(t)[0]
         mats = self._construct_model_matrices(data.Data(t))
-        mats = {k: self._run(mats[k]) for k in ['a', 'Ahh', 'Ahx', 'Axx']}
+
+        # Perform precomputation
+        if precompute:
+            mats = {k: self._run(mats[k]) for k in ['a', 'Ahh', 'Ahx', 'Axx']}
 
         if is_numeric(samples_h):
             h = self.h.sample()
