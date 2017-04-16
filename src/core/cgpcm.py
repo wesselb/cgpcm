@@ -18,7 +18,7 @@ class CGPCM(Parametrisable):
 
     _required_pars = ['sess', 'e',
                       'th', 'tx',
-                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars',
+                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w',
                       'causal', 'causal_id']
 
     def __init__(self, **kw_args):
@@ -67,6 +67,7 @@ class CGPCM(Parametrisable):
 
         alpha, vars['alpha'] = var_pos(to_float(alpha))
         gamma, vars['gamma'] = var_pos(to_float(gamma))
+        s2_w, vars['s2_w'] = var_pos(to_float(1.))
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
@@ -100,7 +101,7 @@ class CGPCM(Parametrisable):
         sess.run(tf.variables_initializer(vars.values()))
 
         return cls(sess=sess, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
-                   gamma=gamma, omega=omega, vars=vars,
+                   gamma=gamma, omega=omega, vars=vars, s2_w=s2_w,
 
                    # Store recipe for reconstruction
                    e=e, causal=causal, causal_id=causal_id, tau_w=tau_w,
@@ -108,7 +109,7 @@ class CGPCM(Parametrisable):
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
-        kxs = eq.kxs_constructor(self.omega)
+        kxs = eq.kxs_constructor(self.s2_w ** .5, self.omega)
         self.expq_a = kh(self.t1 - self.tau1, self.t2 - self.tau1)
         self.expq_Ahh = kh(self.t1 - self.tau1, self.th1) \
                         * kh(self.th2, self.t2 - self.tau1)
@@ -221,7 +222,7 @@ class CGPCM(Parametrisable):
         self.h_prior = Normal(reg(self.iKh))
 
         # Stuff related to x
-        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5,
+        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5 * self.s2_w,
                             alpha=0,
                             gamma=.5 * self.omega)
         self.Kx = reg(self.kernel_x(self.tx))

@@ -229,7 +229,8 @@ def train(sess, task, debug_options):
                                    mod.vars['s2'],
                                    mod.vars['s2_f'],
                                    mod.vars['gamma'],
-                                   mod.vars['alpha']],
+                                   mod.vars['alpha'],
+                                   mod.vars['s2_w']],
                              iters=task.config.iters_post,
                              fetches_config=fetches_config,
                              name='posttraining using L-BFGS')
