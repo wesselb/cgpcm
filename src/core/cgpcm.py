@@ -31,7 +31,7 @@ class CGPCM(Parametrisable):
 
     @classmethod
     def from_recipe(cls, sess, e, nx, nh, tau_w, tau_f, causal,
-                    causal_id=False, noise_init=1e-4):
+                    causal_id=False, noise_init=1e-4, tx_range=None):
         """
         Generate parameters for the CGPCM and construct afterwards.
 
@@ -44,6 +44,8 @@ class CGPCM(Parametrisable):
         :param causal: causal model
         :param causal_id: causal interdomain transformation
         :param noise_init: initialisation of noise
+        :param tx_range: range of the inducing points for x, is taken from `e`
+                         by default
         :return: :class:`core.cgpcm.CGPCM` instance
         """
         # Trainable variables
@@ -68,8 +70,9 @@ class CGPCM(Parametrisable):
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
-            omega = .5 * length_scale((max(e.x) - min(e.x)) / nx)
-            tx = constant(np.linspace(min(e.x), max(e.x), nx))
+            tx_range = (min(e.x), max(e.x)) if tx_range is None else tx_range
+            omega = .5 * length_scale((tx_range[1] - tx_range[0]) / nx)
+            tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
         else:
             omega = to_float(np.nan)
             tx = constant([])
@@ -215,7 +218,7 @@ class CGPCM(Parametrisable):
         self.Kh = reg(self.kernel_h(self.th))
         self.Lh = tf.cholesky(self.Kh)
         self.iKh = cholinv(self.Lh)
-        self.h_prior = Normal(self.iKh)
+        self.h_prior = Normal(reg(self.iKh))
 
         # Stuff related to x
         self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5,
@@ -449,7 +452,7 @@ class VCGPCM(CGPCM):
 
         # Construct q(h)
         var = vec_to_tril(var_init)
-        self.h = Normal(mul(var, var, adj_b=True), mean_init)
+        self.h = Normal(reg(mul(var, var, adj_b=True)), mean_init)
 
     def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
@@ -504,7 +507,7 @@ class VCGPCM(CGPCM):
         return np.mean(elbos), np.std(elbos) / len(samples_h) ** .5
 
     def predict_k(self, t, samples_h=200, psd=False, normalise=True,
-                  psd_pad=1000):
+                  psd_pad=1000, alt=False):
         """
         Predict kernel.
 
@@ -515,9 +518,21 @@ class VCGPCM(CGPCM):
         :param psd_pad: zero padding in the case of PSD
         :return: predicted kernel or PSD
         """
+
         n = shape(t)[0]
-        Ahh, a = self._run([self._Ahh_center(t),
-                            self._a_center(t)])
+        # Ahh, a = self._run([self._Ahh_center(t),
+        #                     self._a_center(t)])
+        Ahh, a = self._Ahh_center(t), self._a_center(t)
+
+        if alt:
+
+            # Predict mean analytically
+            k_mean = self._run(
+                self.s2_f * (a + trmul(tile(self.h.m2 - self.iKh, n), Ahh)))
+            # k_mean -= cst
+            k_mean /= max(k_mean)
+
+            return data.Data(t, k_mean)
 
         if is_numeric(samples_h):
             h = self.h.sample()
@@ -543,15 +558,14 @@ class VCGPCM(CGPCM):
 
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [data.Data(x, sample).fft().real().abs().y[:, None] for sample in samples]
+            samples = [data.Data(x, sample).fft().real().abs().y[:, None] for
+                       sample in samples]
 
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
-
-
 
         # Convert to dB if necessary
         if psd:
@@ -585,7 +599,8 @@ class VCGPCM(CGPCM):
                                samples_h,
                                name='PSD prediction using MC')
 
-        samples = [data.Data(t, sample).autocorrelation() for sample in samples]
+        samples = [data.Data(t, sample).autocorrelation() for sample in
+                   samples]
 
         if normalise:
             # scale = np.mean([sample.max for sample in samples])
