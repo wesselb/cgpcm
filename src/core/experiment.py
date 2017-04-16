@@ -202,19 +202,21 @@ def train(sess, task, debug_options):
                       {'name': 'gamma', 'tensor': mod.gamma,
                        'modifier': '.2e'},
                       {'name': 'alpha', 'tensor': mod.alpha,
+                       'modifier': '.2e'},
+                      {'name': 'var scale', 'tensor': mod.var_scale,
                        'modifier': '.2e'}]
     learn.minimise_lbfgs(sess, -elbo,
                          vars=[mod.vars['mu'],
-                               mod.vars['var'],
-                               mod.vars['s2_f']],
+                               mod.vars['var']],
                          iters=task.config.iters_pre,
                          fetches_config=fetches_config,
                          name='pretraining using L-BFGS')
     learn.minimise_lbfgs(sess, -elbo,
                          vars=[mod.vars['mu'],
                                mod.vars['var'],
+                               mod.vars['s2_f'],
                                mod.vars['s2'],
-                               mod.vars['s2_f']],
+                               mod.vars['var_scale']],
                          iters=task.config.iters,
                          fetches_config=fetches_config,
                          name='training using L-BFGS')
@@ -229,7 +231,8 @@ def train(sess, task, debug_options):
                                    mod.vars['s2'],
                                    mod.vars['s2_f'],
                                    mod.vars['gamma'],
-                                   mod.vars['alpha']],
+                                   # mod.vars['alpha'],
+                                   mod.vars['var_scale']],
                              iters=task.config.iters_post,
                              fetches_config=fetches_config,
                              name='posttraining using L-BFGS')
@@ -283,11 +286,10 @@ def predict(sess, task, mod, debug_options):
     """
     # Predict MF
     out.section('predicting MF')
-    task.data['f_pred'] = mod.predict_f(task.data['f'].x)
+    task.data['f_pred'] = mod.predict_f(task.data['f'].x, precompute=False)
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
     task.data['psd_pred'] = mod.predict_k(task.data['k'].x, psd=True)
     task.data['psd_pred_fs'] = 1. / task.data['k'].dx
-    # task.data['psd_pred'] = mod.predict_psd(task.data['k'].x)
     task.data['h_mp_pred'] = mod.predict_h(task.data['h'].x,
                                            phase_transform='minimum_phase')
     task.data['h_zp_pred'] = mod.predict_h(task.data['h'].x,
@@ -302,11 +304,10 @@ def predict(sess, task, mod, debug_options):
         out.section('predicting SMF')
         samples = task.data['samples']
         task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x,
+                                                precompute=False,
                                                 samples_h=samples)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=samples)
-        # task.data['psd_pred_smf'] = mod.predict_psd(task.data['k'].x,
-        #                                             samples_h=samples)
         task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                   samples_h=samples,
                                                   psd=True)
