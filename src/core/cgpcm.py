@@ -18,7 +18,7 @@ class CGPCM(Parametrisable):
 
     _required_pars = ['sess', 'e',
                       'th', 'tx',
-                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars',
+                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w',
                       'causal', 'causal_id']
 
     def __init__(self, **kw_args):
@@ -31,7 +31,7 @@ class CGPCM(Parametrisable):
 
     @classmethod
     def from_recipe(cls, sess, e, nx, nh, tau_w, tau_f, causal,
-                    causal_id=False, noise_init=1e-4):
+                    causal_id=False, noise_init=1e-4, tx_range=None):
         """
         Generate parameters for the CGPCM and construct afterwards.
 
@@ -44,6 +44,8 @@ class CGPCM(Parametrisable):
         :param causal: causal model
         :param causal_id: causal interdomain transformation
         :param noise_init: initialisation of noise
+        :param tx_range: range of the inducing points for x, is taken from `e`
+                         by default
         :return: :class:`core.cgpcm.CGPCM` instance
         """
         # Trainable variables
@@ -65,11 +67,13 @@ class CGPCM(Parametrisable):
 
         alpha, vars['alpha'] = var_pos(to_float(alpha))
         gamma, vars['gamma'] = var_pos(to_float(gamma))
+        s2_w, vars['s2_w'] = var_pos(to_float(1.))
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
-            omega = .5 * length_scale((max(e.x) - min(e.x)) / nx)
-            tx = constant(np.linspace(min(e.x), max(e.x), nx))
+            tx_range = (min(e.x), max(e.x)) if tx_range is None else tx_range
+            omega = .5 * length_scale((tx_range[1] - tx_range[0]) / nx)
+            tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
         else:
             omega = to_float(np.nan)
             tx = constant([])
@@ -97,7 +101,7 @@ class CGPCM(Parametrisable):
         sess.run(tf.variables_initializer(vars.values()))
 
         return cls(sess=sess, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
-                   gamma=gamma, omega=omega, vars=vars,
+                   gamma=gamma, omega=omega, vars=vars, s2_w=s2_w,
 
                    # Store recipe for reconstruction
                    e=e, causal=causal, causal_id=causal_id, tau_w=tau_w,
@@ -105,7 +109,7 @@ class CGPCM(Parametrisable):
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
-        kxs = eq.kxs_constructor(self.omega)
+        kxs = eq.kxs_constructor(self.s2_w ** .5, self.omega)
         self.expq_a = kh(self.t1 - self.tau1, self.t2 - self.tau1)
         self.expq_Ahh = kh(self.t1 - self.tau1, self.th1) \
                         * kh(self.th2, self.t2 - self.tau1)
@@ -218,7 +222,7 @@ class CGPCM(Parametrisable):
         self.h_prior = Normal(reg(self.iKh))
 
         # Stuff related to x
-        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5,
+        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5 * self.s2_w,
                             alpha=0,
                             gamma=.5 * self.omega)
         self.Kx = reg(self.kernel_x(self.tx))
@@ -505,7 +509,7 @@ class VCGPCM(CGPCM):
         return np.mean(elbos), np.std(elbos) / len(samples_h) ** .5
 
     def predict_k(self, t, samples_h=200, psd=False, normalise=True,
-                  psd_pad=1000):
+                  psd_pad=1000, alt=False):
         """
         Predict kernel.
 
@@ -516,9 +520,21 @@ class VCGPCM(CGPCM):
         :param psd_pad: zero padding in the case of PSD
         :return: predicted kernel or PSD
         """
+
         n = shape(t)[0]
-        Ahh, a = self._run([self._Ahh_center(t),
-                            self._a_center(t)])
+        # Ahh, a = self._run([self._Ahh_center(t),
+        #                     self._a_center(t)])
+        Ahh, a = self._Ahh_center(t), self._a_center(t)
+
+        if alt:
+
+            # Predict mean analytically
+            k_mean = self._run(
+                self.s2_f * (a + trmul(tile(self.h.m2 - self.iKh, n), Ahh)))
+            # k_mean -= cst
+            k_mean /= max(k_mean)
+
+            return data.Data(t, k_mean)
 
         if is_numeric(samples_h):
             h = self.h.sample()
@@ -544,7 +560,6 @@ class VCGPCM(CGPCM):
 
         # Check whether to predict kernel or PSD
         if psd:
-            # samples = [data.Data(x, sample).fft().real().abs().y[:, None] for sample in samples]
             samples = [data.Data(x, sample).fft_db().y[:, None] for sample in samples]
 
         samples = np.concatenate(samples, axis=1)
@@ -552,14 +567,6 @@ class VCGPCM(CGPCM):
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
-
-
-
-        # # Convert to dB if necessary
-        # if psd:
-        #     mu = data.Data(x, mu).db().y
-        #     lower = data.Data(x, lower).db().y
-        #     upper = data.Data(x, upper).db().y
 
         return data.UncertainData(mean=data.Data(x, mu),
                                   lower=data.Data(x, lower),
@@ -587,7 +594,8 @@ class VCGPCM(CGPCM):
                                samples_h,
                                name='PSD prediction using MC')
 
-        samples = [data.Data(t, sample).autocorrelation() for sample in samples]
+        samples = [data.Data(t, sample).autocorrelation() for sample in
+                   samples]
 
         if normalise:
             # scale = np.mean([sample.max for sample in samples])
