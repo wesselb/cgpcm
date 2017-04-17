@@ -74,7 +74,8 @@ class CGPCM(Parametrisable):
         # Hyperparameter and inducing points for noise
         if nx > 0:
             tx_range = (min(e.x), max(e.x)) if tx_range is None else tx_range
-            omega = .5 * length_scale((tx_range[1] - tx_range[0]) / nx)
+            dtx = (tx_range[1] - tx_range[0]) / nx
+            omega = .5 / (.5 * dtx) ** 2
             tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
         else:
             omega = to_float(np.nan)
@@ -212,8 +213,8 @@ class CGPCM(Parametrisable):
         self.sum_y2 = sum(self.e.y ** 2) * self.s2_y
         self.mats = self._construct_model_matrices(self.e)
 
-        # Precompute stuff that is not going to change
-        self.sum_y2 = self._run(self.sum_y2)
+        # # Precompute stuff that is not going to change
+        # self.sum_y2 = self._run(self.sum_y2)
 
     def _init_kernels(self):
         # Stuff related to h
@@ -461,21 +462,21 @@ class VCGPCM(CGPCM):
         self.h = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
 
         # Mean
-        mean_init = tf.Variable(self.x_prior.sample())
-        self.vars['mu_x'] = mean_init
+        mean_x_init = tf.Variable(self.x_prior.sample())
+        self.vars['mu_x'] = mean_x_init
 
         # Variance
-        var_init = tf.Variable(tril_to_vec(tf.cholesky(self.x_prior.var)))
-        self.vars['var_x'] = var_init
-        self.var_scale, self.vars['var_x_scale'] = var_pos(to_float(1e-2))
+        var_x_init = tf.Variable(tril_to_vec(tf.cholesky(self.x_prior.var)))
+        self.vars['var_x'] = var_x_init
+        self.var_x_scale, self.vars['var_x_scale'] = var_pos(to_float(1e-2))
 
         # Initialise mean and variance variables
         self._run(tf.variables_initializer(
-            [mean_init, var_init, self.vars['var_x_scale']]))
+            [mean_x_init, var_x_init, self.vars['var_x_scale']]))
 
         # Construct q(u)
-        var_init = vec_to_tril(var_init) * self.var_scale
-        self.x = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
+        var_x_init = vec_to_tril(var_x_init) * self.var_x_scale
+        self.x = Normal(reg(mul(var_x_init, var_x_init, adj_b=True)), mean_x_init)
 
     def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
@@ -514,7 +515,7 @@ class VCGPCM(CGPCM):
                     - self.s2_f / self.s2 * trmul(self.mats['sum_Bxx'],
                                                   self.x.m2)
                     - 2 * self.x.kl(self.x_prior)) / 2.
-            return .5 * elbo, []
+            return elbo, []
         else:
             if smf:
                 # Stochastic approximation of SMF approximation
@@ -530,18 +531,14 @@ class VCGPCM(CGPCM):
                           - log_det(L),
                           sum(trisolve(L, mu) ** 2),
                           - self.sum_y2 / self.s2,
-                          # - self.s2_f / self.s2 * self.mats['sum_b'],
-                          # - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'], self.h.m2),
-                          - self.s2_f / self.s2 * self.mats['sum_a'],
-                          self.s2_f / self.s2 * trmul(self.iKx,
-                                                      self.mats['sum_Axx']),
+                          - self.s2_f / self.s2 * self.mats['sum_b'],
                           - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'],
-                                                        self.h.m2 - self.iKh),
+                                                        self.h.m2),
                           - 2 * self.h.kl(self.h_prior)]
             elbo = 0
             for term in elbo_terms:
-                elbo += term
-            return .5 * elbo, elbo_terms
+                elbo += .5 * term
+            return elbo, elbo_terms
 
     def h_from_dual(self):
         """
