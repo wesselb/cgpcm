@@ -68,8 +68,9 @@ def is_numeric(x):
 
 def fft(*args, **kw_args):
     """
-    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift` and
-    optionally normalises appropriately through the keyword `normalise`.
+    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift`. 
+
+    :param normalise: normalise FFT
     """
     if 'axis' not in kw_args:
         kw_args['axis'] = -1
@@ -106,7 +107,6 @@ def zero_pad(x, num, axis=0):
     :param num: number of zeros
     :return: zero-padded array
     """
-    num = 0
     zeros = np.zeros(num)
     dims = len(shape(x))
     add_before = max(axis, 0)
