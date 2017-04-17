@@ -158,17 +158,18 @@ class Data(object):
         else:
             return res.db()
 
-    def fft(self, split_freq=False):
+    def fft(self, split_freq=False, zero_pad=2000):
         """
         Compute the FFT.
         
         :param split_freq: return spectrum in relative frequency and
                            additionally return sampling frequency, else
                            return spectrum in absolute frequency
+        :param zero_pad: zero padding
         :return: log spectrum and possibly sampling frequency
         """
         self._assert_evenly_spaced()
-        spec = util.fft(util.zero_pad(self.y, 1000))
+        spec = util.fft(util.zero_pad(self.y, zero_pad))
         if split_freq:
             return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
         else:
