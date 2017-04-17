@@ -271,6 +271,14 @@ def train(sess, task, debug_options):
         mod.h_from_dual()
         out.section_end()
 
+    if debug_options['fpi']:
+        out.section('performing fixed-point iterations')
+        for i in range(10):
+            out.state(str(i))
+            mod.fpi()
+        out.section_end()
+
+
 
     return mod
 

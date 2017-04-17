@@ -493,6 +493,17 @@ class VCGPCM(CGPCM):
                                             self.mats['Ahx'], adj_c=True), 0)
         return mu, self.Kh + self.s2_f / self.s2 * S
 
+    def fpi(self):
+        """
+        Fixed-point iteration on q(u).
+        """
+        mu, S = self._qu_natural(self.h.mean, self.h.m2)
+        L = tf.cholesky(reg(S))
+        self.x = Normal(cholinv(L), trisolve(L, mu))
+        mu, S = self._qz_natural(self.x.mean, self.x.m2)
+        L = tf.cholesky(reg(S))
+        self.h = Normal(cholinv(L), trisolve(L, mu))
+
     def elbo(self, smf=False, sample_h=None, dual=False):
         """
         Construct the ELBO.
