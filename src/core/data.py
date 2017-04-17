@@ -464,8 +464,9 @@ def load_timit_tobar2015(n=350):
     fs = np.squeeze(mat['Fs']).astype(float)
     t = np.arange(shape(y)[0]) / fs
     f = Data(t, y).fragment(1750, start=11499)[0]
-    f = (f - f.mean) / f.std
-    return f.subsample(n)[0], f
+    e = f.subsample(n)[0]
+    e, f = (e - e.mean) / e.std, (f - e.mean) / e.std
+    return e, f
 
 
 def load_gp_exp(sess, n=250, k_len=.1):
