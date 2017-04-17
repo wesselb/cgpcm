@@ -195,42 +195,61 @@ def train(sess, task, debug_options):
 
     # Train MF
     out.section('training MF')
-    elbo = mod.elbo()
-    fetches_config = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
+    elbo, terms = mod.elbo()
+    fetches_config_base = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
                       {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
                       {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
+                      {'name': 's2_y', 'tensor': mod.s2_y, 'modifier': '.2e'},
                       {'name': 'gamma', 'tensor': mod.gamma,
                        'modifier': '.2e'},
                       {'name': 'alpha', 'tensor': mod.alpha,
+                       'modifier': '.2e'},
+                      {'name': 'omega', 'tensor': mod.omega,
+                       'modifier': '.2e'},
+                      {'name': 'var scale', 'tensor': mod.var_scale,
+                       'modifier': '.2e'},
+                      {'name': 'IDT scale', 'tensor': mod.s2_w,
                        'modifier': '.2e'}]
+    fetches_config_terms = [{'name': 'term {}'.format(i),
+                        'tensor': term,
+                        'modifier': '.2e'} for i, term in enumerate(terms)]
+    fetches_config = fetches_config_base + fetches_config_terms
     learn.minimise_lbfgs(sess, -elbo,
                          vars=[mod.vars['mu'],
-                               mod.vars['var'],
-                               mod.vars['s2_f']],
+                               mod.vars['var']],
                          iters=task.config.iters_pre,
                          fetches_config=fetches_config,
                          name='pretraining using L-BFGS')
     learn.minimise_lbfgs(sess, -elbo,
                          vars=[mod.vars['mu'],
                                mod.vars['var'],
+                               mod.vars['s2_f'],
+                               # mod.vars['s2_y'],
                                mod.vars['s2'],
-                               mod.vars['s2_f']],
+                               mod.vars['var_scale']],
                          iters=task.config.iters,
                          fetches_config=fetches_config,
                          name='training using L-BFGS')
     # Check number of iterations to prevent unnecessary precomputation
     if task.config.iters_post > 0:
         mod.undo_precompute()
-        elbo = mod.elbo()
+        elbo, terms = mod.elbo()
+        fetches_config_terms = [{'name': 'term {}'.format(i),
+                            'tensor': term,
+                            'modifier': '.2e'} for i, term in enumerate(terms)]
+        fetches_config = fetches_config_base + fetches_config_terms
         fetches_config[0]['tensor'] = elbo
-        learn.minimise_lbfgs(sess, -mod.elbo(),
+        learn.minimise_lbfgs(sess, -elbo,
                              vars=[mod.vars['mu'],
                                    mod.vars['var'],
                                    mod.vars['s2'],
                                    mod.vars['s2_f'],
+                                   # mod.vars['s2_y'],
+                                   # mod.vars['s2_w'],
                                    mod.vars['gamma'],
                                    mod.vars['alpha'],
-                                   mod.vars['s2_w']],
+                                   mod.vars['var_scale'],
+                                   mod.vars['omega']],
                              iters=task.config.iters_post,
                              fetches_config=fetches_config,
                              name='posttraining using L-BFGS')
@@ -284,11 +303,10 @@ def predict(sess, task, mod, debug_options):
     """
     # Predict MF
     out.section('predicting MF')
-    task.data['f_pred'] = mod.predict_f(task.data['f'].x)
+    task.data['f_pred'] = mod.predict_f(task.data['f'].x, precompute=False)
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
     task.data['psd_pred'] = mod.predict_k(task.data['k'].x, psd=True)
     task.data['psd_pred_fs'] = 1. / task.data['k'].dx
-    # task.data['psd_pred'] = mod.predict_psd(task.data['k'].x)
     task.data['h_mp_pred'] = mod.predict_h(task.data['h'].x,
                                            phase_transform='minimum_phase')
     task.data['h_zp_pred'] = mod.predict_h(task.data['h'].x,
@@ -303,11 +321,10 @@ def predict(sess, task, mod, debug_options):
         out.section('predicting SMF')
         samples = task.data['samples']
         task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x,
+                                                precompute=False,
                                                 samples_h=samples)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=samples)
-        # task.data['psd_pred_smf'] = mod.predict_psd(task.data['k'].x,
-        #                                             samples_h=samples)
         task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                   samples_h=samples,
                                                   psd=True)
