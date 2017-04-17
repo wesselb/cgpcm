@@ -147,12 +147,12 @@ class Data(object):
         else:
             return ac
 
-    def fft_db(self, split_freq=False):
+    def fft_db(self, *args, **kw_args):
         """
         Alias for `core.data.Data.fft` that afterwards applies
         `core.data.Data.db`.
         """
-        res = self.fft(split_freq=split_freq)
+        res = self.fft(*args, **kw_args)
         if type(res) == tuple:
             return res[0].db(), res[1]
         else:
