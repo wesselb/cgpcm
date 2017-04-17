@@ -195,16 +195,25 @@ def train(sess, task, debug_options):
 
     # Train MF
     out.section('training MF')
-    elbo = mod.elbo()
-    fetches_config = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
+    elbo, terms = mod.elbo()
+    fetches_config_base = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
                       {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
                       {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
+                      {'name': 's2_y', 'tensor': mod.s2_y, 'modifier': '.2e'},
                       {'name': 'gamma', 'tensor': mod.gamma,
                        'modifier': '.2e'},
                       {'name': 'alpha', 'tensor': mod.alpha,
                        'modifier': '.2e'},
+                      {'name': 'omega', 'tensor': mod.omega,
+                       'modifier': '.2e'},
                       {'name': 'var scale', 'tensor': mod.var_scale,
+                       'modifier': '.2e'},
+                      {'name': 'IDT scale', 'tensor': mod.s2_w,
                        'modifier': '.2e'}]
+    fetches_config_terms = [{'name': 'term {}'.format(i),
+                        'tensor': term,
+                        'modifier': '.2e'} for i, term in enumerate(terms)]
+    fetches_config = fetches_config_base + fetches_config_terms
     learn.minimise_lbfgs(sess, -elbo,
                          vars=[mod.vars['mu'],
                                mod.vars['var']],
@@ -215,6 +224,7 @@ def train(sess, task, debug_options):
                          vars=[mod.vars['mu'],
                                mod.vars['var'],
                                mod.vars['s2_f'],
+                               # mod.vars['s2_y'],
                                mod.vars['s2'],
                                mod.vars['var_scale']],
                          iters=task.config.iters,
@@ -223,17 +233,23 @@ def train(sess, task, debug_options):
     # Check number of iterations to prevent unnecessary precomputation
     if task.config.iters_post > 0:
         mod.undo_precompute()
-        elbo = mod.elbo()
+        elbo, terms = mod.elbo()
+        fetches_config_terms = [{'name': 'term {}'.format(i),
+                            'tensor': term,
+                            'modifier': '.2e'} for i, term in enumerate(terms)]
+        fetches_config = fetches_config_base + fetches_config_terms
         fetches_config[0]['tensor'] = elbo
-        learn.minimise_lbfgs(sess, -mod.elbo(),
+        learn.minimise_lbfgs(sess, -elbo,
                              vars=[mod.vars['mu'],
                                    mod.vars['var'],
                                    mod.vars['s2'],
                                    mod.vars['s2_f'],
+                                   # mod.vars['s2_y'],
+                                   # mod.vars['s2_w'],
                                    mod.vars['gamma'],
-                                   # mod.vars['alpha'],
+                                   mod.vars['alpha'],
                                    mod.vars['var_scale'],
-                                   mod.vars['s2_w']],
+                                   mod.vars['omega']],
                              iters=task.config.iters_post,
                              fetches_config=fetches_config,
                              name='posttraining using L-BFGS')
