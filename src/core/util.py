@@ -67,8 +67,9 @@ def is_numeric(x):
 
 def fft(*args, **kw_args):
     """
-    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift` and
-    optionally normalises appropriately through the keyword `normalise`.
+    Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift`. 
+
+    :param normalise: normalise FFT
     """
     if 'axis' not in kw_args:
         kw_args['axis'] = -1

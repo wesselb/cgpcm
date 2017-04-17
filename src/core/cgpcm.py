@@ -9,6 +9,7 @@ from util import inf, length_scale, zero_pad, fft_freq, is_numeric, \
 import data
 import util
 import exponentiated_quadratic as eq
+import out
 
 
 class CGPCM(Parametrisable):
@@ -73,7 +74,8 @@ class CGPCM(Parametrisable):
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
-            tx_range = (min(e.x), max(e.x)) if tx_range is None else tx_range
+            tx_range = (min(e.x) - tau_w, max(e.x) + tau_w) \
+                    if tx_range is None else tx_range
             dtx = (tx_range[1] - tx_range[0]) / nx
             omega = .5 / (.5 * dtx) ** 2
             tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
@@ -451,7 +453,7 @@ class VCGPCM(CGPCM):
         # Variance
         var_init = tf.Variable(tril_to_vec(tf.cholesky(self.h_prior.var)))
         self.vars['var'] = var_init
-        self.var_scale, self.vars['var_scale'] = var_pos(to_float(1e-2))
+        self.var_scale, self.vars['var_scale'] = var_pos(to_float(1.))
 
         # Initialise mean and variance variables
         self._run(tf.variables_initializer(
@@ -468,7 +470,7 @@ class VCGPCM(CGPCM):
         # Variance
         var_x_init = tf.Variable(tril_to_vec(tf.cholesky(self.x_prior.var)))
         self.vars['var_x'] = var_x_init
-        self.var_x_scale, self.vars['var_x_scale'] = var_pos(to_float(1e-2))
+        self.var_x_scale, self.vars['var_x_scale'] = var_pos(to_float(1.))
 
         # Initialise mean and variance variables
         self._run(tf.variables_initializer(
@@ -493,16 +495,28 @@ class VCGPCM(CGPCM):
                                             self.mats['Ahx'], adj_c=True), 0)
         return mu, self.Kh + self.s2_f / self.s2 * S
 
-    def fpi(self):
+    def fpi(self, num):
         """
         Fixed-point iteration on q(u).
         """
-        mu, S = self._qu_natural(self.h.mean, self.h.m2)
+        mean_ = placeholder(shape(self.h.mean))
+        var_ = placeholder(shape(self.h.var))
+        h = Normal(var_, mean_)
+        mu, S = self._qz_natural(h.mean, h.m2)
         L = tf.cholesky(reg(S))
-        self.x = Normal(cholinv(L), trisolve(L, mu))
-        mu, S = self._qz_natural(self.x.mean, self.x.m2)
+        x = Normal(cholinv(L), trisolve(L, mu))
+        mu, S = self._qu_natural(x.mean, x.m2)
         L = tf.cholesky(reg(S))
-        self.h = Normal(cholinv(L), trisolve(L, mu))
+        h = Normal(cholinv(L), trisolve(L, mu))
+
+        mean, var = self._run([self.h.mean, self.h.var])
+        for i in range(num):
+            out.state(str(i))
+            mean, var = self._run([h.mean, h.var],
+                                  feed_dict={mean_: mean,
+                                             var_: var})
+        self._run([self.vars['mu'].assign(mean),
+                   self.vars['var'].assign(tril_to_vec(tf.cholesky(var)))])
 
     def elbo(self, smf=False, sample_h=None, dual=False):
         """
@@ -576,8 +590,7 @@ class VCGPCM(CGPCM):
                                   'using MC')
         return np.mean(elbos), np.std(elbos) / len(samples_h) ** .5
 
-    def predict_k(self, t, samples_h=200, psd=False, normalise=True,
-                  psd_pad=1000, alt=False):
+    def predict_k(self, t, samples_h=200, psd=False, normalise=True, alt=False):
         """
         Predict kernel.
 
@@ -585,7 +598,6 @@ class VCGPCM(CGPCM):
         :param samples_h: samples in Monte-Carlo estimation
         :param psd: predict PSD instead
         :param normalise: normalise prediction
-        :param psd_pad: zero padding in the case of PSD
         :return: predicted kernel or PSD
         """
 
@@ -620,16 +632,18 @@ class VCGPCM(CGPCM):
             # samples = [sample / scale for sample in samples]
             samples = [sample / max(sample) for sample in samples]
 
-        # Determine x axis
-        if psd:
-            x = fft_freq(shape(samples[0])[0])
-        else:
-            x = t
-
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [data.Data(x, sample).fft_db().y[:, None] for sample in
-                       samples]
+            dt = t[1] - t[0]
+            samples = [(data.Data(t, sample) * dt).fft_db().y[:, None]
+                       for sample in samples]
+
+        # Determine x axis
+        if psd:
+            d, fs = data.Data(t).fft_db(split_freq=True)
+            x = d.x
+        else:
+            x = t
 
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
@@ -642,14 +656,13 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(x, upper),
                                   std=data.Data(x, std))
 
-    def predict_psd(self, t, samples_h=200, normalise=True, psd_pad=1000):
+    def predict_psd(self, t, samples_h=1000, normalise=True):
         """
         Predict PSD.
 
         :param t: points to predict kernel at
         :param samples_h: samples in Monte-Carlo estimation
         :param normalise: normalise prediction
-        :param psd_pad: zero padding
         :return: predicted PSD
         """
         if is_numeric(samples_h):
@@ -657,20 +670,23 @@ class VCGPCM(CGPCM):
             samples_h = [self._run(h) for i in range(samples_h)]
 
         h = placeholder(shape(self.h.sample()))
-        Kfu = self.kernel_h(t, self.th)
-        mu = mul(Kfu, h)
-        samples = map_progress(lambda x: self._run(mu, feed_dict={h: x}),
+        Kuf = self.kernel_h(self.th, t)
+        A = trisolve(self.Lh, Kuf)
+        L = tf.cholesky(reg(self.kernel_h(t) - mul(A, A, adj_a=True)))
+        sample = mul(Kuf, h, adj_a=True) + mul(L, randn([shape(t)[0], 1]))
+        samples = map_progress(lambda x: self._run(sample, feed_dict={h: x}),
                                samples_h,
                                name='PSD prediction using MC')
 
-        samples = [data.Data(t, sample).autocorrelation() for sample in
-                   samples]
+        samples = [data.Data(t, sample).autocorrelation(normalise=normalise)
+                   for sample in samples]
 
         if normalise:
-            # scale = np.mean([sample.max for sample in samples])
             samples = [sample / sample.max for sample in samples]
 
-        samples = [sample.fft().real().abs() for sample in samples]
+        dx = t[1] - t[0]
+        samples = [(sample * dx).fft_db(split_freq=True)[0]
+                   for sample in samples]
 
         x = samples[0].x
 
@@ -681,9 +697,9 @@ class VCGPCM(CGPCM):
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
 
-        return data.UncertainData(mean=data.Data(x, mu).db(),
-                                  lower=data.Data(x, lower).db(),
-                                  upper=data.Data(x, upper).db(),
+        return data.UncertainData(mean=data.Data(x, mu),
+                                  lower=data.Data(x, lower),
+                                  upper=data.Data(x, upper),
                                   std=data.Data(x, std))
 
     def predict_h(self, t, samples_h=200, normalise=True,
@@ -740,7 +756,7 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(t, upper),
                                   std=data.Data(t, std))
 
-    def predict_f(self, t, samples_h=50, precompute=True):
+    def predict_f(self, t, samples_h=10, precompute=True):
         """
         Predict function.
 
