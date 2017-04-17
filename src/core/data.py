@@ -110,12 +110,14 @@ class Data(object):
         """
         return Data(self.x + delta_x, self.y)
 
-    def autocorrelation(self, substract_mean=False, normalise=False):
+    def autocorrelation(self, substract_mean=False, normalise=False,
+                        unbiased=False):
         """
         Compute autocorrelation of the data.
 
         :param substract_mean: substract mean from data
         :param normalise: normalise to unity at zero lag
+        :param unbiased: unbiased estimate
         :return: autocorrelation
         """
         self._assert_evenly_spaced()
@@ -127,9 +129,12 @@ class Data(object):
         if substract_mean:
             y -= np.mean(y)
 
-        # Triangular window
-        window_half = np.arange(1, self.n + 1)
-        window = np.concatenate((window_half[:-1], window_half[::-1]))
+        if unbiased:
+            # Triangular window
+            window_half = np.arange(1, self.n + 1)
+            window = np.concatenate((window_half[:-1], window_half[::-1]))
+        else:
+            window = self.n
 
         ac = Data(np.linspace(-self.max_lag,
                               self.max_lag,
