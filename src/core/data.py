@@ -158,17 +158,18 @@ class Data(object):
         else:
             return res.db()
 
-    def fft(self, split_freq=False):
+    def fft(self, split_freq=False, zero_pad=2000):
         """
         Compute the FFT.
         
         :param split_freq: return spectrum in relative frequency and
                            additionally return sampling frequency, else
                            return spectrum in absolute frequency
+        :param zero_pad: zero padding
         :return: log spectrum and possibly sampling frequency
         """
         self._assert_evenly_spaced()
-        spec = util.fft(util.zero_pad(self.y, 1000))
+        spec = util.fft(util.zero_pad(self.y, zero_pad))
         if split_freq:
             return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
         else:
@@ -473,8 +474,9 @@ def load_timit_tobar2015(n=350):
     fs = np.squeeze(mat['Fs']).astype(float)
     t = np.arange(shape(y)[0]) / fs
     f = Data(t, y).fragment(1750, start=11499)[0]
-    f = (f - f.mean) / f.std
-    return f.subsample(n)[0], f
+    e = f.subsample(n)[0]
+    e, f = (e - e.mean) / e.std, (f - e.mean) / e.std
+    return e, f
 
 
 def load_gp_exp(sess, n=250, k_len=.1):
