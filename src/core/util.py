@@ -5,7 +5,6 @@ import scipy.stats
 import numpy as np
 import tensorflow as tf
 import os
-import pickle
 
 from tf_util import shape
 
@@ -75,7 +74,7 @@ def fft(*args, **kw_args):
         kw_args['axis'] = -1
     if kw_args['axis'] == -1:
         kw_args['axis'] = len(shape(args[0])) - 1
-    if 'normalise' not in kw_args or not kw_args['normalise']:
+    if 'normalise' not in kw_args or kw_args['normalise'] is False:
         scale = 1
     else:
         scale = shape(args[0])[kw_args['axis']]
@@ -106,7 +105,6 @@ def zero_pad(x, num, axis=0):
     :param num: number of zeros
     :return: zero-padded array
     """
-    num = 0
     zeros = np.zeros(num)
     dims = len(shape(x))
     add_before = max(axis, 0)
