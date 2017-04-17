@@ -122,7 +122,7 @@ class Data(object):
         """
         self._assert_evenly_spaced()
 
-        # Zero nans to zero
+        # Set NaNs to zero
         y = self.y
         y[np.isnan(y)] = 0
 
