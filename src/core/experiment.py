@@ -210,6 +210,8 @@ def train(sess, task, debug_options):
                        'modifier': '.2e'},
                       {'name': 'var scale', 'tensor': mod.var_scale,
                        'modifier': '.2e'},
+                      {'name': 'var x scale', 'tensor': mod.var_x_scale,
+                       'modifier': '.2e'},
                       {'name': 'IDT scale', 'tensor': mod.s2_w,
                        'modifier': '.2e'}]
     fetches_config_terms = [{'name': 'term {}'.format(i),
@@ -217,18 +219,17 @@ def train(sess, task, debug_options):
                         'modifier': '.2e'} for i, term in enumerate(terms)]
     fetches_config = fetches_config_base + fetches_config_terms
     learn.minimise_lbfgs(sess, -elbo,
-                         vars=[mod.vars['mu'],
-                               mod.vars['var']],
+                         vars=[mod.vars['mu_x' if dual else 'mu']],
+                               # mod.vars['var_x' if dual else 'var']],
                          iters=task.config.iters_pre,
                          fetches_config=fetches_config,
                          name='pretraining using L-BFGS')
     learn.minimise_lbfgs(sess, -elbo,
-                         vars=[mod.vars['mu'],
-                               mod.vars['var'],
+                         vars=[mod.vars['mu_x' if dual else 'mu'],
+                               mod.vars['var_x' if dual else 'var'],
                                mod.vars['s2_f'],
-                               # mod.vars['s2_y'],
                                mod.vars['s2'],
-                               mod.vars['var_scale']],
+                               mod.vars['var_x_scale' if dual else 'var_scale']],
                          iters=task.config.iters,
                          fetches_config=fetches_config,
                          name='training using L-BFGS')
@@ -242,15 +243,14 @@ def train(sess, task, debug_options):
         fetches_config = fetches_config_base + fetches_config_terms
         fetches_config[0]['tensor'] = elbo
         learn.minimise_lbfgs(sess, -elbo,
-                             vars=[mod.vars['mu'],
-                                   mod.vars['var'],
-                                   mod.vars['s2'],
+                             vars=[mod.vars['mu_x' if dual else 'mu'],
+                                   mod.vars['var_x' if dual else 'var'],
                                    mod.vars['s2_f'],
                                    # mod.vars['s2_y'],
                                    # mod.vars['s2_w'],
                                    mod.vars['gamma'],
                                    mod.vars['alpha'],
-                                   mod.vars['var_scale'],
+                                   mod.vars['var_x_scale' if dual else 'var_scale'],
                                    mod.vars['omega']],
                              iters=task.config.iters_post,
                              fetches_config=fetches_config,
