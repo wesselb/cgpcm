@@ -18,7 +18,7 @@ class CGPCM(Parametrisable):
 
     _required_pars = ['sess', 'e',
                       'th', 'tx',
-                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w',
+                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w', 's2_y',
                       'causal', 'causal_id']
 
     def __init__(self, **kw_args):
@@ -68,6 +68,7 @@ class CGPCM(Parametrisable):
         alpha, vars['alpha'] = var_pos(to_float(alpha))
         gamma, vars['gamma'] = var_pos(to_float(gamma))
         s2_w, vars['s2_w'] = var_pos(to_float(1.))
+        s2_y, vars['s2_y'] = var_pos(to_float(1.))
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
@@ -101,7 +102,7 @@ class CGPCM(Parametrisable):
         sess.run(tf.variables_initializer(vars.values()))
 
         return cls(sess=sess, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
-                   gamma=gamma, omega=omega, vars=vars, s2_w=s2_w,
+                   gamma=gamma, omega=omega, vars=vars, s2_w=s2_w, s2_y=s2_y,
 
                    # Store recipe for reconstruction
                    e=e, causal=causal, causal_id=causal_id, tau_w=tau_w,
@@ -207,7 +208,7 @@ class CGPCM(Parametrisable):
     def _construct(self):
         # Some frequently accessed quantities
         self.n = shape(self.e.x)[0]
-        self.sum_y2 = sum(self.e.y ** 2)
+        self.sum_y2 = sum(self.e.y ** 2) * self.s2_y
         self.mats = self._construct_model_matrices(self.e)
 
         # Precompute stuff that is not going to change
@@ -230,8 +231,8 @@ class CGPCM(Parametrisable):
         self.iKx = cholinv(self.Lx)
         self.x_prior = Normal(self.iKx)
 
-        # Precompute stuff that is not going to change
-        self.Kx, self.Lx, self.iKx = self._run([self.Kx, self.Lx, self.iKx])
+        # # Precompute stuff that is not going to change
+        # self.Kx, self.Lx, self.iKx = self._run([self.Kx, self.Lx, self.iKx])
 
     def _construct_model_matrices(self, e):
         n = shape(e.x)[0]
@@ -245,7 +246,7 @@ class CGPCM(Parametrisable):
         mats['sum_a'] = n * mats['a']
         mats['sum_Axx'] = sum(mats['Axx'], 0)
         mats['sum_Ahh'] = n * mats['Ahh']
-        mats['sum_Ahx_y'] = sum(e.y[:, None, None] * mats['Ahx'], 0)
+        mats['sum_Ahx_y'] = sum(self.s2_y ** .5 * e.y[:, None, None] * mats['Ahx'], 0)
         mats['b'] = (mats['a']
                      - trmul(self.iKh, mats['Ahh'])
                      - trmul(iKx_t, mats['Axx'])
@@ -481,16 +482,21 @@ class VCGPCM(CGPCM):
             mu, S = self._qz_natural(self.h.mean, self.h.m2)
         L = tf.cholesky(reg(S))
 
-        elbo = (-self.n * tf.log(2 * np.pi * self.s2)
-                - log_det(self.Lx)
-                - log_det(L)
-                + sum(trisolve(L, mu) ** 2)
-                - self.sum_y2 / self.s2
-                - self.s2_f / self.s2 * (self.mats['sum_b']
-                                         + trmul(self.mats['sum_Bhh'],
-                                                 self.h.m2))) / 2. \
-               - self.h.kl(self.h_prior)
-        return elbo
+        elbo_terms = [-self.n * tf.log(2 * np.pi * self.s2),
+                log_det(self.Lx),
+                - log_det(L),
+                sum(trisolve(L, mu) ** 2),
+                - self.sum_y2 / self.s2,
+                # - self.s2_f / self.s2 * self.mats['sum_b'],
+                # - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'], self.h.m2),
+                - self.s2_f / self.s2 * self.mats['sum_a'],
+                self.s2_f / self.s2 * trmul(self.iKx, self.mats['sum_Axx']),
+                - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'], self.h.m2 - self.iKh),
+               - 2 * self.h.kl(self.h_prior)]
+        elbo = 0
+        for term in elbo_terms:
+            elbo += term
+        return .5 * elbo, elbo_terms
 
     def elbo_smf(self, samples_h):
         """
@@ -522,9 +528,8 @@ class VCGPCM(CGPCM):
         """
 
         n = shape(t)[0]
-        # Ahh, a = self._run([self._Ahh_center(t),
-        #                     self._a_center(t)])
-        Ahh, a = self._Ahh_center(t), self._a_center(t)
+        Ahh, a = self._run([self._Ahh_center(t),
+                            self._a_center(t)])
 
         if alt:
 
@@ -550,6 +555,8 @@ class VCGPCM(CGPCM):
 
         # Check whether to normalise predictions
         if normalise:
+            # scale = max(np.mean(np.concatenate(samples, axis=1), axis=1))
+            # samples = [sample / scale for sample in samples]
             samples = [sample / max(sample) for sample in samples]
 
         # Determine x axis
