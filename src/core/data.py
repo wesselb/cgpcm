@@ -127,10 +127,14 @@ class Data(object):
         if substract_mean:
             y -= np.mean(y)
 
+        # Triangular window
+        window_half = np.arange(1, self.n + 1)
+        window = np.concatenate((window_half[:-1], window_half[::-1]))
+
         ac = Data(np.linspace(-self.max_lag,
                               self.max_lag,
                               2 * self.n - 1),
-                  np.convolve(y[::-1], y)) / (self.n - 1)
+                  np.convolve(y[::-1], y) / window)
 
         # Return with appropriate normalisation
         if normalise:
