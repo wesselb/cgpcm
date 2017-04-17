@@ -75,6 +75,7 @@ class Data(object):
         :param x_max: maximum absolute value of x to evaluate for
         :return: mean log loss
         """
+
         def process(x):
             d = Data(self.x, self._to_y(x))
             d = d[np.abs(d.x) <= x_max]
@@ -109,11 +110,12 @@ class Data(object):
         """
         return Data(self.x + delta_x, self.y)
 
-    def autocorrelation(self, substract_mean=False):
+    def autocorrelation(self, substract_mean=False, normalise=False):
         """
         Compute autocorrelation of the data.
 
         :param substract_mean: substract mean from data
+        :param normalise: normalise to unity at zero lag
         :return: autocorrelation
         """
         self._assert_evenly_spaced()
@@ -125,10 +127,16 @@ class Data(object):
         if substract_mean:
             y -= np.mean(y)
 
-        return Data(np.linspace(-self.max_lag,
-                                self.max_lag,
-                                2 * self.n - 1),
-                    np.convolve(y[::-1], y)) / (self.n - 1)
+        ac = Data(np.linspace(-self.max_lag,
+                              self.max_lag,
+                              2 * self.n - 1),
+                  np.convolve(y[::-1], y)) / (self.n - 1)
+
+        # Return with appropriate normalisation
+        if normalise:
+            return ac / ac.max
+        else:
+            return ac
 
     def fft_db(self, split_freq=False):
         """
@@ -183,7 +191,8 @@ class Data(object):
         :return: equal
         """
         try:
-            return np.allclose(self.x, other.x) and np.allclose(self.y, other.y)
+            return np.allclose(self.x, other.x) and np.allclose(self.y,
+                                                                other.y)
         except ValueError:
             # If e.g. `other` has is of another shape
             return False
@@ -390,7 +399,7 @@ class Data(object):
         :param t: times
         """
         e = randn([shape(t)[0], 1])
-        K = reg(kernel(t[:, None]))
+        K = reg(kernel(t))
         y = sess.run(mul(tf.cholesky(K), e))
         return cls(t, y)
 
@@ -468,14 +477,15 @@ def load_gp_exp(sess, n=250, k_len=.1):
     :param k_len: length of kernel
     :return: data for function and kernel
     """
-    t = np.linspace(0, 1, n)
-    tk = np.linspace(0, 1, 301)
+    t = util.vlinspace(0, 1, n)
+    tk = util.vlinspace(0, 1, 301)
     k_fun = kernel.Exponential(s2=1., gamma=util.length_scale(k_len))
     f = Data.from_gp(sess, k_fun, t)
-    k = Data(tk, k_fun(tk[0, :], np.array([[0]])))
+    k = Data(tk, sess.run(k_fun(tk, np.array([[0.]]))))
 
     # Normalise
     f -= f.mean
+    f /= f.std
     k /= k.max
     return f, k
 
