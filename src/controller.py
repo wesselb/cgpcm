@@ -212,6 +212,7 @@ if __name__ == '__main__':
 
     debug_options = Options('debug options')
     debug_options.add_option('kernel', 'plot kernel and filter and then exit')
+    debug_options.add_option('dual', 'train using the dual ELBO')
     debug_options.parse(args.debug)
 
     # Process task-specific arguments
