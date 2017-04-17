@@ -193,9 +193,11 @@ def train(sess, task, debug_options):
     mod.precompute()
     out.section_end()
 
+    dual = debug_options['dual']
+
     # Train MF
     out.section('training MF')
-    elbo, terms = mod.elbo()
+    elbo, terms = mod.elbo(dual=dual)
     fetches_config_base = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
                       {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
                       {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
@@ -233,7 +235,7 @@ def train(sess, task, debug_options):
     # Check number of iterations to prevent unnecessary precomputation
     if task.config.iters_post > 0:
         mod.undo_precompute()
-        elbo, terms = mod.elbo()
+        elbo, terms = mod.elbo(dual=dual)
         fetches_config_terms = [{'name': 'term {}'.format(i),
                             'tensor': term,
                             'modifier': '.2e'} for i, term in enumerate(terms)]
@@ -263,6 +265,12 @@ def train(sess, task, debug_options):
         out.section('training SMF')
         task.data['samples'] = mod.sample(iters=task.config.samps)
         out.section_end()
+
+    if dual:
+        out.section('converting from dual ELBO')
+        mod.h_from_dual()
+        out.section_end()
+
 
     return mod
 

@@ -18,7 +18,8 @@ class CGPCM(Parametrisable):
 
     _required_pars = ['sess', 'e',
                       'th', 'tx',
-                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w', 's2_y',
+                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w',
+                      's2_y',
                       'causal', 'causal_id']
 
     def __init__(self, **kw_args):
@@ -229,7 +230,7 @@ class CGPCM(Parametrisable):
         self.Kx = reg(self.kernel_x(self.tx))
         self.Lx = tf.cholesky(self.Kx)
         self.iKx = cholinv(self.Lx)
-        self.x_prior = Normal(self.iKx)
+        self.x_prior = Normal(reg(self.iKx))
 
         # # Precompute stuff that is not going to change
         # self.Kx, self.Lx, self.iKx = self._run([self.Kx, self.Lx, self.iKx])
@@ -246,7 +247,8 @@ class CGPCM(Parametrisable):
         mats['sum_a'] = n * mats['a']
         mats['sum_Axx'] = sum(mats['Axx'], 0)
         mats['sum_Ahh'] = n * mats['Ahh']
-        mats['sum_Ahx_y'] = sum(self.s2_y ** .5 * e.y[:, None, None] * mats['Ahx'], 0)
+        mats['sum_Ahx_y'] = sum(
+            self.s2_y ** .5 * e.y[:, None, None] * mats['Ahx'], 0)
         mats['b'] = (mats['a']
                      - trmul(self.iKh, mats['Ahh'])
                      - trmul(iKx_t, mats['Axx'])
@@ -451,11 +453,29 @@ class VCGPCM(CGPCM):
         self.var_scale, self.vars['var_scale'] = var_pos(to_float(1e-2))
 
         # Initialise mean and variance variables
-        self._run(tf.variables_initializer([mean_init, var_init, self.vars['var_scale']]))
+        self._run(tf.variables_initializer(
+            [mean_init, var_init, self.vars['var_scale']]))
 
         # Construct q(h)
         var_init = vec_to_tril(var_init) * self.var_scale
         self.h = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
+
+        # Mean
+        mean_init = tf.Variable(self.x_prior.sample())
+        self.vars['mu_x'] = mean_init
+
+        # Variance
+        var_init = tf.Variable(tril_to_vec(tf.cholesky(self.x_prior.var)))
+        self.vars['var_x'] = var_init
+        self.var_scale, self.vars['var_x_scale'] = var_pos(to_float(1e-2))
+
+        # Initialise mean and variance variables
+        self._run(tf.variables_initializer(
+            [mean_init, var_init, self.vars['var_x_scale']]))
+
+        # Construct q(u)
+        var_init = vec_to_tril(var_init) * self.var_scale
+        self.x = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
 
     def _qz_natural(self, h_mean, h_m2):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
@@ -465,38 +485,72 @@ class VCGPCM(CGPCM):
                                             self.mats['Ahx'], adj_a=True), 0)
         return mu, self.Kx + self.s2_f / self.s2 * S
 
-    def elbo(self, smf=False, sample_h=None):
+    def _qu_natural(self, x_mean, x_m2):
+        mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], x_mean)
+        S = self.mats['sum_Bhh'] + sum(mul3(self.mats['Ahx'],
+                                            tile(x_m2, self.n),
+                                            self.mats['Ahx'], adj_c=True), 0)
+        return mu, self.Kh + self.s2_f / self.s2 * S
+
+    def elbo(self, smf=False, sample_h=None, dual=False):
         """
         Construct the ELBO.
 
         :param smf: stochastic approximation of SMF approximation
         :param sample_h: sample to use in SMF approximation
+        :param dual: use dual ELBO
         :return: ELBO
         """
-        if smf:
-            # Stochastic approximation of SMF approximation
-            if sample_h is None:
-                sample_h = self.h.sample()
-            mu, S = self._qz_natural(sample_h, outer(sample_h))
-        else:
-            mu, S = self._qz_natural(self.h.mean, self.h.m2)
-        L = tf.cholesky(reg(S))
+        if dual:
+            mu, S = self._qu_natural(self.x.mean, self.x.m2)
+            L = tf.cholesky(reg(S))
 
-        elbo_terms = [-self.n * tf.log(2 * np.pi * self.s2),
-                log_det(self.Lx),
-                - log_det(L),
-                sum(trisolve(L, mu) ** 2),
-                - self.sum_y2 / self.s2,
-                # - self.s2_f / self.s2 * self.mats['sum_b'],
-                # - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'], self.h.m2),
-                - self.s2_f / self.s2 * self.mats['sum_a'],
-                self.s2_f / self.s2 * trmul(self.iKx, self.mats['sum_Axx']),
-                - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'], self.h.m2 - self.iKh),
-               - 2 * self.h.kl(self.h_prior)]
-        elbo = 0
-        for term in elbo_terms:
-            elbo += term
-        return .5 * elbo, elbo_terms
+            elbo = (-self.n * tf.log(2 * np.pi * self.s2)
+                    + log_det(self.Lh)
+                    - log_det(L)
+                    + sum(trisolve(L, mu) ** 2)
+                    - self.sum_y2 / self.s2
+                    - self.s2_f / self.s2 * self.mats['sum_b']
+                    - self.s2_f / self.s2 * trmul(self.mats['sum_Bxx'],
+                                                  self.x.m2)
+                    - 2 * self.x.kl(self.x_prior)) / 2.
+            return .5 * elbo, []
+        else:
+            if smf:
+                # Stochastic approximation of SMF approximation
+                if sample_h is None:
+                    sample_h = self.h.sample()
+                mu, S = self._qz_natural(sample_h, outer(sample_h))
+            else:
+                mu, S = self._qz_natural(self.h.mean, self.h.m2)
+            L = tf.cholesky(reg(S))
+
+            elbo_terms = [-self.n * tf.log(2 * np.pi * self.s2),
+                          log_det(self.Lx),
+                          - log_det(L),
+                          sum(trisolve(L, mu) ** 2),
+                          - self.sum_y2 / self.s2,
+                          # - self.s2_f / self.s2 * self.mats['sum_b'],
+                          # - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'], self.h.m2),
+                          - self.s2_f / self.s2 * self.mats['sum_a'],
+                          self.s2_f / self.s2 * trmul(self.iKx,
+                                                      self.mats['sum_Axx']),
+                          - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'],
+                                                        self.h.m2 - self.iKh),
+                          - 2 * self.h.kl(self.h_prior)]
+            elbo = 0
+            for term in elbo_terms:
+                elbo += term
+            return .5 * elbo, elbo_terms
+
+    def h_from_dual(self):
+        """
+        Compute q(u) after optimising the dual ELBO. 
+        """
+        mu, S = self._qu_natural(self.x.mean, self.x.m2)
+        L = tf.cholesky(reg(S))
+        mean, var = self._run([trisolve(L, mu), cholinv(L)])
+        self.x = Normal(var, mean)
 
     def elbo_smf(self, samples_h):
         """
@@ -532,7 +586,6 @@ class VCGPCM(CGPCM):
                             self._a_center(t)])
 
         if alt:
-
             # Predict mean analytically
             k_mean = self._run(
                 self.s2_f * (a + trmul(tile(self.h.m2 - self.iKh, n), Ahh)))
@@ -567,7 +620,8 @@ class VCGPCM(CGPCM):
 
         # Check whether to predict kernel or PSD
         if psd:
-            samples = [data.Data(x, sample).fft_db().y[:, None] for sample in samples]
+            samples = [data.Data(x, sample).fft_db().y[:, None] for sample in
+                       samples]
 
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
