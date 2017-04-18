@@ -29,6 +29,7 @@ class Experiment(Task):
                                         ignore=['test']),
 
                           # Training options
+                          iters_fpi=50,
                           iters_pre=200 if options['test'] else 400,
                           iters=500 if options['test'] else 2000,
                           iters_post=50 if options['test'] else 400,
