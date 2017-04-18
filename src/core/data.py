@@ -495,12 +495,12 @@ def load_gp_exp(sess, n=250, k_len=.1):
 
     :param sess: TensorFlow session
     :param n: number of time points
-    :param k_len: length of kernel
+    :param k_len: time constant of kernel
     :return: data for function and kernel
     """
     t = util.vlinspace(0, 1, n)
     tk = util.vlinspace(0, 1, 301)
-    k_fun = kernel.Exponential(s2=1., gamma=util.length_scale(k_len))
+    k_fun = kernel.Exponential(s2=1., gamma=1 / k_len)
     f = Data.from_gp(sess, k_fun, t)
     k = Data(tk, sess.run(k_fun(tk, np.array([[0.]]))))
 

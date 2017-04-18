@@ -4,7 +4,6 @@ from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
 
-
 import scipy.signal as sp
 
 
@@ -35,17 +34,22 @@ class Experiment(Task):
                           nx=250,
                           nh=51,
                           noise_init=1e-2,
-                          tau_w=0.4,
+                          tau_w=0.2,
                           tau_f=0.05,
 
-                          noise=1.)
+                          # Experiment options
+                          noise=0,
+                          fragment_start=200,
+                          fragment_length=100)
 
     def load(self, sess):
         # Load data
-        f, k = data.load_gp_exp(sess, n=self.config.n, k_len=.4)
+        f, k = data.load_gp_exp(sess, n=self.config.n, k_len=.1)
 
         # Predict on
-        e = f.make_noisy(self.config.noise)
+        self.data['f_pred'], f_train = f.fragment(self.config.fragment_length,
+                                                  self.config.fragment_start)
+        e = f_train.make_noisy(self.config.noise)
 
         # Store data
         self._set_data(f=f, e=e, k=k,
@@ -63,4 +67,3 @@ class Experiment(Task):
                                  causal=self.config.causal_model,
                                  noise_init=self.config.noise_init)
         self._set_model(mod)
-
