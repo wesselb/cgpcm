@@ -213,6 +213,9 @@ if __name__ == '__main__':
     debug_options = Options('debug options')
     debug_options.add_option('kernel', 'plot kernel and filter and then exit')
     debug_options.add_option('fix-alpha', 'do not learn alpha')
+    debug_options.add_option('quick-f', 'predict function with only 5 samples')
+    debug_options.add_option('no-precompute-f', 'no precomputation for function'
+                                                'prediction')
     debug_options.parse(args.debug)
 
     # Process task-specific arguments
