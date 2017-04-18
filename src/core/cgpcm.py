@@ -230,6 +230,8 @@ class CGPCM(Parametrisable):
 
     def _construct_model_matrices(self, e):
         n = shape(e.x)[0]
+        iKx_t = tile(self.iKx, n)
+        iKh_t = tile(self.iKh, n)
         mats = dict()
         mats['a'] = self._a_diag(e.x)[0]  # Not per data point
         mats['Axx'] = self._Axx_diag(e.x)
@@ -241,27 +243,27 @@ class CGPCM(Parametrisable):
         mats['sum_Ahx_y'] = sum(e.y[:, None, None] * mats['Ahx'], 0)
         mats['b'] = (mats['a']
                      - trmul(self.iKh, mats['Ahh'])
-                     - trmul(self.iKx, mats['Axx'])
-                     + trmul(mul(self.iKh, mats['Ahx']),
-                             mul(mats['Ahx'], self.iKx)))
+                     - trmul(iKx_t, mats['Axx'])
+                     + trmul(mul(iKh_t, mats['Ahx']),
+                             mul(mats['Ahx'], iKx_t)))
         mats['Bxx'] = (mats['Axx'] - mul3(mats['Ahx'],
-                                          self.iKh,
+                                          iKh_t,
                                           mats['Ahx'], adj_a=True))
-        mats['Bhh'] = (mats['Ahh'][None, :, :] - mul3(mats['Ahx'],
-                                                      self.iKx,
-                                                      mats['Ahx'], adj_c=True))
+        mats['Bhh'] = (tile(mats['Ahh'], n) - mul3(mats['Ahx'],
+                                                   iKx_t,
+                                                   mats['Ahx'], adj_c=True))
         mats['sum_b'] = (mats['sum_a']
                          - trmul(self.iKh, mats['sum_Ahh'])
                          - trmul(self.iKx, mats['sum_Axx'])
-                         + sum(trmul(mul(self.iKh, mats['Ahx']),
-                                     mul(mats['Ahx'], self.iKx))))
+                         + sum(trmul(mul(iKh_t, mats['Ahx']),
+                                     mul(mats['Ahx'], iKx_t))))
         mats['sum_Bxx'] = (mats['sum_Axx']
                            - sum(mul3(mats['Ahx'],
-                                      self.iKh,
+                                      iKh_t,
                                       mats['Ahx'], adj_a=True), 0))
         mats['sum_Bhh'] = (mats['sum_Ahh']
                            - sum(mul3(mats['Ahx'],
-                                      self.iKx,
+                                      iKx_t,
                                       mats['Ahx'], adj_c=True), 0))
         return mats
 
@@ -468,8 +470,9 @@ class VCGPCM(CGPCM):
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
                                              adj_a=z)
         B = self.mats['sum_Bxx'] if z else self.mats['sum_Bhh']
-        S = B + sum(mul3(self.mats['Ahx'], h_m2, self.mats['Ahx'],
-                         adj_a=z, adj_c=not z), 0)
+        S = B + sum(mul3(self.mats['Ahx'],
+                         tile(h_m2, self.n),
+                         self.mats['Ahx'], adj_a=z, adj_c=not z), 0)
         K = self.Kx if z else self.Kh
         return mu, K + self.s2_f / self.s2 * S
 
@@ -523,7 +526,7 @@ class VCGPCM(CGPCM):
             lam, P = self._optimal_q(sample, outer(sample), z=z)
         else:
             lam, P = self._optimal_q(self.h.mean if z else self.x.mean,
-                                     self.h.m2 if z else self.x.m2, z=z)
+                                    self.h.m2 if z else self.x.m2, z=z)
         L = tf.cholesky(reg(P))
 
         if z:
@@ -621,7 +624,7 @@ class VCGPCM(CGPCM):
 
         # Compute via MC
         h = placeholder(shape(self.h.sample()))
-        k = self.s2_f * (a + trmul(outer(h) - iKh, Ahh))[:, None]
+        k = self.s2_f * (a + trmul(tile(outer(h) - iKh, n), Ahh))[:, None]
         samples = map_progress(lambda x: self._run(k, feed_dict={h: x}),
                                samples_h,
                                name='{} prediction using '
@@ -804,17 +807,20 @@ class VCGPCM(CGPCM):
         x = Normal.from_natural(P, lam)
 
         # Construct mean
-        mu = tf.squeeze(mul3(h, mats['Ahx'], x.mean, adj_a=True))[:, None]
+        mu = tf.squeeze(mul3(tile(h, n),
+                             mats['Ahx'],
+                             tile(x.mean, n), adj_a=True))[:, None]
         mu *= self.s2_f ** .5
 
         # Construct variance
         mh = outer(h) - self.iKh
-        mx = x.m2 - self.iKx
+        mh_t = tile(mh, n)
+        mx_t = tile(x.m2 - self.iKx, n)
         m2 = self.s2_f * tf.squeeze(mats['a']
                                     + trmul(mats['Ahh'], mh)
-                                    + trmul(mats['Axx'], mx)
-                                    + trmul(mul(mh, mats['Ahx']),
-                                            mul(mats['Ahx'], mx)))[:, None]
+                                    + trmul(mats['Axx'], mx_t)
+                                    + trmul(mul(mh_t, mats['Ahx']),
+                                            mul(mats['Ahx'], mx_t)))[:, None]
         var = m2 - mu ** 2
 
         # Compute via MC
