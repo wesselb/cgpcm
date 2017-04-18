@@ -17,6 +17,18 @@ class Normal(object):
             self.mean = mean
         self.var = var
 
+    @classmethod
+    def from_natural(cls, precision, nat_mean=None):
+        """
+        Construct from natural parameters.
+        
+        :param precision: precision
+        :param nat_mean: natural mean
+        :return: :class:`core.distribution.Normal` instance
+        """
+        L = tf.cholesky(reg(precision))
+        return cls(cholinv(L), tf.cholesky_solve(L, nat_mean))
+
     @property
     def m2(self):
         """
