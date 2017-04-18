@@ -599,6 +599,9 @@ def load_co2():
 
     x, y = np.array(x), np.array(y)
 
+    # Correct x: they are not numerically evenly spaced
+    x = np.linspace(x[0], x[-1], len(x))
+
     # Detrend
     lin_reg = linear_model.LinearRegression()
     lin_reg.fit(x[:, None], y)
