@@ -1,9 +1,10 @@
 import abc
+import scipy.signal as sp
 
 from parametrisable import Parametrisable
 from plot import Plotter2D
 from options import Options
-from data import Data, UncertainData
+from data import Data, UncertainData, load_timit_tobar2015
 from cgpcm import VCGPCM
 from tf_util import *
 import out
@@ -653,23 +654,10 @@ def plot_compare(tasks, args):
         # PSD
         p.subplot2grid((2, 6), (1, 4), colspan=2)
         p.lims(x=(0, 1 / task1.config.tau_f))
-        pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
+        #pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
         if 'psd_emp' not in data1:
-            data1['psd_emp'] = data1['k_emp'].fft_db()
+            data1['psd_emp'] = (data1['k_emp'] * data1['k_emp'].dx).fft_db()
         pt1.line('psd_emp', 'observation', label='Periodogram')
-
-        ac1 = data1['f_pred'][0].autocorrelation()
-        data1['psd2'] = (ac1 / ac1.max).fft_db()
-        pt1.line('psd2', 'alt1', label='From f pred')
-
-        ac2 = data1['h_mp_pred'][0].autocorrelation()
-        data1['psd3'] = (ac2 / ac2.max).fft_db()
-        pt1.line('psd3', 'alt2', label='From h pred')
-
-        ac3 = data1['k_pred'][0]
-        data1['psd4'] = (ac3 / ac3.max).fft_db()
-        pt1.line('psd4', 'alt3', label='From k pred')
-
         pt1.fill('psd_pred' + add1, 'task1', x_unit=fs1, label=name1)
         if task2:
             pt2.fill('psd_pred' + add2, 'task2', x_unit=fs2, label=name2)
