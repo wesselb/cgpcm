@@ -47,7 +47,7 @@ class Experiment(Task):
         # Do, however, store accurate emperical estimates of the kernel and PSD
         k_emp = f.autocorrelation(normalise=True)
         self.data['k_emp'] = k_emp
-        self.data['psd_emp'] = (k_emp * k_emp.dx).fft_db()
+        self.data['psd_emp'] = k_emp.fft()
 
         # Store data
         self._set_data(f=f_sub, e=e,
