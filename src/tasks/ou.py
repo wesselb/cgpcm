@@ -18,13 +18,14 @@ class Experiment(Task):
         options.add_option('causal-model', 'use the causal model')
         options.parse(args)
 
-        return TaskConfig(name='TIMIT',
+        return TaskConfig(name='OU',
                           seed=1,
                           fp=options.fp(),
 
                           # Training options
-                          iters_pre=200,
-                          iters=500,
+                          iters_fpi=50,
+                          iters_pre=20,
+                          iters=100,
                           iters_post=0,
                           samps=0,
 
@@ -32,23 +33,19 @@ class Experiment(Task):
                           causal_model=options['causal-model'],
                           n=500,
                           nx=250,
-                          nh=31,
-                          noise_init=1e-3,
-                          tau_w=0.8,
-                          tau_f=0.3,
+                          nh=51,
+                          noise_init=1e-2,
+                          tau_w=0.4,
+                          tau_f=0.05,
 
-                          # Experiment options
-                          n_predict=100,
-                          noise=0)
+                          noise=.5)
 
     def load(self, sess):
         # Load data
-        n_total = self.config.n + self.config.n_predict
-        f, k = data.load_gp_exp(sess, n=n_total, k_len=.5)
+        f, k = data.load_gp_exp(sess, n=self.config.n, k_len=.4)
 
         # Predict on
-        f_train, self.data['f_pred'] = f.fragment(self.config.n)
-        e = f_train.make_noisy(self.config.noise)
+        e = f.make_noisy(self.config.noise)
 
         # Store data
         self._set_data(f=f, e=e, k=k,
@@ -59,7 +56,6 @@ class Experiment(Task):
         # Construct model
         mod = VCGPCM.from_recipe(sess=sess,
                                  e=e,
-                                 tx_range=(min(f.x), max(f.x)),
                                  nx=self.config.nx,
                                  nh=self.config.nh,
                                  tau_w=self.config.tau_w,
