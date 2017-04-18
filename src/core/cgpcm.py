@@ -105,7 +105,8 @@ class CGPCM(Parametrisable):
 
                    # Store recipe for reconstruction
                    e=e, causal=causal, causal_id=causal_id, tau_w=tau_w,
-                   tau_f=tau_f, nh=nh, nx=nx, noise_init=noise_init)
+                   tau_f=tau_f, nh=nh, nx=nx, noise_init=noise_init,
+                   tx_range=tx_range)
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
@@ -723,9 +724,17 @@ class VCGPCM(CGPCM):
             samples_h = [self._run(h) for i in range(samples_h)]
 
         h = placeholder(shape(self.h.sample()))
-        Kfu = self.kernel_h(t, self.th)
-        mu = mul(Kfu, h)
-        samples = map_progress(lambda x: self._run(mu, feed_dict={h: x}),
+
+        # Posterior over h
+        Kuh = self.kernel_h(self.th, t)
+        A = trisolve(self.Lh, Kuh)
+        L = tf.cholesky(reg(self.kernel_h(t) - mul(A, A, adj_a=True)))
+
+        # Precompute matrices
+        Kuh, L = self._run([Kuh, L])
+
+        sample = mul(Kuh, h, adj_a=True) + mul(L, randn([shape(t)[0], 1]))
+        samples = map_progress(lambda x: self._run(sample, feed_dict={h: x}),
                                samples_h,
                                name='filter prediction using MC '
                                     '(transform: {})'.format(phase_transform))
@@ -749,6 +758,8 @@ class VCGPCM(CGPCM):
         t = data.Data(t).positive_part() if self.causal else data.Data(t)
         if phase_transform is not None:
             t = getattr(t, phase_transform)().x
+        else:
+            t = t.x
 
         # Compute statistics
         samples = np.concatenate(samples, axis=1)

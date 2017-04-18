@@ -152,7 +152,7 @@ class TaskConfig(Parametrisable):
     Configuration for a task.
     """
     _required_pars = ['fp', 'seed', 'iters_post', 'iters', 'iters_pre',
-                      'samps', 'name']
+                      'samps', 'name', 'iters_fpi']
 
 
 def train(sess, task, debug_options):
@@ -197,7 +197,7 @@ def train(sess, task, debug_options):
     out.section('performing pretraining fixed-point iterations')
     elbo = mod.elbo()[0]
     out.kv('ELBO before', sess.run(elbo), mod='.2e')
-    mod.fpi(50)
+    mod.fpi(task.config.iters_fpi)
     out.kv('ELBO after', sess.run(elbo), mod='.2e')
     out.section_end()
 
@@ -207,7 +207,6 @@ def train(sess, task, debug_options):
     fetches = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
                {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
                {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
-               {'name': 's2_y', 'tensor': mod.s2_y, 'modifier': '.2e'},
                {'name': 'gamma', 'tensor': mod.gamma, 'modifier': '.2e'},
                {'name': 'alpha', 'tensor': mod.alpha, 'modifier': '.2e'},
                {'name': 'omega', 'tensor': mod.omega, 'modifier': '.2e'}]
@@ -247,18 +246,18 @@ def train(sess, task, debug_options):
         out.section_end()
     out.section_end()
 
+    out.section('performing posttraining fixed-point iterations')
+    elbo = mod.elbo()[0]
+    out.kv('ELBO before', sess.run(elbo), mod='.2e')
+    mod.fpi(task.config.iters_fpi)
+    out.kv('ELBO after', sess.run(elbo), mod='.2e')
+    out.section_end()
+
     if task.config.samps > 0:
         # Train SMF
         out.section('training SMF')
         task.data['samples'] = mod.sample(iters=task.config.samps)
         out.section_end()
-
-    out.section('performing posttraining fixed-point iterations')
-    elbo = mod.elbo()[0]
-    out.kv('ELBO before', sess.run(elbo), mod='.2e')
-    mod.fpi(50)
-    out.kv('ELBO after', sess.run(elbo), mod='.2e')
-    out.section_end()
 
     return mod
 
@@ -297,9 +296,13 @@ def predict(sess, task, mod, debug_options):
     :param mod: trained model
     :param debug_options: debug options
     """
+    f_opts = {'precompute': not debug_options['no-precompute-f']}
+    if debug_options['quick-f']:
+        f_opts['samples_h'] = 5
+
     # Predict MF
     out.section('predicting MF')
-    task.data['f_pred'] = mod.predict_f(task.data['f'].x, precompute=False)
+    task.data['f_pred'] = mod.predict_f(task.data['f'].x, **f_opts)
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
     task.data['psd_pred'] = mod.predict_psd(task.data['h'].x)
     task.data['h_pred'] = mod.predict_h(task.data['h'].x,
@@ -311,15 +314,19 @@ def predict(sess, task, mod, debug_options):
     out.section_end()
 
     # ELBO for MF
-    task.data['elbo_mf'] = sess.run(mod.elbo())
+    task.data['elbo_mf'] = sess.run(mod.elbo()[0])
 
     if task.config.samps > 0:
         # Predict SMF
         out.section('predicting SMF')
         samples = task.data['samples']
-        task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x,
-                                                precompute=False,
-                                                samples_h=samples)
+
+        # Reconfigure options for f
+        if debug_options['quick-f']:
+            inds = np.random.choice(len(samples), 5, replace=False)
+            f_opts['samples_h'] = list(np.random.take(samples, inds, axis=0))
+
+        task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x, **f_opts)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=samples)
         task.data['psd_pred_smf'] = mod.predict_psd(task.data['h'].x,
