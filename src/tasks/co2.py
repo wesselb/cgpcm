@@ -21,18 +21,18 @@ class Experiment(Task):
 
                           # Training options
                           iters_pre=50,
-                          iters=50,
-                          iters_post=0,
+                          iters=100,
+                          iters_post=100,
                           samps=0,
 
                           # Model options
                           causal_model=options['causal-model'],
                           n=709,  # All data
-                          nx=150,
+                          nx=300,
                           nh=300,
-                          noise_init=1e-3,
-                          tau_w=3,
-                          tau_f=0.5,
+                          noise_init=1e-2,
+                          tau_w=30,
+                          tau_f=0.1,
 
                           # Experiment options
                           n_predict=100,

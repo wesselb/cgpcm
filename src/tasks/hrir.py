@@ -22,10 +22,10 @@ class Experiment(Task):
                           fp=options.fp(),
 
                           # Training options
-                          iters_pre=200,
-                          iters=1000,
-                          iters_post=500,
-                          samps=2000,
+                          iters_pre=50,
+                          iters=100,
+                          iters_post=100,
+                          samps=500,
 
                           # Model options
                           causal_model=options['causal-model'],
@@ -34,7 +34,7 @@ class Experiment(Task):
                           nh=151,
                           noise_init=1e-3,
                           tau_w=1e-3,
-                          tau_f=.05e-3,
+                          tau_f=.15e-3,
                           resample=options['resample'])
 
     def load(self, sess):
