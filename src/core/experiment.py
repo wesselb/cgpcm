@@ -194,15 +194,18 @@ def train(sess, task, debug_options):
     mod.precompute()
     out.section_end()
 
-    out.section('performing pretraining fixed-point iterations')
+    # Train MF
+    out.section('training MF')
+
+    # FPI
+    out.section('performing initial fixed-point iterations')
     elbo = mod.elbo()[0]
     out.kv('ELBO before', sess.run(elbo), mod='.2e')
     mod.fpi(task.config.iters_fpi)
     out.kv('ELBO after', sess.run(elbo), mod='.2e')
     out.section_end()
 
-    # Train MF
-    out.section('training MF')
+    # Gradient-based optimisation
     elbo, terms = mod.elbo()
     fetches = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
                {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
@@ -244,13 +247,16 @@ def train(sess, task, debug_options):
         out.section('precomputing')
         mod.precompute()
         out.section_end()
-    out.section_end()
 
-    out.section('performing posttraining fixed-point iterations')
+    # FPI
+    out.section('performing final fixed-point iterations')
     elbo = mod.elbo()[0]
     out.kv('ELBO before', sess.run(elbo), mod='.2e')
     mod.fpi(task.config.iters_fpi)
     out.kv('ELBO after', sess.run(elbo), mod='.2e')
+    out.section_end()
+
+    # End of MF training
     out.section_end()
 
     if task.config.samps > 0:
@@ -625,9 +631,9 @@ def plot_compare(tasks, args):
     p.show_legend()
 
     if not options['no-psd']:
-        pt1.bound(x_min=0, x_max=0.5 / task1.config.tau_f)
+        pt1.bound(x_min=0, x_max=1 / task1.config.tau_f)
         if task2:
-            pt2.bound(x_min=0, x_max=0.5 / task1.config.tau_f)
+            pt2.bound(x_min=0, x_max=1 / task1.config.tau_f)
 
         # Compute PSD of truth
         data1['psd'] = data1['k'].fft().abs()
@@ -642,7 +648,7 @@ def plot_compare(tasks, args):
 
         # PSD
         p.subplot2grid((2, 6), (1, 4), colspan=2)
-        p.lims(x=(0, .5 / task1.config.tau_f))
+        p.lims(x=(0, 1 / task1.config.tau_f))
         pt1.line('psd', 'truth', label='Truth')
         if 'psd_emp' not in data1:
             data1['psd_emp'] = data1['k_emp'].fft().abs()
