@@ -74,13 +74,13 @@ class CGPCM(Parametrisable):
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
-            tx_range = (min(e.x) - tau_w, max(e.x) + tau_w) \
+            tx_range = (min(e.x), max(e.x)) \
                     if tx_range is None else tx_range
             dtx = (tx_range[1] - tx_range[0]) / nx
-            omega = .5 / (.5 * dtx) ** 2
+            omega = length_scale(2. * dtx)
             tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
         else:
-            omega = to_float(np.nan)
+            omega = np.nan
             tx = constant([])
         omega, vars['omega'] = var_pos(to_float(omega))
 
@@ -504,10 +504,10 @@ class VCGPCM(CGPCM):
         h = Normal(var_, mean_)
         mu, S = self._qz_natural(h.mean, h.m2)
         L = tf.cholesky(reg(S))
-        x = Normal(cholinv(L), trisolve(L, mu))
+        x = Normal(cholinv(L), tf.cholesky_solve(L, mu))
         mu, S = self._qu_natural(x.mean, x.m2)
         L = tf.cholesky(reg(S))
-        h = Normal(cholinv(L), trisolve(L, mu))
+        h = Normal(cholinv(L), tf.cholesky_solve(L, mu))
 
         mean, var = self._run([self.h.mean, self.h.var])
         for i in range(num):
@@ -582,7 +582,7 @@ class VCGPCM(CGPCM):
         :return: ELBO for the SMF approximation
         """
         sample_h = placeholder(shape(self.h.sample()))
-        elbo = self.elbo(smf=True, sample_h=sample_h)
+        elbo = self.elbo(smf=True, sample_h=sample_h)[0]
         elbos = map_progress(lambda x: self._run(elbo,
                                                  feed_dict={sample_h: x}),
                              samples_h,
@@ -605,15 +605,6 @@ class VCGPCM(CGPCM):
         Ahh, a = self._run([self._Ahh_center(t),
                             self._a_center(t)])
 
-        if alt:
-            # Predict mean analytically
-            k_mean = self._run(
-                self.s2_f * (a + trmul(tile(self.h.m2 - self.iKh, n), Ahh)))
-            # k_mean -= cst
-            k_mean /= max(k_mean)
-
-            return data.Data(t, k_mean)
-
         if is_numeric(samples_h):
             h = self.h.sample()
             samples_h = [self._run(h) for i in range(samples_h)]
@@ -628,8 +619,6 @@ class VCGPCM(CGPCM):
 
         # Check whether to normalise predictions
         if normalise:
-            # scale = max(np.mean(np.concatenate(samples, axis=1), axis=1))
-            # samples = [sample / scale for sample in samples]
             samples = [sample / max(sample) for sample in samples]
 
         # Check whether to predict kernel or PSD
@@ -656,7 +645,7 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(x, upper),
                                   std=data.Data(x, std))
 
-    def predict_psd(self, t, samples_h=1000, normalise=True):
+    def predict_psd(self, t, samples_h=200, normalise=True):
         """
         Predict PSD.
 
@@ -685,7 +674,7 @@ class VCGPCM(CGPCM):
             samples = [sample / sample.max for sample in samples]
 
         dx = t[1] - t[0]
-        samples = [(sample * dx).fft_db(split_freq=True)[0]
+        samples = [(sample * dx).fft(split_freq=True)[0].real().abs()
                    for sample in samples]
 
         x = samples[0].x
@@ -697,9 +686,9 @@ class VCGPCM(CGPCM):
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
 
-        return data.UncertainData(mean=data.Data(x, mu),
-                                  lower=data.Data(x, lower),
-                                  upper=data.Data(x, upper),
+        return data.UncertainData(mean=data.Data(x, mu).db(),
+                                  lower=data.Data(x, lower).db(),
+                                  upper=data.Data(x, upper).db(),
                                   std=data.Data(x, std))
 
     def predict_h(self, t, samples_h=200, normalise=True,
