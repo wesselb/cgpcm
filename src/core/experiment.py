@@ -196,6 +196,14 @@ def train(sess, task, debug_options):
 
     dual = debug_options['dual']
 
+    if debug_options['fpi']:
+        out.section('performing fixed-point iterations')
+        elbo = mod.elbo()[0]
+        out.kv('ELBO before', sess.run(elbo), mod='.3e')
+        mod.fpi(50)
+        out.kv('ELBO after', sess.run(elbo), mod='.3e')
+        out.section_end()
+
     # Train MF
     out.section('training MF')
     elbo, terms = mod.elbo(dual=dual)
@@ -220,8 +228,8 @@ def train(sess, task, debug_options):
                         'modifier': '.2e'} for i, term in enumerate(terms)]
     fetches_config = fetches_config_base + fetches_config_terms
     learn.minimise_lbfgs(sess, -elbo,
-                         vars=[mod.vars['mu_x' if dual else 'mu']],
-                               # mod.vars['var_x' if dual else 'var']],
+                         vars=[mod.vars['mu_x' if dual else 'mu'],
+                               mod.vars['var_x' if dual else 'var']],
                          iters=task.config.iters_pre,
                          fetches_config=fetches_config,
                          name='pretraining using L-BFGS')
@@ -229,8 +237,8 @@ def train(sess, task, debug_options):
                          vars=[mod.vars['mu_x' if dual else 'mu'],
                                mod.vars['var_x' if dual else 'var'],
                                mod.vars['s2_f'],
-                               mod.vars['s2'],
-                               mod.vars['var_x_scale' if dual else 'var_scale']],
+                               mod.vars['s2']],
+                               # mod.vars['var_x_scale' if dual else 'var_scale']],
                          iters=task.config.iters,
                          fetches_config=fetches_config,
                          name='training using L-BFGS')
@@ -247,11 +255,12 @@ def train(sess, task, debug_options):
                              vars=[mod.vars['mu_x' if dual else 'mu'],
                                    mod.vars['var_x' if dual else 'var'],
                                    mod.vars['s2_f'],
+                                   mod.vars['s2'],
                                    # mod.vars['s2_y'],
                                    # mod.vars['s2_w'],
                                    mod.vars['gamma'],
-                                   mod.vars['alpha'],
-                                   mod.vars['var_x_scale' if dual else 'var_scale'],
+                                   # mod.vars['alpha'],
+                                   # mod.vars['var_x_scale' if dual else 'var_scale'],
                                    mod.vars['omega']],
                              iters=task.config.iters_post,
                              fetches_config=fetches_config,
@@ -274,12 +283,11 @@ def train(sess, task, debug_options):
 
     if debug_options['fpi']:
         out.section('performing fixed-point iterations')
-        for i in range(10):
-            out.state(str(i))
-            mod.fpi()
+        elbo = mod.elbo()[0]
+        out.kv('ELBO before', sess.run(elbo), mod='.3e')
+        mod.fpi(50)
+        out.kv('ELBO after', sess.run(elbo), mod='.3e')
         out.section_end()
-
-
 
     return mod
 
@@ -322,7 +330,10 @@ def predict(sess, task, mod, debug_options):
     out.section('predicting MF')
     task.data['f_pred'] = mod.predict_f(task.data['f'].x, precompute=False)
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
-    task.data['psd_pred'] = mod.predict_k(task.data['k'].x, psd=True)
+    # x_psd = Data(np.linspace(-2e-2, 2e-2, 2001))
+    # task.data['psd_pred'] = mod.predict_psd(x_psd.x, samples_h=100)
+    # task.data['psd_pred_fs'] = 1. / x_psd.dx
+    task.data['psd_pred'] = mod.predict_psd(task.data['k'].x)
     task.data['psd_pred_fs'] = 1. / task.data['k'].dx
     task.data['h_mp_pred'] = mod.predict_h(task.data['h'].x,
                                            phase_transform='minimum_phase')
@@ -342,9 +353,10 @@ def predict(sess, task, mod, debug_options):
                                                 samples_h=samples)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=samples)
-        task.data['psd_pred_smf'] = mod.predict_k(task.data['k'].x,
-                                                  samples_h=samples,
-                                                  psd=True)
+        # task.data['psd_pred_smf'] = mod.predict_psd(x_psd.x, samples_h=samples)
+        # task.data['psd_pred_smf_fs'] = 1. / x_psd.dx
+        task.data['psd_pred_smf'] = mod.predict_psd(task.data['k'].x,
+                                                    samples_h=samples)
         task.data['psd_pref_smf_fs'] = 1. / task.data['k'].dx
         task.data['h_mp_pred_smf'] = mod.predict_h(task.data['h'].x,
                                                    samples_h=samples,

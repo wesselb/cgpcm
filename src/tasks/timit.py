@@ -19,23 +19,23 @@ class Experiment(Task):
         options.parse(args)
 
         return TaskConfig(name='TIMIT',
-                          seed=0,
+                          seed=10,
                           fp=options.fp(),
 
                           # Training options
-                          iters_pre=200,
-                          iters=500,
-                          iters_post=200,
+                          iters_pre=50,
+                          iters=50,
+                          iters_post=50,
                           samps=200,
 
                           # Model options
                           causal_model=options['causal-model'],
                           n=350,
                           nx=150,
-                          nh=200,
-                          noise_init=1e-3,
-                          tau_w=10e-2,
-                          tau_f=1e-3)
+                          nh=150,
+                          noise_init=1e-2,
+                          tau_w=3e-2,
+                          tau_f=.5e-3)
 
     def load(self, sess):
         # Load data
@@ -45,22 +45,18 @@ class Experiment(Task):
         f_sub = f[::3]
 
         # Do, however, store accurate emperical estimates of the kernel and PSD
-        k_emp = f.autocorrelation()
-        k_emp /= k_emp.max
+        k_emp = f.autocorrelation(normalise=True)
         self.data['k_emp'] = k_emp
-        self.data['psd_emp'] = k_emp.fft_db(split_freq=False)
-        # x_psd, y_psd = sp.periodogram(f.y, fs=1 / f.dx)
-        # self.data['psd_emp'] = data.Data(x_psd, 10 * np.log(y_psd / scale))
-
+        self.data['psd_emp'] = (k_emp * k_emp.dx).fft_db()
 
         # Store data
         self._set_data(f=f_sub, e=e,
                        k=data.Data(np.linspace(-2 * self.config.tau_w,
                                                2 * self.config.tau_w,
-                                               1501)),
+                                               501)),
                        h=data.Data(np.linspace(-2 * self.config.tau_w,
                                                2 * self.config.tau_w,
-                                               1000)))
+                                               501)))
 
         # Construct model
         mod = VCGPCM.from_recipe(sess=sess,
