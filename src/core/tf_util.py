@@ -127,8 +127,51 @@ def log_2_pi():
 def mul(a, b, adj_a=False, adj_b=False):
     """
     Alias for `tf.batch_matmul`.
+    
+    Supports broadcasting over a single additional outer dimension.
     """
-    return tf.matmul(a, b, adjoint_a=adj_a, adjoint_b=adj_b)
+    if rank(a) != rank(b):
+        # Appropriately transpose
+        if adj_a:
+            a = ctransp(a)
+        if adj_b:
+            b = ctransp(b)
+
+        if rank(a) == 2 and rank(b) == 3:
+            # Permute and reshape
+            b_t = tf.transpose(b, perm=(1, 2, 0))
+            b2 = tf.reshape(b_t, [shape(b_t)[0],
+                                  shape(b_t)[1] * shape(b_t)[2]])
+
+            # Perform operation
+            c2 = mul(a, b2)
+
+            # Inversely reshape and inversely permute
+            c_t = tf.reshape(c2, [shape(a)[0],
+                                  shape(b_t)[1],
+                                  shape(b_t)[2]])
+            c = tf.transpose(c_t, perm=(2, 0, 1))
+
+            return c
+        elif rank(a) == 3 and rank(b) == 2:
+            # Reshape
+            a2 = tf.reshape(a, [shape(a)[0] * shape(a)[1],
+                                shape(a)[2]])
+
+            # Perform operation
+            c2 = mul(a2, b)
+
+            # Inversely reshape
+            c = tf.reshape(c2, [shape(a)[0],
+                                shape(a)[1],
+                                shape(b)[1]])
+
+            return c
+        else:
+            raise ValueError('broadcasting for ranks {} and {} not '
+                             'suppported'.format(rank(a), rank(b)))
+    else:
+        return tf.matmul(a, b, adjoint_a=adj_a, adjoint_b=adj_b)
 
 
 def trisolve(a, b, lower_a=True, adj_a=False):
@@ -189,6 +232,9 @@ def frob2(x):
 def trmul(a, b, adj_a=False, adj_b=False):
     """
     Compute :math:`\operatorname{tr}(A^TB)`.
+    
+    Automatically broadcasts the arguments by inserting dimensions in the
+    beginning.
 
     :param a: :math:`A`
     :param b: :math:`B`
@@ -196,9 +242,23 @@ def trmul(a, b, adj_a=False, adj_b=False):
     :param adj_b: adjoint `b`
     :return: :math:`\operatorname{tr}(A^TB)`.
     """
+    if rank(a) > rank(b):
+        b = expand_dims(b, pre=rank(a) - rank(b))
+    elif rank(a) < rank(b):
+        a = expand_dims(a, pre=rank(b) - rank(a))
     a = ctransp(a) if adj_a else a
     b = ctransp(b) if adj_b else b
     return tf.reduce_sum(a * b, [-2, -1])
+
+
+def rank(x):
+    """
+    Get the rank of `x`.
+    
+    :param x: tensor
+    :return: rank of tensor
+    """
+    return len(shape(x))
 
 
 def shape(x):

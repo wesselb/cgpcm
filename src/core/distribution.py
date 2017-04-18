@@ -27,7 +27,10 @@ class Normal(object):
         :return: :class:`core.distribution.Normal` instance
         """
         L = tf.cholesky(reg(precision))
-        return cls(cholinv(L), tf.cholesky_solve(L, nat_mean))
+        if nat_mean is None:
+            return cls(cholinv(L))
+        else:
+            return cls(cholinv(L), tf.cholesky_solve(L, nat_mean))
 
     @property
     def m2(self):
