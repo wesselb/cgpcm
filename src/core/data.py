@@ -2,6 +2,7 @@ from collections import namedtuple
 import scipy.io as sio
 import scipy.io.wavfile as sio_wav
 import scipy.signal as signal
+from sklearn import linear_model
 
 from tf_util import *
 import util
@@ -122,7 +123,7 @@ class Data(object):
         """
         self._assert_evenly_spaced()
 
-        # Zero nans to zero
+        # Set NaNs to zero
         y = self.y
         y[np.isnan(y)] = 0
 
@@ -147,12 +148,12 @@ class Data(object):
         else:
             return ac
 
-    def fft_db(self, split_freq=False):
+    def fft_db(self, *args, **kw_args):
         """
         Alias for `core.data.Data.fft` that afterwards applies
         `core.data.Data.db`.
         """
-        res = self.fft(split_freq=split_freq)
+        res = self.fft(*args, **kw_args)
         if type(res) == tuple:
             return res[0].db(), res[1]
         else:
@@ -583,3 +584,28 @@ def load_seaice():
 
     df['decimal_date'] = dec_date
     return df
+
+
+def load_co2():
+    x, y = [], []
+
+    # Load file
+    with open('data/co2_mm_mlo.txt') as f:
+        for line in f:
+            if not line.strip().startswith('#'):
+                _, _, date, _, interpolated, _, _ = line.strip().split()
+                x.append(float(date))
+                y.append(float(interpolated))
+
+    x, y = np.array(x), np.array(y)
+
+    # Detrend
+    lin_reg = linear_model.LinearRegression()
+    lin_reg.fit(x[:, None], y)
+    y -= lin_reg.predict(x[:, None])
+
+    # Normalise
+    d = Data(x, y)
+    d = (d - d.mean) / d.std
+
+    return d
