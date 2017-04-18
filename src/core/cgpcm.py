@@ -1,3 +1,5 @@
+from operator import add
+
 from learn import map_progress
 from parametrisable import Parametrisable
 from distribution import Normal
@@ -9,7 +11,6 @@ from util import inf, length_scale, zero_pad, fft_freq, is_numeric, \
 import data
 import util
 import exponentiated_quadratic as eq
-import out
 
 
 class CGPCM(Parametrisable):
@@ -19,8 +20,7 @@ class CGPCM(Parametrisable):
 
     _required_pars = ['sess', 'e',
                       'th', 'tx',
-                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars', 's2_w',
-                      's2_y',
+                      's2', 's2_f', 'alpha', 'gamma', 'omega', 'vars',
                       'causal', 'causal_id']
 
     def __init__(self, **kw_args):
@@ -69,13 +69,10 @@ class CGPCM(Parametrisable):
 
         alpha, vars['alpha'] = var_pos(to_float(alpha))
         gamma, vars['gamma'] = var_pos(to_float(gamma))
-        s2_w, vars['s2_w'] = var_pos(to_float(1.))
-        s2_y, vars['s2_y'] = var_pos(to_float(1.))
 
         # Hyperparameter and inducing points for noise
         if nx > 0:
-            tx_range = (min(e.x), max(e.x)) \
-                    if tx_range is None else tx_range
+            tx_range = (min(e.x), max(e.x)) if tx_range is None else tx_range
             dtx = (tx_range[1] - tx_range[0]) / nx
             omega = length_scale(2. * dtx)
             tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
@@ -106,7 +103,7 @@ class CGPCM(Parametrisable):
         sess.run(tf.variables_initializer(vars.values()))
 
         return cls(sess=sess, th=th, tx=tx, s2=s2, s2_f=s2_f, alpha=alpha,
-                   gamma=gamma, omega=omega, vars=vars, s2_w=s2_w, s2_y=s2_y,
+                   gamma=gamma, omega=omega, vars=vars,
 
                    # Store recipe for reconstruction
                    e=e, causal=causal, causal_id=causal_id, tau_w=tau_w,
@@ -114,7 +111,7 @@ class CGPCM(Parametrisable):
 
     def _init_expressions(self):
         kh = eq.kh_constructor(self.alpha, self.gamma)
-        kxs = eq.kxs_constructor(self.s2_w ** .5, self.omega)
+        kxs = eq.kxs_constructor(self.omega)
         self.expq_a = kh(self.t1 - self.tau1, self.t2 - self.tau1)
         self.expq_Ahh = kh(self.t1 - self.tau1, self.th1) \
                         * kh(self.th2, self.t2 - self.tau1)
@@ -212,11 +209,8 @@ class CGPCM(Parametrisable):
     def _construct(self):
         # Some frequently accessed quantities
         self.n = shape(self.e.x)[0]
-        self.sum_y2 = sum(self.e.y ** 2) * self.s2_y
+        self.sum_y2 = sum(self.e.y ** 2)
         self.mats = self._construct_model_matrices(self.e)
-
-        # # Precompute stuff that is not going to change
-        # self.sum_y2 = self._run(self.sum_y2)
 
     def _init_kernels(self):
         # Stuff related to h
@@ -227,16 +221,13 @@ class CGPCM(Parametrisable):
         self.h_prior = Normal(reg(self.iKh))
 
         # Stuff related to x
-        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5 * self.s2_w,
+        self.kernel_x = DEQ(s2=(.5 * np.pi / self.omega) ** .5,
                             alpha=0,
                             gamma=.5 * self.omega)
         self.Kx = reg(self.kernel_x(self.tx))
         self.Lx = tf.cholesky(self.Kx)
         self.iKx = cholinv(self.Lx)
         self.x_prior = Normal(reg(self.iKx))
-
-        # # Precompute stuff that is not going to change
-        # self.Kx, self.Lx, self.iKx = self._run([self.Kx, self.Lx, self.iKx])
 
     def _construct_model_matrices(self, e):
         n = shape(e.x)[0]
@@ -250,8 +241,7 @@ class CGPCM(Parametrisable):
         mats['sum_a'] = n * mats['a']
         mats['sum_Axx'] = sum(mats['Axx'], 0)
         mats['sum_Ahh'] = n * mats['Ahh']
-        mats['sum_Ahx_y'] = sum(
-            self.s2_y ** .5 * e.y[:, None, None] * mats['Ahx'], 0)
+        mats['sum_Ahx_y'] = sum(e.y[:, None, None] * mats['Ahx'], 0)
         mats['b'] = (mats['a']
                      - trmul(self.iKh, mats['Ahh'])
                      - trmul(iKx_t, mats['Axx'])
@@ -312,14 +302,13 @@ class AKM(CGPCM):
                       's2', 's2_f', 'alpha', 'gamma',
                       'causal', 'causal_id']
 
-    def k_prior(self, t, iters=1000, psd=False, granularity=1, psd_pad=1000):
+    def k_prior(self, t, iters=1000, psd=False, granularity=1):
         """
-        Prior distribution over kernels or PSDs.
+        Prior distribution over kernels or PSDs (via the kernel approximation).
 
         :param t: point to evaluate kernel at
         :param iters: number of Monte-Carlo iterations
         :param psd: compute PSD instead
-        :param psd_pad: zero padding in the case of PSD
         :param granularity: delta probability at which to generate contours of
                             marginal probability
         :return: mean, list of lower bounds, and list of upper bounds
@@ -336,8 +325,7 @@ class AKM(CGPCM):
 
         # Check whether PSD must be computed
         if psd:
-            samples = map_progress(lambda x: util.fft_db(zero_pad(x, psd_pad),
-                                                         axis=0),
+            samples = map_progress(lambda x: data.Data(t, x).fft().y[:, None],
                                    samples,
                                    name='transforming samples')
         samples = np.concatenate(samples, axis=1)
@@ -355,7 +343,7 @@ class AKM(CGPCM):
 
         # Determine x axis
         if psd:
-            x = fft_freq(shape(samples)[0])
+            x = data.Data(t).fft().x
         else:
             x = t
 
@@ -446,133 +434,158 @@ class VCGPCM(CGPCM):
         self._init_inducing_points()
 
     def _init_inducing_points(self):
-        # Mean
+        # Mean and variance of q(u)
         mean_init = tf.Variable(self.h_prior.sample())
-        self.vars['mu'] = mean_init
-
-        # Variance
+        self.vars['mu_u'] = mean_init
         var_init = tf.Variable(tril_to_vec(tf.cholesky(self.h_prior.var)))
-        self.vars['var'] = var_init
-        self.var_scale, self.vars['var_scale'] = var_pos(to_float(1.))
-
-        # Initialise mean and variance variables
-        self._run(tf.variables_initializer(
-            [mean_init, var_init, self.vars['var_scale']]))
-
-        # Construct q(h)
-        var_init = vec_to_tril(var_init) * self.var_scale
-        self.h = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
-
-        # Mean
-        mean_x_init = tf.Variable(self.x_prior.sample())
-        self.vars['mu_x'] = mean_x_init
-
-        # Variance
-        var_x_init = tf.Variable(tril_to_vec(tf.cholesky(self.x_prior.var)))
-        self.vars['var_x'] = var_x_init
-        self.var_x_scale, self.vars['var_x_scale'] = var_pos(to_float(1.))
-
-        # Initialise mean and variance variables
-        self._run(tf.variables_initializer(
-            [mean_x_init, var_x_init, self.vars['var_x_scale']]))
+        self.vars['var_u'] = var_init
+        self._run(tf.variables_initializer([mean_init, var_init]))
 
         # Construct q(u)
-        var_x_init = vec_to_tril(var_x_init) * self.var_x_scale
-        self.x = Normal(reg(mul(var_x_init, var_x_init, adj_b=True)), mean_x_init)
+        var_init = vec_to_tril(var_init)
+        self.h = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
 
-    def _qz_natural(self, h_mean, h_m2):
+        # Mean and variance of q(z)
+        mean_init = tf.Variable(self.x_prior.sample())
+        self.vars['mu_z'] = mean_init
+        var_init = tf.Variable(tril_to_vec(tf.cholesky(self.x_prior.var)))
+        self.vars['var_z'] = var_init
+        self._run(tf.variables_initializer([mean_init, var_init]))
+
+        # Construct q(u)
+        var_init = vec_to_tril(var_init)
+        self.x = Normal(reg(mul(var_init, var_init, adj_b=True)), mean_init)
+
+    def _optimal_q(self, h_mean, h_m2, z=True):
+        """
+        Compute the natural parameters of the optimal :math:`q(z)`
+        (:math:`q(u)`).
+        
+        :param h_mean: mean of :math:`q(u)` (:math:`q(z)`)
+        :param h_m2: second moment of :math:`q(u)` (:math:`q(z)`)
+        :param z: compute parameters of of optimal :math:`q(z)`
+                  (:math:`q(u)`)
+        :return: natural mean and precision of optimal :math:`q(z)`
+                 (:math:`q(u)`)
+        """
         mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], h_mean,
-                                             adj_a=True)
-        S = self.mats['sum_Bxx'] + sum(mul3(self.mats['Ahx'],
-                                            tile(h_m2, self.n),
-                                            self.mats['Ahx'], adj_a=True), 0)
-        return mu, self.Kx + self.s2_f / self.s2 * S
+                                             adj_a=z)
+        B = self.mats['sum_Bxx'] if z else self.mats['sum_Bhh']
+        S = B + sum(mul3(self.mats['Ahx'],
+                         tile(h_m2, self.n),
+                         self.mats['Ahx'], adj_a=z, adj_c=not z), 0)
+        K = self.Kx if z else self.Kh
+        return mu, K + self.s2_f / self.s2 * S
 
-    def _qu_natural(self, x_mean, x_m2):
-        mu = self.s2_f ** .5 / self.s2 * mul(self.mats['sum_Ahx_y'], x_mean)
-        S = self.mats['sum_Bhh'] + sum(mul3(self.mats['Ahx'],
-                                            tile(x_m2, self.n),
-                                            self.mats['Ahx'], adj_c=True), 0)
-        return mu, self.Kh + self.s2_f / self.s2 * S
-
-    def fpi(self, num):
+    def fpi(self, num=50, z=True):
         """
-        Fixed-point iteration on q(u).
+        Fixed-point iteration on :math:`q(u)` (:math:`q(z)`).
+        
+        :param num: number of iterations
+        :param z: FPI on :math:`q(u)` (:math:`q(z)`)
         """
-        mean_ = placeholder(shape(self.h.mean))
-        var_ = placeholder(shape(self.h.var))
-        h = Normal(var_, mean_)
-        mu, S = self._qz_natural(h.mean, h.m2)
-        L = tf.cholesky(reg(S))
-        x = Normal(cholinv(L), tf.cholesky_solve(L, mu))
-        mu, S = self._qu_natural(x.mean, x.m2)
-        L = tf.cholesky(reg(S))
-        h = Normal(cholinv(L), tf.cholesky_solve(L, mu))
 
-        mean, var = self._run([self.h.mean, self.h.var])
-        for i in range(num):
-            out.state(str(i))
-            mean, var = self._run([h.mean, h.var],
-                                  feed_dict={mean_: mean,
-                                             var_: var})
-        self._run([self.vars['mu'].assign(mean),
-                   self.vars['var'].assign(tril_to_vec(tf.cholesky(var)))])
+        def scan_fn(prev, cur):
+            mean, var = prev
+            dist = Normal(var, mean)
 
-    def elbo(self, smf=False, sample_h=None, dual=False):
+            # Optimal q(z) (q(u))
+            lam, P = self._optimal_q(dist.mean, dist.m2, z=z)
+            dist = Normal.from_natural(P, lam)
+
+            # Optimal q(u) (q(z))
+            lam, P = self._optimal_q(dist.mean, dist.m2, z=not z)
+            dist = Normal.from_natural(P, lam)
+
+            return dist.mean, dist.var
+
+        res = tf.scan(scan_fn, tf.range(num),
+                      initializer=(self.h.mean if z else self.x.mean,
+                                   self.h.var if z else self.x.var))
+
+        # Compute
+        mean, var = self._run([res[0][-1],
+                               tril_to_vec(tf.cholesky(res[1][-1]))])
+
+        # Assign result
+        self._run([self.vars['mu_u' if z else 'mu_z'].assign(mean),
+                   self.vars['var_u' if z else 'var_z'].assign(var)])
+
+    def elbo(self, smf=False, sample=None, z=True):
         """
         Construct the ELBO.
 
         :param smf: stochastic approximation of SMF approximation
-        :param sample_h: sample to use in SMF approximation
-        :param dual: use dual ELBO
-        :return: ELBO
+        :param sample: sample to use in SMF approximation
+        :param z: use ELBO saturated for :math:`q(z)`
+        :return: ELBO and fetches for all terms
         """
-        if dual:
-            mu, S = self._qu_natural(self.x.mean, self.x.m2)
-            L = tf.cholesky(reg(S))
-
-            elbo = (-self.n * tf.log(2 * np.pi * self.s2)
-                    + log_det(self.Lh)
-                    - log_det(L)
-                    + sum(trisolve(L, mu) ** 2)
-                    - self.sum_y2 / self.s2
-                    - self.s2_f / self.s2 * self.mats['sum_b']
-                    - self.s2_f / self.s2 * trmul(self.mats['sum_Bxx'],
-                                                  self.x.m2)
-                    - 2 * self.x.kl(self.x_prior)) / 2.
-            return elbo, []
+        if smf:
+            # Stochastic approximation of SMF approximation
+            if sample is None:
+                sample = self.h.sample() if z else self.x.sample()
+            lam, P = self._optimal_q(sample, outer(sample), z=z)
         else:
-            if smf:
-                # Stochastic approximation of SMF approximation
-                if sample_h is None:
-                    sample_h = self.h.sample()
-                mu, S = self._qz_natural(sample_h, outer(sample_h))
-            else:
-                mu, S = self._qz_natural(self.h.mean, self.h.m2)
-            L = tf.cholesky(reg(S))
+            lam, P = self._optimal_q(self.h.mean if z else self.x.mean,
+                                    self.h.m2 if z else self.x.m2, z=z)
+        L = tf.cholesky(reg(P))
 
-            elbo_terms = [-self.n * tf.log(2 * np.pi * self.s2),
-                          log_det(self.Lx),
-                          - log_det(L),
-                          sum(trisolve(L, mu) ** 2),
-                          - self.sum_y2 / self.s2,
-                          - self.s2_f / self.s2 * self.mats['sum_b'],
-                          - self.s2_f / self.s2 * trmul(self.mats['sum_Bhh'],
-                                                        self.h.m2),
-                          - 2 * self.h.kl(self.h_prior)]
-            elbo = 0
-            for term in elbo_terms:
-                elbo += .5 * term
-            return elbo, elbo_terms
+        if z:
+            trace_term = trmul(self.mats['sum_Bhh'], self.h.m2)
+        else:
+            trace_term = trmul(self.mats['sum_Bxx'], self.x.m2)
 
-    def h_from_dual(self):
+        # Terms of the ELBO
+        terms = [{'name': 's2 complexity',
+                  'tensor': -.5 * self.n * tf.log(2 * np.pi * self.s2)
+                            - .5 * self.sum_y2 / self.s2},
+
+                 {'name': '{} complexity'.format('p(z)' if z else 'p(u)'),
+                  'tensor': .5 * log_det(self.Lx if z else self.Lh)},
+
+                 {'name': '{} complexity'.format('q*(z)' if z else 'q*(u)'),
+                  'tensor': - .5 * log_det(L)},
+
+                 {'name': '{} fit'.format('q*(z)' if z else 'q*(u)'),
+                  'tensor': .5 * sum(trisolve(L, lam) ** 2)},
+
+                 {'name': 'general conditioning penalty',
+                  'tensor': - .5 * self.s2_f / self.s2 * self.mats['sum_b']},
+
+                 {'name': '{} conditioning penalty'.format('q(u)'
+                                                           if z else 'q(z'),
+                  'tensor': - .5 * self.s2_f / self.s2 * trace_term},
+
+                 {'name': '-KL[{}||{}]'.format('q(u)' if 'z' else 'q(z)',
+                                               'p(u)' if 'z' else 'p(z)'),
+                  'tensor': (-self.h.kl(self.h_prior)
+                             if z else -self.x.kl(self.x_prior))}]
+
+        # Add modifiers for terms
+        for term in terms:
+            term['modifier'] = '.2e'
+
+        # Compute ELBO as sum of terms
+        elbo = reduce(add, [term['tensor'] for term in terms], 0)
+
+        return elbo, terms
+
+    def convert(self, z=True):
         """
-        Compute q(u) after optimising the dual ELBO. 
+        Assign :math:`q(z)` (:math:`q(u)`) after optimising :math:`q(u)`
+        (:math:`q(z)`).
+        
+        :param z: assign :math:`q(z)` (:math:`q(u)`)
         """
-        mu, S = self._qu_natural(self.x.mean, self.x.m2)
-        L = tf.cholesky(reg(S))
-        mean, var = self._run([trisolve(L, mu), cholinv(L)])
-        self.x = Normal(var, mean)
+        lam, P = self._optimal_q(self.h.mean if z else self.x.mean,
+                                 self.h.m2 if z else self.x.m2,
+                                 z=z)
+        dist = Normal.from_natural(P, lam)
+        mean, var = dist.mean, tril_to_vec(tf.cholesky(dist.var))
+
+        # Assign conversion
+        self._run([self.vars['mu_z' if z else 'mu_u'].assign(mean),
+                   self.vars['var_z' if z else 'var_u'].assign(var)])
 
     def elbo_smf(self, samples_h):
         """
@@ -582,7 +595,7 @@ class VCGPCM(CGPCM):
         :return: ELBO for the SMF approximation
         """
         sample_h = placeholder(shape(self.h.sample()))
-        elbo = self.elbo(smf=True, sample_h=sample_h)[0]
+        elbo = self.elbo(smf=True, sample=sample_h)[0]
         elbos = map_progress(lambda x: self._run(elbo,
                                                  feed_dict={sample_h: x}),
                              samples_h,
@@ -590,9 +603,9 @@ class VCGPCM(CGPCM):
                                   'using MC')
         return np.mean(elbos), np.std(elbos) / len(samples_h) ** .5
 
-    def predict_k(self, t, samples_h=200, psd=False, normalise=True, alt=False):
+    def predict_k(self, t, samples_h=200, psd=False, normalise=True):
         """
-        Predict kernel.
+        Predict kernel or PSD (via kernel approximation).
 
         :param t: points to predict kernel at
         :param samples_h: samples in Monte-Carlo estimation
@@ -602,8 +615,9 @@ class VCGPCM(CGPCM):
         """
 
         n = shape(t)[0]
-        Ahh, a = self._run([self._Ahh_center(t),
-                            self._a_center(t)])
+        iKh, Ahh, a = self._run([self.iKh,
+                                 self._Ahh_center(t),
+                                 self._a_center(t)])
 
         if is_numeric(samples_h):
             h = self.h.sample()
@@ -611,7 +625,7 @@ class VCGPCM(CGPCM):
 
         # Compute via MC
         h = placeholder(shape(self.h.sample()))
-        k = self.s2_f * (a + trmul(tile(outer(h) - self.iKh, n), Ahh))[:, None]
+        k = self.s2_f * (a + trmul(tile(outer(h) - iKh, n), Ahh))[:, None]
         samples = map_progress(lambda x: self._run(k, feed_dict={h: x}),
                                samples_h,
                                name='{} prediction using '
@@ -623,17 +637,16 @@ class VCGPCM(CGPCM):
 
         # Check whether to predict kernel or PSD
         if psd:
-            dt = t[1] - t[0]
-            samples = [(data.Data(t, sample) * dt).fft_db().y[:, None]
+            samples = [data.Data(t, sample).fft().abs().y[:, None]
                        for sample in samples]
 
         # Determine x axis
         if psd:
-            d, fs = data.Data(t).fft_db(split_freq=True)
-            x = d.x
+            x = data.Data(t).fft().x
         else:
             x = t
 
+        # Compute statistics
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
@@ -659,36 +672,40 @@ class VCGPCM(CGPCM):
             samples_h = [self._run(h) for i in range(samples_h)]
 
         h = placeholder(shape(self.h.sample()))
-        Kuf = self.kernel_h(self.th, t)
-        A = trisolve(self.Lh, Kuf)
+
+        # Posterior over h
+        Kuh = self.kernel_h(self.th, t)
+        A = trisolve(self.Lh, Kuh)
         L = tf.cholesky(reg(self.kernel_h(t) - mul(A, A, adj_a=True)))
-        sample = mul(Kuf, h, adj_a=True) + mul(L, randn([shape(t)[0], 1]))
+
+        # Precompute matrices
+        Kuh, L = self._run([Kuh, L])
+
+        sample = mul(Kuh, h, adj_a=True) + mul(L, randn([shape(t)[0], 1]))
         samples = map_progress(lambda x: self._run(sample, feed_dict={h: x}),
                                samples_h,
                                name='PSD prediction using MC')
 
+        # Compute kernels
         samples = [data.Data(t, sample).autocorrelation(normalise=normalise)
                    for sample in samples]
 
-        if normalise:
-            samples = [sample / sample.max for sample in samples]
+        # Fourier transform kernels
+        samples = [sample.fft().abs().y[:, None] for sample in samples]
 
-        dx = t[1] - t[0]
-        samples = [(sample * dx).fft(split_freq=True)[0].real().abs()
-                   for sample in samples]
+        # Compute x axis
+        x = data.Data(t).autocorrelation(normalise=True).fft().x
 
-        x = samples[0].x
-
-        samples = [sample.y[:, None] for sample in samples]
+        # Compute statistics
         samples = np.concatenate(samples, axis=1)
         mu = np.mean(samples, axis=1)
         std = np.std(samples, axis=1)
         lower = np.percentile(samples, lower_perc, axis=1)
         upper = np.percentile(samples, upper_perc, axis=1)
 
-        return data.UncertainData(mean=data.Data(x, mu).db(),
-                                  lower=data.Data(x, lower).db(),
-                                  upper=data.Data(x, upper).db(),
+        return data.UncertainData(mean=data.Data(x, mu),
+                                  lower=data.Data(x, lower),
+                                  upper=data.Data(x, upper),
                                   std=data.Data(x, std))
 
     def predict_h(self, t, samples_h=200, normalise=True,
@@ -699,7 +716,7 @@ class VCGPCM(CGPCM):
         :param t: point to predict filter at
         :param samples_h: samples in Monte-Carlo estimation
         :param normalise: normalise prediction
-        :param phase_transform: phase transform, must be a method of
+        :param phase_transform: phase transform, must be `None` or a method of
                                 :class:`core.data.Data`
         :return: predicted filter
         """
@@ -718,7 +735,8 @@ class VCGPCM(CGPCM):
         def process(sample):
             y = data.Data(t, sample)
             y = y.positive_part() if self.causal else y
-            y = getattr(y, phase_transform)()
+            if phase_transform is not None:
+                y = getattr(y, phase_transform)()
 
             # Check whether to normalise predictions
             if normalise:
@@ -731,7 +749,8 @@ class VCGPCM(CGPCM):
 
         # Find corresponding times
         t = data.Data(t).positive_part() if self.causal else data.Data(t)
-        t = getattr(t, phase_transform)().x
+        if phase_transform is not None:
+            t = getattr(t, phase_transform)().x
 
         # Compute statistics
         samples = np.concatenate(samples, axis=1)
@@ -745,7 +764,7 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(t, upper),
                                   std=data.Data(t, std))
 
-    def predict_f(self, t, samples_h=10, precompute=True):
+    def predict_f(self, t, samples_h=50, precompute=True):
         """
         Predict function.
 
@@ -760,7 +779,7 @@ class VCGPCM(CGPCM):
         n = shape(t)[0]
         mats = self._construct_model_matrices(data.Data(t))
 
-        # Perform precomputation
+        # Check whether to perform precomputation
         if precompute:
             mats = {k: self._run(mats[k]) for k in ['a', 'Ahh', 'Ahx', 'Axx']}
 
@@ -774,11 +793,10 @@ class VCGPCM(CGPCM):
         # Construct optimal q(z|u) or q(z)
         h = tf.placeholder(config.dtype, shape(self.h.sample()))
         if smf:
-            mu, S = self._qz_natural(h, outer(h))
+            lam, P = self._optimal_q(h, outer(h))
         else:
-            mu, S = self._qz_natural(self.h.mean, self.h.m2)
-        L = tf.cholesky(S)
-        x = Normal(cholinv(L), tf.cholesky_solve(L, mu))
+            lam, P = self._optimal_q(self.h.mean, self.h.m2)
+        x = Normal.from_natural(P, lam)
 
         # Construct mean
         mu = tf.squeeze(mul3(tile(h, n),
@@ -802,6 +820,8 @@ class VCGPCM(CGPCM):
                                                    feed_dict={h: x}),
                                samples_h,
                                name='function prediction using MC')
+
+        # Compute statistics
         samples_mu, samples_var = zip(*samples)
         mu = np.mean(np.concatenate(samples_mu, axis=1), axis=1)
         var = np.mean(np.concatenate(samples_var, axis=1), axis=1)
@@ -822,12 +842,12 @@ class VCGPCM(CGPCM):
         if burn is None:
             burn = iters
         h = placeholder(shape(self.h_prior.sample()))
-        mu, S = self._qz_natural(h, outer(h))
-        L = tf.cholesky(S)
+        lam, P = self._optimal_q(h, outer(h))
+        L = tf.cholesky(P)
 
         prior_sample = self.h_prior.sample()
         log_lik = tf.squeeze(-.5 * log_det(L)
-                             + .5 * sum(trisolve(L, mu) ** 2)
+                             + .5 * sum(trisolve(L, lam) ** 2)
                              - .5 * self.s2_f / self.s2
                              * mul3(h, self.mats['sum_Bhh'], h, adj_a=True))
 

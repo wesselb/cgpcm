@@ -54,32 +54,30 @@ def kh(alpha, gamma, x, y):
               - const(gamma) * (x - y) ** 2)
 
 
-def kxs_constructor(s2_w, omega):
+def kxs_constructor(omega):
     """
     Create a function that calls `kxs` for some given hyperparameter.
 
-    :param s2_w: variance of interdomain transformation
     :param omega: kernel length scale parameter :math:`\\omega`
     :return: constructor
     """
 
     def constructor(x, y):
-        return kxs(s2_w, omega, x, y)
+        return kxs(omega, x, y)
 
     return constructor
 
 
-def kxs(s2_w, omega, x, y):
+def kxs(omega, x, y):
     """
     Kernel between :math:`s` and :math:`x` processes.
 
-    :param s2_w: variance of interdomain transformation
     :param omega: kernel length scale parameter :math:`\\omega`
     :param x: first variable
     :param y: second variable
     :return: exponentiated quadratic
     """
-    return EQ(-const(omega) * (x - y) ** 2, const=s2_w)
+    return EQ(-const(omega) * (x - y) ** 2)
 
 
 class Factor(object):
