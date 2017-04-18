@@ -198,12 +198,13 @@ def train(sess, task, debug_options):
     out.section('training MF')
 
     # FPI
-    out.section('performing initial fixed-point iterations')
-    elbo = mod.elbo()[0]
-    out.kv('ELBO before', sess.run(elbo), mod='.2e')
-    mod.fpi(task.config.iters_fpi)
-    out.kv('ELBO after', sess.run(elbo), mod='.2e')
-    out.section_end()
+    if task.config.iters_fpi:
+        out.section('performing initial fixed-point iterations')
+        elbo = mod.elbo()[0]
+        out.kv('ELBO before', sess.run(elbo), mod='.2e')
+        mod.fpi(task.config.iters_fpi)
+        out.kv('ELBO after', sess.run(elbo), mod='.2e')
+        out.section_end()
 
     # Gradient-based optimisation
     elbo, terms = mod.elbo()
@@ -249,12 +250,13 @@ def train(sess, task, debug_options):
         out.section_end()
 
     # FPI
-    out.section('performing final fixed-point iterations')
-    elbo = mod.elbo()[0]
-    out.kv('ELBO before', sess.run(elbo), mod='.2e')
-    mod.fpi(task.config.iters_fpi)
-    out.kv('ELBO after', sess.run(elbo), mod='.2e')
-    out.section_end()
+    if task.config.iters_fpi:
+        out.section('performing final fixed-point iterations')
+        elbo = mod.elbo()[0]
+        out.kv('ELBO before', sess.run(elbo), mod='.2e')
+        mod.fpi(task.config.iters_fpi)
+        out.kv('ELBO after', sess.run(elbo), mod='.2e')
+        out.section_end()
 
     # End of MF training
     out.section_end()
