@@ -159,7 +159,7 @@ class Data(object):
         else:
             return res.db()
 
-    def fft(self, split_freq=False, zero_pad=2000):
+    def fft(self, split_freq=False, zero_pad=2000, normalise=True):
         """
         Compute the FFT.
         
@@ -167,10 +167,20 @@ class Data(object):
                            additionally return sampling frequency, else
                            return spectrum in absolute frequency
         :param zero_pad: zero padding
+        :param normalise: normalise to preserve power
         :return: log spectrum and possibly sampling frequency
         """
         self._assert_evenly_spaced()
-        spec = util.fft(util.zero_pad(self.y, zero_pad))
+
+        # Check whether to normalise
+        if normalise:
+            scale = self.dx
+        else:
+            scale = 1
+
+        # Perform Fourier transform
+        spec = scale * util.fft(util.zero_pad(self.y, zero_pad))
+
         if split_freq:
             return Data(util.fft_freq(len(spec)), spec), 1 / self.dx
         else:
@@ -251,7 +261,6 @@ class Data(object):
 
         :return: minimum-phase form
         """
-        return self
         self._assert_evenly_spaced()
         mag = np.abs(np.fft.fft(self.y))
         spec = np.exp(signal.hilbert(np.log(mag)).conj())

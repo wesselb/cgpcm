@@ -1,5 +1,3 @@
-from scipy.optimize import minimize_scalar
-from sklearn import mixture
 import colorsys
 import scipy.stats
 import numpy as np
@@ -69,7 +67,7 @@ def fft(*args, **kw_args):
     """
     Alias for `np.fft.fft` that afterwards applies `np.fft.fftshift`. 
 
-    :param normalise: normalise FFT
+    :param normalise: normalise FFT: can be `True`, `False`, or a numeric value
     """
     if 'axis' not in kw_args:
         kw_args['axis'] = -1
@@ -77,8 +75,13 @@ def fft(*args, **kw_args):
         kw_args['axis'] = len(shape(args[0])) - 1
     if 'normalise' not in kw_args or kw_args['normalise'] is False:
         scale = 1
-    else:
+    elif kw_args['normalise'] is True:
         scale = shape(args[0])[kw_args['axis']]
+    elif is_numeric(kw_args['normalise']):
+        scale = kw_args['normalise']
+    else:
+        raise ValueError('unknown value for `normalise`')
+
     return np.fft.fftshift(np.fft.fft(*args, **kw_args)) / scale
 
 
