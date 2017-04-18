@@ -38,7 +38,7 @@ class Experiment(Task):
                           tau_w=0.4,
                           tau_f=0.05,
 
-                          noise=.5)
+                          noise=1.)
 
     def load(self, sess):
         # Load data
