@@ -237,8 +237,8 @@ def train(sess, task, debug_options):
                                    mod.vars['s2'],
                                    mod.vars['gamma'],
                                    mod.vars['omega']]
-                                   + ([] if debug_options['fix-alpha'] else
-                                      [mod.vars['alpha']]),
+                                  + ([] if debug_options['fix-alpha'] else
+                                     [mod.vars['alpha']]),
                              iters=task.config.iters_post,
                              fetches_config=fetches + terms,
                              name='posttraining using L-BFGS')
@@ -357,10 +357,12 @@ class TaskPlotter(object):
                                'marker_style': '^'},
                'task1': {'colour': '#0571b0',
                          'line_style': '-',
-                         'marker_style': '*'},
+                         'marker_style': '*',
+                         'fill_alpha': .30},
                'task2': {'colour': '#ca0020',
                          'line_style': '--',
-                         'marker_style': '+'},
+                         'marker_style': '+',
+                         'fill_alpha': .15},
                'alt1': {'colour': 'cyan',
                         'line_style': '-',
                         'marker_style': 'o'},
@@ -370,18 +372,20 @@ class TaskPlotter(object):
                'alt3': {'colour': 'green',
                         'line_style': '-',
                         'marker_style': 'o'},
-               'inducing_points': {'colour': 'k',
-                                   'line_style': '-',
-                                   'marker_style': 's'}}
+               'inducing_points1': {'colour': 'k',
+                                    'line_style': 'none',
+                                    'marker_style': '|'},
+               'inducing_points2': {'colour': 'k',
+                                    'line_style': 'none',
+                                    'marker_style': '_'}}
 
     def __init__(self, p, task):
         self._p = p
         self._task = task
         self._x_min = None
         self._x_max = None
-        p.config(line_width=1.5,
-                 marker_size=2.5,
-                 fill_alpha=.25)
+        p.config(line_width=1,
+                 marker_size=2.5)
 
     @property
     def model_name(self):
@@ -436,8 +440,14 @@ class TaskPlotter(object):
         mean, lower, upper, std = map(self._process_fun(x_unit),
                                       self._task.data[key])
         self._p.fill(lower.x, lower.y, upper.y,
-                     fill_colour=self._styles[style]['colour'])
-        self._p.plot(mean.x, mean.y,
+                     fill_colour=self._styles[style]['colour'],
+                     fill_alpha=self._styles[style]['fill_alpha'])
+        for d in [lower, upper]:
+            self._p.plot(d,
+                         line_width=0.5,
+                         line_colour=self._styles[style]['colour'],
+                         line_style=self._styles[style]['line_style'])
+        self._p.plot(mean,
                      line_colour=self._styles[style]['colour'],
                      line_style=self._styles[style]['line_style'],
                      label=label)
@@ -494,10 +504,10 @@ def plot_compare(tasks, args):
     options.add_option('mf1', 'plot instead MF prediction for second task')
     options.add_option('zp', 'plot zero-phase prediction of filter')
     options.add_value_option('tau-ws', desc='number of tau_w\'s to plot',
-                             value_type=float, default=2)
+                             value_type=float, default=1)
     options.parse(args)
 
-    p = Plotter2D(figure_size=(20, 10) if options['big'] else (12, 6),
+    p = Plotter2D(figure_size=(20, 10) if options['big'] else (16, 8),  # 12 6
                   font_size=12,
                   figure_toolbar='toolbar2' if options['big'] else 'none',
                   grid_colour='none')
@@ -548,7 +558,7 @@ def plot_compare(tasks, args):
     # Function
     p.subplot2grid((2, 6), (0, 0), colspan=6)
     p.x_shift = -data1['f'].x[0]
-    pt1.marker('tx_data', 'inducing_points')
+    pt1.marker('tx_data', 'inducing_points1')
     pt1.marker('f', 'truth', 'Truth')
     if not data1['f'].equals_approx(data1['e']):
         pt1.marker('e', 'observation', 'Observations')
@@ -573,9 +583,9 @@ def plot_compare(tasks, args):
     else:
         p.subplot2grid((2, 6), (1, 0), colspan=2)
     p.lims(x=(0, tau_ws * task1.config.tau_w))
-    pt1.marker('th_data', 'inducing_points')
+    pt1.marker('th_data', 'inducing_points1')
     if task2:
-        pt2.marker('th_data', 'inducing_points')
+        pt2.marker('th_data', 'inducing_points2')
     pt1.line('k', 'truth', 'Truth')
     if 'k_emp' not in data1:
         data1['k_emp'] = data1['f'].autocorrelation()
@@ -593,7 +603,9 @@ def plot_compare(tasks, args):
     else:
         p.subplot2grid((2, 6), (1, 2), colspan=2)
     p.lims(x=(0, tau_ws * task1.config.tau_w))
-    pt1.marker('th_data', 'inducing_points')
+    pt1.marker('th_data', 'inducing_points1')
+    if task2:
+        pt1.marker('th_data', 'inducing_points2')
     data1['h_mp'] = data1['h'].minimum_phase()
     data1['h_zp'] = data1['h'].zero_phase()
     pt1.line('h_{}'.format('zp' if options['zp'] else 'mp'), 'truth', 'Truth')
@@ -606,26 +618,12 @@ def plot_compare(tasks, args):
     p.show_legend()
 
     if not options['no-psd']:
-        def extract_fs(data, psd_key, k_key):
-            # This function is needed due to compatibility issues
-            if psd_key + '_fs' in data:
-                return data[psd_key + '_fs']
-            else:
-                # Then assume that PSD prediction is associated to kernel
-                # prediction
-                return 1. / data[k_key][0].dx
-
-        # Extract sampling frequencies
-        fs1 = extract_fs(data1, 'psd_pred' + add1, 'k_pred' + add1)
-        if task2:
-            fs2 = extract_fs(data2, 'psd_pred' + add2, 'k_pred' + add2)
-
         pt1.bound(x_min=0, x_max=0.5 / task1.config.tau_f)
         if task2:
             pt2.bound(x_min=0, x_max=0.5 / task1.config.tau_f)
 
         # Compute PSD of truth
-        data1['psd'], data1['psd_fs'] = data1['k'].fft_db(split_freq=True)
+        data1['psd'] = data1['k'].fft().abs()
 
         # Set units to frequency plots
         if options['ms']:
@@ -638,15 +636,16 @@ def plot_compare(tasks, args):
         # PSD
         p.subplot2grid((2, 6), (1, 4), colspan=2)
         p.lims(x=(0, .5 / task1.config.tau_f))
-        pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
+        pt1.line('psd', 'truth', label='Truth')
         if 'psd_emp' not in data1:
-            data1['psd_emp'] = data1['k_emp'].fft_db()
+            data1['psd_emp'] = data1['k_emp'].fft().abs()
         pt1.line('psd_emp', 'observation', label='Periodogram')
-        pt1.fill('psd_pred' + add1, 'task1', x_unit=fs1, label=name1)
+        pt1.fill('psd_pred' + add1, 'task1', label=name1)
         if task2:
-            pt2.fill('psd_pred' + add2, 'task2', x_unit=fs2, label=name2)
-        p.labels(y='PSD of $f\,|\,h$ (dB)',
+            pt2.fill('psd_pred' + add2, 'task2', label=name2)
+        p.labels(y='PSD of $f\,|\,h$',
                  x='Frequency ({})'.format(x_unit))
+        p.ax.set_yscale('log', basey=10)
         p.show_legend()
 
     # Return `Plotter2D` instance and file path

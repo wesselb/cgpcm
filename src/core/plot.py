@@ -75,6 +75,7 @@ class Plotter(object):
                'colourbar_aspect': 20,
                'marker_style': 'None',
                'marker_colour': 'undefined',
+               'marker_face_colour': 'none',
                'marker_size': 5,
                'surface_rstride': 1,
                'surface_cstride': 1,
@@ -261,7 +262,7 @@ class Plotter2D(Plotter):
                    'linestyle': 'line_style',
                    'color': 'line_colour',
                    'marker': 'marker_style',
-                   'markerfacecolor': 'marker_colour',
+                   'markerfacecolor': 'marker_face_colour',
                    'markeredgecolor': 'marker_colour',
                    'markersize': 'marker_size',
                    'label': 'label'}
