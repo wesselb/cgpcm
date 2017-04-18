@@ -6,10 +6,8 @@ from distribution import Normal
 from kernel import DEQ
 from sample import ESS
 from tf_util import *
-from util import inf, length_scale, zero_pad, fft_freq, is_numeric, \
-    lower_perc, upper_perc
+from util import inf, length_scale, is_numeric, lower_perc, upper_perc
 import data
-import util
 import exponentiated_quadratic as eq
 
 
