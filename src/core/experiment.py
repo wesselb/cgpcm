@@ -194,12 +194,13 @@ def train(sess, task, debug_options):
     mod.precompute()
     out.section_end()
 
-    out.section('performing pretraining fixed-point iterations')
-    elbo = mod.elbo()[0]
-    out.kv('ELBO before', sess.run(elbo), mod='.2e')
-    mod.fpi(task.config.iters_fpi)
-    out.kv('ELBO after', sess.run(elbo), mod='.2e')
-    out.section_end()
+    if task.config.iters_fpi:
+        out.section('performing pretraining fixed-point iterations')
+        elbo = mod.elbo()[0]
+        out.kv('ELBO before', sess.run(elbo), mod='.2e')
+        mod.fpi(task.config.iters_fpi)
+        out.kv('ELBO after', sess.run(elbo), mod='.2e')
+        out.section_end()
 
     # Train MF
     out.section('training MF')
@@ -246,12 +247,13 @@ def train(sess, task, debug_options):
         out.section_end()
     out.section_end()
 
-    out.section('performing posttraining fixed-point iterations')
-    elbo = mod.elbo()[0]
-    out.kv('ELBO before', sess.run(elbo), mod='.2e')
-    mod.fpi(task.config.iters_fpi)
-    out.kv('ELBO after', sess.run(elbo), mod='.2e')
-    out.section_end()
+    if task.config.iters_fpi:
+        out.section('performing posttraining fixed-point iterations')
+        elbo = mod.elbo()[0]
+        out.kv('ELBO before', sess.run(elbo), mod='.2e')
+        mod.fpi(task.config.iters_fpi)
+        out.kv('ELBO after', sess.run(elbo), mod='.2e')
+        out.section_end()
 
     if task.config.samps > 0:
         # Train SMF
@@ -324,7 +326,7 @@ def predict(sess, task, mod, debug_options):
         # Reconfigure options for f
         if debug_options['quick-f']:
             inds = np.random.choice(len(samples), 5, replace=False)
-            f_opts['samples_h'] = list(np.random.take(samples, inds, axis=0))
+            f_opts['samples_h'] = list(np.take(samples, inds, axis=0))
 
         task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x, **f_opts)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
