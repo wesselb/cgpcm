@@ -1,10 +1,10 @@
 import abc
-import scipy.signal as sp
+import inspect
 
 from parametrisable import Parametrisable
 from plot import Plotter2D
 from options import Options
-from data import Data, UncertainData, load_timit_tobar2015
+from data import Data
 from cgpcm import VCGPCM
 from tf_util import *
 import out
@@ -75,8 +75,8 @@ class Task(object):
 
         # Store recipe
         self.data['recipe'] = {}
-        for attr in ['e', 'nx', 'nh', 'tau_w', 'tau_f', 'causal', 'causal_id',
-                     'noise_init']:
+        # Skip the first two arguments: `cls` and `sess`
+        for attr in inspect.getargspec(VCGPCM.from_recipe).args[2:]:
             self.data['recipe'][attr] = getattr(self.mod, attr)
 
         del self.mod
@@ -194,76 +194,53 @@ def train(sess, task, debug_options):
     mod.precompute()
     out.section_end()
 
-    dual = debug_options['dual']
-
-    if debug_options['fpi']:
-        out.section('performing fixed-point iterations')
-        elbo = mod.elbo()[0]
-        out.kv('ELBO before', sess.run(elbo), mod='.3e')
-        mod.fpi(50)
-        out.kv('ELBO after', sess.run(elbo), mod='.3e')
-        out.section_end()
+    out.section('performing pretraining fixed-point iterations')
+    elbo = mod.elbo()[0]
+    out.kv('ELBO before', sess.run(elbo), mod='.2e')
+    mod.fpi(50)
+    out.kv('ELBO after', sess.run(elbo), mod='.2e')
+    out.section_end()
 
     # Train MF
     out.section('training MF')
-    elbo, terms = mod.elbo(dual=dual)
-    fetches_config_base = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
-                      {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
-                      {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
-                      {'name': 's2_y', 'tensor': mod.s2_y, 'modifier': '.2e'},
-                      {'name': 'gamma', 'tensor': mod.gamma,
-                       'modifier': '.2e'},
-                      {'name': 'alpha', 'tensor': mod.alpha,
-                       'modifier': '.2e'},
-                      {'name': 'omega', 'tensor': mod.omega,
-                       'modifier': '.2e'},
-                      {'name': 'var scale', 'tensor': mod.var_scale,
-                       'modifier': '.2e'},
-                      {'name': 'var x scale', 'tensor': mod.var_x_scale,
-                       'modifier': '.2e'},
-                      {'name': 'IDT scale', 'tensor': mod.s2_w,
-                       'modifier': '.2e'}]
-    fetches_config_terms = [{'name': 'term {}'.format(i),
-                        'tensor': term,
-                        'modifier': '.2e'} for i, term in enumerate(terms)]
-    fetches_config = fetches_config_base + fetches_config_terms
+    elbo, terms = mod.elbo()
+    fetches = [{'name': 'ELBO', 'tensor': elbo, 'modifier': '.2e'},
+               {'name': 's2', 'tensor': mod.s2, 'modifier': '.2e'},
+               {'name': 's2_f', 'tensor': mod.s2_f, 'modifier': '.2e'},
+               {'name': 's2_y', 'tensor': mod.s2_y, 'modifier': '.2e'},
+               {'name': 'gamma', 'tensor': mod.gamma, 'modifier': '.2e'},
+               {'name': 'alpha', 'tensor': mod.alpha, 'modifier': '.2e'},
+               {'name': 'omega', 'tensor': mod.omega, 'modifier': '.2e'}]
     learn.minimise_lbfgs(sess, -elbo,
-                         vars=[mod.vars['mu_x' if dual else 'mu'],
-                               mod.vars['var_x' if dual else 'var']],
+                         vars=[mod.vars['mu_u'],
+                               mod.vars['var_u']],
                          iters=task.config.iters_pre,
-                         fetches_config=fetches_config,
+                         fetches_config=fetches + terms,
                          name='pretraining using L-BFGS')
     learn.minimise_lbfgs(sess, -elbo,
-                         vars=[mod.vars['mu_x' if dual else 'mu'],
-                               mod.vars['var_x' if dual else 'var'],
+                         vars=[mod.vars['mu_u'],
+                               mod.vars['var_u'],
                                mod.vars['s2_f'],
                                mod.vars['s2']],
-                               # mod.vars['var_x_scale' if dual else 'var_scale']],
                          iters=task.config.iters,
-                         fetches_config=fetches_config,
+                         fetches_config=fetches + terms,
                          name='training using L-BFGS')
     # Check number of iterations to prevent unnecessary precomputation
     if task.config.iters_post > 0:
         mod.undo_precompute()
-        elbo, terms = mod.elbo(dual=dual)
-        fetches_config_terms = [{'name': 'term {}'.format(i),
-                            'tensor': term,
-                            'modifier': '.2e'} for i, term in enumerate(terms)]
-        fetches_config = fetches_config_base + fetches_config_terms
-        fetches_config[0]['tensor'] = elbo
+        elbo, terms = mod.elbo()
+        fetches[0]['tensor'] = elbo
         learn.minimise_lbfgs(sess, -elbo,
-                             vars=[mod.vars['mu_x' if dual else 'mu'],
-                                   mod.vars['var_x' if dual else 'var'],
+                             vars=[mod.vars['mu_u'],
+                                   mod.vars['var_u'],
                                    mod.vars['s2_f'],
                                    mod.vars['s2'],
-                                   # mod.vars['s2_y'],
-                                   # mod.vars['s2_w'],
                                    mod.vars['gamma'],
-                                   # mod.vars['alpha'],
-                                   # mod.vars['var_x_scale' if dual else 'var_scale'],
-                                   mod.vars['omega']],
+                                   mod.vars['omega']]
+                                   + ([] if debug_options['fix-alpha'] else
+                                      [mod.vars['alpha']]),
                              iters=task.config.iters_post,
-                             fetches_config=fetches_config,
+                             fetches_config=fetches + terms,
                              name='posttraining using L-BFGS')
         out.section('precomputing')
         mod.precompute()
@@ -276,18 +253,12 @@ def train(sess, task, debug_options):
         task.data['samples'] = mod.sample(iters=task.config.samps)
         out.section_end()
 
-    if dual:
-        out.section('converting from dual ELBO')
-        mod.h_from_dual()
-        out.section_end()
-
-    if debug_options['fpi']:
-        out.section('performing fixed-point iterations')
-        elbo = mod.elbo()[0]
-        out.kv('ELBO before', sess.run(elbo), mod='.3e')
-        mod.fpi(50)
-        out.kv('ELBO after', sess.run(elbo), mod='.3e')
-        out.section_end()
+    out.section('performing posttraining fixed-point iterations')
+    elbo = mod.elbo()[0]
+    out.kv('ELBO before', sess.run(elbo), mod='.2e')
+    mod.fpi(50)
+    out.kv('ELBO after', sess.run(elbo), mod='.2e')
+    out.section_end()
 
     return mod
 
@@ -330,11 +301,9 @@ def predict(sess, task, mod, debug_options):
     out.section('predicting MF')
     task.data['f_pred'] = mod.predict_f(task.data['f'].x, precompute=False)
     task.data['k_pred'] = mod.predict_k(task.data['k'].x)
-    # x_psd = Data(np.linspace(-2e-2, 2e-2, 2001))
-    # task.data['psd_pred'] = mod.predict_psd(x_psd.x, samples_h=100)
-    # task.data['psd_pred_fs'] = 1. / x_psd.dx
-    task.data['psd_pred'] = mod.predict_psd(task.data['k'].x)
-    task.data['psd_pred_fs'] = 1. / task.data['k'].dx
+    task.data['psd_pred'] = mod.predict_psd(task.data['h'].x)
+    task.data['h_pred'] = mod.predict_h(task.data['h'].x,
+                                        phase_transform=None)
     task.data['h_mp_pred'] = mod.predict_h(task.data['h'].x,
                                            phase_transform='minimum_phase')
     task.data['h_zp_pred'] = mod.predict_h(task.data['h'].x,
@@ -353,19 +322,20 @@ def predict(sess, task, mod, debug_options):
                                                 samples_h=samples)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,
                                                 samples_h=samples)
-        # task.data['psd_pred_smf'] = mod.predict_psd(x_psd.x, samples_h=samples)
-        # task.data['psd_pred_smf_fs'] = 1. / x_psd.dx
-        task.data['psd_pred_smf'] = mod.predict_psd(task.data['k'].x,
+        task.data['psd_pred_smf'] = mod.predict_psd(task.data['h'].x,
                                                     samples_h=samples)
-        task.data['psd_pref_smf_fs'] = 1. / task.data['k'].dx
-        task.data['h_mp_pred_smf'] = mod.predict_h(task.data['h'].x,
-                                                   samples_h=samples,
-                                                   phase_transform='minimum_'
-                                                                   'phase')
-        task.data['h_zp_pred_smf'] = mod.predict_h(task.data['h'].x,
-                                                   samples_h=samples,
-                                                   phase_transform='zero_'
-                                                                   'phase')
+        task.data['h_pred_smf'] = \
+            mod.predict_h(task.data['h'].x,
+                          samples_h=samples,
+                          phase_transform=None)
+        task.data['h_mp_pred_smf'] = \
+            mod.predict_h(task.data['h'].x,
+                          samples_h=samples,
+                          phase_transform='minimum_phase')
+        task.data['h_zp_pred_smf'] = \
+            mod.predict_h(task.data['h'].x,
+                          samples_h=samples,
+                          phase_transform='zero_phase')
         out.section_end()
 
         # ELBO for SMF
@@ -591,16 +561,18 @@ def plot_compare(tasks, args):
     p.labels(y='$f\,|\,h$', x='$t$ ({})'.format(x_unit))
     p.x_shift = 0
 
-    pt1.bound(x_min=-tau_ws * task1.config.tau_w, x_max=tau_ws * task1.config.tau_w)
+    pt1.bound(x_min=-tau_ws * task1.config.tau_w,
+              x_max=tau_ws * task1.config.tau_w)
     if task2:
-        pt2.bound(x_min=-tau_ws * task1.config.tau_w, x_max=tau_ws * task1.config.tau_w)
+        pt2.bound(x_min=-tau_ws * task1.config.tau_w,
+                  x_max=tau_ws * task1.config.tau_w)
 
     # Kernel
     if options['no-psd']:
         p.subplot2grid((2, 6), (1, 0), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 0), colspan=2)
-    p.lims(x=(-tau_ws * task1.config.tau_w, tau_ws * task1.config.tau_w))
+    p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'inducing_points')
     if task2:
         pt2.marker('th_data', 'inducing_points')
@@ -620,7 +592,7 @@ def plot_compare(tasks, args):
         p.subplot2grid((2, 6), (1, 3), colspan=3)
     else:
         p.subplot2grid((2, 6), (1, 2), colspan=2)
-    p.lims(x=(-tau_ws * task1.config.tau_w, tau_ws * task1.config.tau_w))
+    p.lims(x=(0, tau_ws * task1.config.tau_w))
     pt1.marker('th_data', 'inducing_points')
     data1['h_mp'] = data1['h'].minimum_phase()
     data1['h_zp'] = data1['h'].zero_phase()
@@ -648,9 +620,9 @@ def plot_compare(tasks, args):
         if task2:
             fs2 = extract_fs(data2, 'psd_pred' + add2, 'k_pred' + add2)
 
-        pt1.bound(x_min=0, x_max=1.5 / task1.config.tau_f)
+        pt1.bound(x_min=0, x_max=0.5 / task1.config.tau_f)
         if task2:
-            pt2.bound(x_min=0, x_max=1.5 / task1.config.tau_f)
+            pt2.bound(x_min=0, x_max=0.5 / task1.config.tau_f)
 
         # Compute PSD of truth
         data1['psd'], data1['psd_fs'] = data1['k'].fft_db(split_freq=True)
@@ -665,17 +637,16 @@ def plot_compare(tasks, args):
 
         # PSD
         p.subplot2grid((2, 6), (1, 4), colspan=2)
-        p.lims(x=(0, 1 / task1.config.tau_f))
-        #pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
+        p.lims(x=(0, .5 / task1.config.tau_f))
+        pt1.line('psd', 'truth', x_unit=data1['psd_fs'], label='Truth')
         if 'psd_emp' not in data1:
-            data1['psd_emp'] = (data1['k_emp'] * data1['k_emp'].dx).fft_db()
+            data1['psd_emp'] = data1['k_emp'].fft_db()
         pt1.line('psd_emp', 'observation', label='Periodogram')
         pt1.fill('psd_pred' + add1, 'task1', x_unit=fs1, label=name1)
         if task2:
             pt2.fill('psd_pred' + add2, 'task2', x_unit=fs2, label=name2)
         p.labels(y='PSD of $f\,|\,h$ (dB)',
                  x='Frequency ({})'.format(x_unit))
-        # p.ax.set_ylim(bottom=-30)
         p.show_legend()
 
     # Return `Plotter2D` instance and file path
