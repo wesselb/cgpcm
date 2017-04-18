@@ -327,10 +327,16 @@ def predict(sess, task, mod, debug_options):
         out.section('predicting SMF')
         samples = task.data['samples']
 
-        # Reconfigure options for f
+        # Reconfigure options for f; take at most 200 samples for function
+        # prediction
         if debug_options['quick-f']:
-            inds = np.random.choice(len(samples), 5, replace=False)
-            f_opts['samples_h'] = list(np.random.take(samples, inds, axis=0))
+            num = 5
+        elif len(samples) > 200:
+            num = 200
+        else:
+            num = len(samples)
+        inds = np.random.choice(len(samples), num, replace=False)
+        f_opts['samples_h'] = list(np.take(samples, inds, axis=0))
 
         task.data['f_pred_smf'] = mod.predict_f(task.data['f'].x, **f_opts)
         task.data['k_pred_smf'] = mod.predict_k(task.data['k'].x,

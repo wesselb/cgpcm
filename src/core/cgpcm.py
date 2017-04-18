@@ -782,7 +782,6 @@ class VCGPCM(CGPCM):
         :param precompute: perform precomputation
         :return: predicted function
         """
-        n = shape(t)[0]
         mats = self._construct_model_matrices(data.Data(t))
 
         # Check whether to perform precomputation
