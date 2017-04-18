@@ -657,7 +657,7 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(x, upper),
                                   std=data.Data(x, std))
 
-    def predict_psd(self, t, samples_h=200, normalise=True):
+    def predict_psd(self, t, samples_h=500, normalise=True):
         """
         Predict PSD.
 
@@ -707,7 +707,7 @@ class VCGPCM(CGPCM):
                                   upper=data.Data(x, upper),
                                   std=data.Data(x, std))
 
-    def predict_h(self, t, samples_h=200, normalise=True,
+    def predict_h(self, t, samples_h=500, normalise=True,
                   phase_transform='minimum_phase'):
         """
         Predict filter.
