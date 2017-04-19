@@ -503,7 +503,7 @@ def load_timit_voiced_fricative():
     
     :return: data
     """
-    d = Data.from_wav('data/TIMIT_SX174_2.915_2.975.wav')
+    d = Data.from_wav('data/TIMIT_SX174_0.590_0.650.wav')
     d = (d - d.mean) / d.std
     return d
 
