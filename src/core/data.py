@@ -751,3 +751,50 @@ def load_eeg():
 
     return ds
 
+
+def load_currency():
+    ys = {}
+    xs = []
+
+    # Read file
+    with open('data/currency.csv') as f:
+        it = iter(csv.reader(f))
+
+        next(it)  # First line is title
+        header = next(it)[3:]  # Second line is header
+
+        # Initialise columns
+        for col in header:
+            ys[col] = []
+
+        # Parse data
+        for line in it:
+            day, date = line[:2]
+
+            # Append x value
+            xs.append(float(day))
+
+            # Append y values
+            for col, val in zip(header, line[3:]):
+                ys[col].append(float(val) if util.is_numeric(val) else np.nan)
+
+    # Convert to data
+    ds = {}
+    for k, y in ys.items():
+        d = Data(xs, y)
+
+        # Remove missing values
+        d = d[~np.isnan(d.y)]
+
+        # Normalise
+        d -= d.mean
+        d /= d.std
+
+        ds[k] = d
+
+    return ds
+
+
+
+
+
