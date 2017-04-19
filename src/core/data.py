@@ -771,8 +771,12 @@ def load_currency():
         for line in it:
             day, date = line[:2]
 
+            # Convert date to decimal year
+            date = datetime.strptime(date, '%Y/%m/%d')
+            dec_year = util.date_to_decimal_year(date)
+
             # Append x value
-            xs.append(float(day))
+            xs.append(dec_year)
 
             # Append y values
             for col, val in zip(header, line[3:]):
