@@ -295,6 +295,13 @@ class Data(object):
         return Data(self.x, self.y * w)
 
     @property
+    def evenly_spaced(self):
+        """
+        Check whether the data is evenly spaced.
+        """
+        return self._evenly_spaced
+
+    @property
     def dx(self):
         """
         Spacing of data.
@@ -628,7 +635,8 @@ def load_hydrochem():
     feature = 'cl mg/l'
     loc_sites = [('bcl', 'lower hafren daily chloride'),
                  ('ccl', 'rainfall daily chloride'),
-                 ('kcl', 'tanllwyth daily chloride')]
+                 ('kcl', 'tanllwyth daily chloride'),
+                 ('a', 'lower hore')]
 
     # Read file
     with open('data/PlynlimonResearchCatchmentHydrochemistryData.csv') as f:
