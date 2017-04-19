@@ -497,6 +497,17 @@ def load_timit_tobar2015(n=350):
     return e, f
 
 
+def load_timit_voiced_fricative():
+    """
+    Load voiced fricative.
+    
+    :return: data
+    """
+    d = Data.from_wav('data/TIMIT_SX174_2.915_2.975.wav')
+    d = (d - d.mean) / d.std
+    return d
+
+
 def load_gp_exp(sess, n=250, k_len=.1):
     """
     Sample from a GP with an exponential kernel.
