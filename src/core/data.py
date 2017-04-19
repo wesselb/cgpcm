@@ -4,6 +4,7 @@ import scipy.io.wavfile as sio_wav
 import scipy.signal as signal
 from datetime import datetime
 from sklearn import linear_model
+import csv
 
 from tf_util import *
 import util
@@ -503,7 +504,7 @@ def load_timit_voiced_fricative():
     
     :return: data
     """
-    d = Data.from_wav('data/TIMIT_SX174_0.590_0.650.wav')
+    d = Data.from_wav('data/TIMIT_SX174_2.915_2.975.wav')
     d = (d - d.mean) / d.std
     return d
 
@@ -682,3 +683,40 @@ def load_hydrochem():
         ds.append(d)
 
     return ds
+
+
+def load_crude_oil():
+    xs, ys = [], []
+
+    # Read file
+    with open('data/crude_oil.csv') as f:
+        reader = iter(csv.reader(f))
+        header = next(reader)
+
+        for row in reader:
+            month, day, year, price, _, _, _, _, _ = row
+
+            # Day has a comma appended
+            day = day[:-1]
+
+            # Convert to decimal year
+            x = datetime.strptime('{}-{}-{}'.format(year, month, day),
+                                  '%Y-%b-%d')
+            xs.append(util.date_to_decimal_year(x))
+
+            # Append price
+            ys.append(float(price))
+
+    # Reverse data
+    xs, ys = xs[::-1], ys[::-1]
+
+    # Convert to data
+    d = Data(xs, ys)
+
+    # Extract relatively flat period
+    d = d[np.logical_and(d.x >= 2010, d.x <= 2014)]
+
+    # Normalise and return
+    d = (d - d.mean) / d.std
+
+    return d
