@@ -3,6 +3,7 @@ import scipy.stats
 import numpy as np
 import tensorflow as tf
 import os
+import datetime
 
 from tf_util import shape
 
@@ -216,3 +217,15 @@ def invert_perm(perm):
     for i in range(n):
         inverse_perm[perm[i]] = i
     return inverse_perm
+
+
+def date_to_decimal_year(date):
+    """
+    Convert a date to decimal year.
+    
+    :param date: date
+    :return: decimal year
+    """
+    start = datetime.date(date.year, 1, 1).toordinal()
+    year_length = datetime.date(date.year + 1, 1, 1).toordinal() - start
+    return date.year + float(date.toordinal() - start) / year_length

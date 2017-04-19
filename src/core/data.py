@@ -2,6 +2,7 @@ from collections import namedtuple
 import scipy.io as sio
 import scipy.io.wavfile as sio_wav
 import scipy.signal as signal
+from datetime import datetime
 from sklearn import linear_model
 
 from tf_util import *
@@ -621,3 +622,44 @@ def load_co2():
     d = (d - d.mean) / d.std
 
     return d
+
+
+def load_hydrochem():
+    feature = 'cl mg/l'
+    loc_sites = [('bcl', 'lower hafren daily chloride'),
+                 ('ccl', 'rainfall daily chloride'),
+                 ('kcl', 'tanllwyth daily chloride')]
+
+    # Read file
+    with open('data/PlynlimonResearchCatchmentHydrochemistryData.csv') as f:
+        it = iter(f)
+        header = [x.lower() for x in next(it).strip().split(',')]
+        lines = [line.strip().split(',') for line in it]
+
+    # Convert lines to values
+    data = {field: serie for field, serie in zip(header, zip(*lines))}
+
+    # Convert date times and create decimal years
+    data['date_time'] = [datetime.strptime(x, '%d/%m/%y %H:%M')
+                         for x in data['date_time']]
+    # Create data and normalise
+    xs_full = [util.date_to_decimal_year(x) for x in data['date_time']]
+    ys_full = [float(x) if util.is_numeric(x) else np.nan for x in data[feature]]
+
+    ds = []
+    for loc, site in loc_sites:
+        # Filter by location and site
+        xs, ys = zip(*[(x, y)
+                       for x, y, l, s
+                       in zip(xs_full,
+                              ys_full,
+                              data['location'],
+                              data['site name'])
+                       if l.lower() == loc and s.lower() == site])
+
+        # Create data and normalise
+        d = Data(xs, ys)
+        d = (d - d.mean) / d.std
+        ds.append(d)
+
+    return ds
