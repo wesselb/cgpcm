@@ -720,3 +720,34 @@ def load_crude_oil():
     d = (d - d.mean) / d.std
 
     return d
+
+
+def load_eeg():
+    ys = {}
+
+    # Read file
+    with open('data/co2c0000337.rd.000') as f:
+        it = iter(f)
+
+        # Eat header lines
+        [next(it) for _ in range(5)]
+
+        # Parse data
+        for line in it:
+            trial, sensor, num, value = line.strip().split()
+            try:
+                ys[sensor].append(float(value))
+            except KeyError:
+                ys[sensor] = [float(value)]
+
+    # Convert to data and normalise
+    ds = {}
+
+    for k, v in ys.items():
+        d = Data(np.arange(len(v)), v)
+        d -= d.mean
+        d /= d.std
+        ds[k] = d
+
+    return ds
+
