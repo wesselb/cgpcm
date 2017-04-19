@@ -3,8 +3,10 @@ import numpy as np
 from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
+import config
 
-import scipy.signal as sp
+
+config.reg = 1e-6
 
 
 class Experiment(Task):
@@ -15,41 +17,41 @@ class Experiment(Task):
     def generate_config(self, args):
         options = Options('ou')
         options.add_option('causal-model', 'use the causal model')
+        options.add_value_option('seed', int, default=0)
         options.parse(args)
 
         return TaskConfig(name='OU',
-                          seed=1,
-                          fp=options.fp(),
+                          seed=options['seed'],
+                          fp=options.fp([['seed']]),
 
                           # Training options
                           iters_fpi=50,
-                          iters_pre=20,
-                          iters=100,
-                          iters_post=0,
-                          samps=0,
+                          iters_pre=100,
+                          iters=500,
+                          iters_post=100,
+                          samps=500,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=500,
-                          nx=250,
+                          n=600,
+                          nx=200,
                           nh=51,
-                          noise_init=1e-2,
-                          tau_w=0.2,
+                          noise_init=1e-3,
+                          tau_w=0.1,
                           tau_f=0.05,
 
                           # Experiment options
+                          k_len=0.025,
                           noise=0,
                           fragment_start=200,
                           fragment_length=100)
 
     def load(self, sess):
         # Load data
-        f, k = data.load_gp_exp(sess, n=self.config.n, k_len=.1)
-
-        # Predict on
-        self.data['f_pred'], f_train = f.fragment(self.config.fragment_length,
-                                                  self.config.fragment_start)
-        e = f_train.make_noisy(self.config.noise)
+        f, k = data.load_gp_exp(sess,
+                                n=self.config.n,
+                                k_len=self.config.k_len)
+        e = f
 
         # Store data
         self._set_data(f=f, e=e, k=k,
