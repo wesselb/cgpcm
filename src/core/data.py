@@ -744,7 +744,7 @@ def load_eeg():
     ds = {}
 
     for k, v in ys.items():
-        d = Data(np.arange(len(v)), v)
+        d = Data(np.arange(len(v)).astype(float), v)
         d -= d.mean
         d /= d.std
         ds[k] = d
