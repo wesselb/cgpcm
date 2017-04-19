@@ -652,7 +652,7 @@ def load_hydrochem():
                          for x in data['date_time']]
     # Create data and normalise
     xs_full = [util.date_to_decimal_year(x) for x in data['date_time']]
-    ys_full = [float(x) if util.is_numeric(x) else np.nan for x in data[feature]]
+    ys_full = [float(x) for x in data[feature] if util.is_numeric(x)]
 
     ds = []
     for loc, site in loc_sites:
