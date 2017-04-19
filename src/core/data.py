@@ -713,6 +713,9 @@ def load_crude_oil():
     # Convert to data
     d = Data(xs, ys)
 
+    # Extract relatively flat period
+    d = d[np.logical_and(d.x >= 2010, d.x <= 2014)]
+
     # Normalise and return
     d = (d - d.mean) / d.std
 
