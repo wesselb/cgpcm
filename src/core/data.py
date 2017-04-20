@@ -5,8 +5,10 @@ import scipy.signal as signal
 from datetime import datetime
 from sklearn import linear_model
 import csv
+import operator
 
 from tf_util import *
+from util import is_iterable
 import util
 import cgpcm
 import kernel
@@ -48,11 +50,29 @@ class Data(object):
         """
         Fragment the data.
 
-        :param length: length of fragment
-        :param start: start of fragment
+        :param length: length(s) of fragment(s)
+        :param start: start(s) of fragment(s)
         :return: fragmented data
         """
-        return self._split(range(start, start + length))
+        # Make length and start into iterables
+        if is_iterable(length) != is_iterable(start):
+            if is_iterable(length):
+                start = [start] * len(length)
+            else:
+                length = [length] * len(start)
+        elif not is_iterable(length):
+            length, start = [length], [start]
+
+        # Verify input
+        if len(length) != len(start):
+            raise ValueError('number of elements of `length` and `start` must '
+                             'match')
+
+        # Generate indices of fragments
+        inds = [range(s, s + l) for s, l in zip(start, length)]
+
+        # Reduce and split
+        return self._split(reduce(operator.add, inds, []))
 
     def _split(self, i_in):
         i_in = sorted(i_in)

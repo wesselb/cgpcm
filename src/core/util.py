@@ -229,3 +229,19 @@ def date_to_decimal_year(date):
     start = datetime.date(date.year, 1, 1).toordinal()
     year_length = datetime.date(date.year + 1, 1, 1).toordinal() - start
     return date.year + float(date.toordinal() - start) / year_length
+
+
+def is_iterable(x):
+    """
+    Check if an object is iterable.
+
+    :param x: object
+    :return: object iterable
+    """
+    try:
+        iter(x)
+    except TypeError:
+        return False
+    else:
+        return True
+

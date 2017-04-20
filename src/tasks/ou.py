@@ -6,7 +6,7 @@ import core.data as data
 import config
 
 
-config.reg = 1e-6
+config.reg = 1e-5
 
 
 class Experiment(Task):
@@ -25,26 +25,24 @@ class Experiment(Task):
                           fp=options.fp([['seed']]),
 
                           # Training options
-                          iters_fpi=50,
+                          iters_fpi_pre=0,
                           iters_pre=100,
                           iters=500,
-                          iters_post=100,
+                          iters_post=200,
+                          iters_fpi_post=500,
                           samps=500,
 
                           # Model options
                           causal_model=options['causal-model'],
                           n=600,
-                          nx=200,
+                          nx=300,
                           nh=51,
-                          noise_init=1e-3,
-                          tau_w=0.1,
-                          tau_f=0.05,
+                          noise_init=5e-3,
+                          tau_w=0.15,
+                          tau_f=0.025,
 
                           # Experiment options
-                          k_len=0.025,
-                          noise=0,
-                          fragment_start=200,
-                          fragment_length=100)
+                          k_len=0.05)
 
     def load(self, sess):
         # Load data

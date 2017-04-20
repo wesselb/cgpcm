@@ -1,6 +1,10 @@
 from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
+import config
+
+
+config.reg = 1e-6
 
 
 class Experiment(Task):
@@ -24,16 +28,17 @@ class Experiment(Task):
             tau_f = .1 if options['causal-sample'] else .05
 
         return TaskConfig(name='Toy Experiment',
-                          seed=1070 if options['causal-sample'] else 1030,
+                          seed=1005 if options['causal-sample'] else 1030,
                           fp=options.fp(groups=[['causal-sample']],
                                         ignore=['test']),
 
                           # Training options
-                          iters_fpi=50,
+                          iters_fpi_pre=0,
                           iters_pre=200 if options['test'] else 400,
                           iters=500 if options['test'] else 2000,
-                          iters_post=50 if options['test'] else 400,
+                          iters_post=50 if options['test'] else 200,
                           samps=200 if options['test'] else 500,
+                          iters_fpi_post=500,
 
                           # Sample options
                           causal=options['causal-sample'],
@@ -43,12 +48,11 @@ class Experiment(Task):
                           nx=60 if options['test'] else 150,
                           nh=41,
                           noise=0 if options['causal-sample'] else .5,
-                          noise_init=1e-4 if options[
-                              'causal-sample'] else 1e-2,
+                          noise_init=1e-4 if options['causal-sample'] else 1e-2,
 
                           tau_w=0.25 if options['test'] else 0.1,
                           tau_f=tau_f,
-                          data_scale=.75)
+                          data_scale=.5)
 
     def load(self, sess):
         # Load data

@@ -72,7 +72,7 @@ class CGPCM(Parametrisable):
         if nx > 0:
             tx_range = (min(e.x), max(e.x)) if tx_range is None else tx_range
             dtx = (tx_range[1] - tx_range[0]) / nx
-            omega = length_scale(2. * dtx)
+            omega = .5 * length_scale(dtx)
             tx = constant(np.linspace(tx_range[0], tx_range[1], nx))
         else:
             omega = np.nan
@@ -476,12 +476,13 @@ class VCGPCM(CGPCM):
         K = self.Kx if z else self.Kh
         return mu, K + self.s2_f / self.s2 * S
 
-    def fpi(self, num=50, z=True):
+    def fpi(self, num=50, z=True, high_reg=False):
         """
         Fixed-point iteration on :math:`q(u)` (:math:`q(z)`).
         
         :param num: number of iterations
         :param z: FPI on :math:`q(u)` (:math:`q(z)`)
+        :param high_reg: high amount of regularisation
         """
 
         def scan_fn(prev, cur):
@@ -490,10 +491,14 @@ class VCGPCM(CGPCM):
 
             # Optimal q(z) (q(u))
             lam, P = self._optimal_q(dist.mean, dist.m2, z=z)
+            if high_reg:
+                P = reg(P, diag=1e-4)
             dist = Normal.from_natural(P, lam)
 
             # Optimal q(u) (q(z))
             lam, P = self._optimal_q(dist.mean, dist.m2, z=not z)
+            if high_reg:
+                P = reg(P, diag=1e-4)
             dist = Normal.from_natural(P, lam)
 
             return dist.mean, dist.var
@@ -785,6 +790,7 @@ class VCGPCM(CGPCM):
         :param precompute: perform precomputation
         :return: predicted function
         """
+        n = shape(t)[0]
         mats = self._construct_model_matrices(data.Data(t))
 
         # Check whether to perform precomputation

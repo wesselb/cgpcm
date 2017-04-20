@@ -23,9 +23,11 @@ class Experiment(Task):
                           fp=options.fp(),
 
                           # Training options
+                          iters_fpi_pre=0,
                           iters_pre=50,
                           iters=50,
                           iters_post=50,
+                          iters_fpi_post=100,
                           samps=200,
 
                           # Model options

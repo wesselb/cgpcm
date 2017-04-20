@@ -22,15 +22,16 @@ class Experiment(Task):
                           fp=options.fp(),
 
                           # Training options
-                          iters_fpi=50,
+                          iters_fpi_pre=0,
                           iters_pre=50,
-                          iters=100,
-                          iters_post=50,
+                          iters=500,
+                          iters_post=300,
+                          iters_fpi_post=200,
                           samps=0,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=600,
+                          n=400,
                           nx=300,
                           nh=151,
                           noise_init=1e-3,

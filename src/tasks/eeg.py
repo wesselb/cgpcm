@@ -3,9 +3,10 @@ import numpy as np
 from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
+import config
 
 
-import scipy.signal as sp
+config.reg = 1e-6
 
 
 class Experiment(Task):
@@ -23,25 +24,29 @@ class Experiment(Task):
                           fp=options.fp(),
 
                           # Training options
-                          iters_fpi=20,
-                          iters_pre=50,
-                          iters=50,
-                          iters_post=0,
+                          iters_fpi_pre=0,
+                          iters_pre=500,
+                          iters=500,
+                          iters_post=50,
+                          iters_fpi_post=500,
                           samps=0,
 
                           # Model options
                           causal_model=options['causal-model'],
                           n=257,  # Full length of data set
                           nx=150,
-                          nh=150,
+                          nh=50,
                           noise_init=1e-2,
-                          tau_w=100,
-                          tau_f=5)
+                          tau_w=50,
+                          tau_f=5,
+                          
+                          # Noisy
+                          noise=2)
 
     def load(self, sess):
         # Load data
         f = data.load_eeg()['F3']
-        e = f
+        e = f.make_noisy(self.config.noise)
 
         # Store data
         self._set_data(f=f, e=e,
