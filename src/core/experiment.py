@@ -608,8 +608,14 @@ def plot_compare(tasks, args):
     if task2:
         pt2.marker('th_data', 'inducing_points2')
     pt1.line('k', 'truth', 'Truth')
-    if 'k_emp' not in data1:
-        data1['k_emp'] = data1['f'].autocorrelation()
+    # if 'k_emp' not in data1 and data1['f'].evenly_spaced:
+    #     data1['k_emp'] = data1['f'].autocorrelation()
+    # if data1['f'].evenly_spaced:
+    #     data1['k_emp'] /= data1['k_emp'].max
+    #     pt1.line('k_emp', 'observation', 'Autocorrelation')
+    d = data1['f']
+    d._evenly_spaced = True
+    data1['k_emp'] = d.autocorrelation()
     data1['k_emp'] /= data1['k_emp'].max
     pt1.line('k_emp', 'observation', 'Autocorrelation')
     pt1.fill('k_pred' + add1, 'task1', name1)
@@ -658,9 +664,10 @@ def plot_compare(tasks, args):
         p.subplot2grid((2, 6), (1, 4), colspan=2)
         p.lims(x=(0, 1 / task1.config.tau_f))
         pt1.line('psd', 'truth', label='Truth')
-        if 'psd_emp' not in data1:
+        if 'psd_emp' not in data1 and data1['f'].evenly_spaced:
             data1['psd_emp'] = data1['k_emp'].fft().abs()
-        pt1.line('psd_emp', 'observation', label='Periodogram')
+        if data1['f'].evenly_spaced:
+            pt1.line('psd_emp', 'observation', label='Periodogram')
         pt1.fill('psd_pred' + add1, 'task1', label=name1)
         if task2:
             pt2.fill('psd_pred' + add2, 'task2', label=name2)

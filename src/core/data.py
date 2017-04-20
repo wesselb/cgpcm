@@ -500,7 +500,7 @@ def load_timit_tobar2015(n=350):
 
 def load_timit_voiced_fricative():
     """
-    Load voiced fricative.
+    Load a voiced fricative.
     
     :return: data
     """
@@ -582,40 +582,44 @@ def load_akm(sess, causal, n=250, nh=31, tau_w=.1, tau_f=.05, resample=0):
 
 
 def load_seaice():
-    import pandas as pd
+    """
+    Load the sea ice data set.
+    
+    :return: data
+    """
+    x, y = [], []
 
-    import datetime
+    with open('data/seaice_extent_daily_v2.1.csv') as f:
+        it = iter(csv.reader(f))
 
-    def year_fraction(date):
-        start = datetime.date(date.year, 1, 1).toordinal()
+        # First two lines are headers
+        next(it), next(it)
 
-        year_length = datetime.date(date.year + 1, 1, 1).toordinal() - start
+        for line in it:
+            year, month, day, extent, _, _ = line
 
-        decimal_date = date.year + float(
-            date.toordinal() - start) / year_length
+            # Convert date to decimal year
+            date = datetime(int(year), int(month), int(day))
+            decimal_year = util.date_to_decimal_year(date)
 
-        return decimal_date
+            # Add values
+            x.append(decimal_year)
+            y.append(float(extent))
 
-    ### Read in daily data
+    # Convert to data and normalise
+    d = Data(x, y)
+    d -= d.mean
+    d /= d.std
 
-    names = ['Year', 'Month', 'Day', 'Extent', 'Missing', 'Source Data']
-
-    df = pd.read_csv('data/seaice_extent_daily_v2.1.csv',
-                     skiprows=2, names=names)
-
-    dec_date = np.zeros(len(df))
-
-    for j, i in enumerate(df.index):
-        df1 = df[df.index == i]
-
-        dec_date[j] = year_fraction(
-            datetime.date(df1.Year, df1.Month, df1.Day))
-
-    df['decimal_date'] = dec_date
-    return df
+    return d
 
 
 def load_co2():
+    """
+    Load CO2 data.
+    
+    :return: CO2 data
+    """
     x, y = [], []
 
     # Load file
@@ -628,7 +632,7 @@ def load_co2():
 
     x, y = np.array(x), np.array(y)
 
-    # Correct x: they are not numerically evenly spaced
+    # Correct x: they are just not numerically evenly spaced
     x = np.linspace(x[0], x[-1], len(x))
 
     # Detrend
@@ -644,6 +648,12 @@ def load_co2():
 
 
 def load_hydrochem():
+    """
+    Load four hydrochemical data sets that describe the concentration of Cl
+    over time.
+    
+    :return: data sets
+    """
     feature = 'cl mg/l'
     loc_sites = [('bcl', 'lower hafren daily chloride'),
                  ('ccl', 'rainfall daily chloride'),
@@ -686,6 +696,11 @@ def load_hydrochem():
 
 
 def load_crude_oil():
+    """
+    Load crude oil prices from 2000 to 2017.
+    
+    :return: data
+    """
     xs, ys = [], []
 
     # Read file
@@ -723,6 +738,11 @@ def load_crude_oil():
 
 
 def load_eeg():
+    """
+    Load EEGs from healty person.
+    
+    :return: dictionary with data sets
+    """
     ys = {}
 
     # Read file
@@ -753,6 +773,11 @@ def load_eeg():
 
 
 def load_currency():
+    """
+    Load exchange rates.
+    
+    :return: dictionary with data sets
+    """
     ys = {}
     xs = []
 
