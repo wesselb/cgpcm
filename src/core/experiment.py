@@ -152,7 +152,7 @@ class TaskConfig(Parametrisable):
     Configuration for a task.
     """
     _required_pars = ['fp', 'seed', 'iters_post', 'iters', 'iters_pre',
-                      'samps', 'name', 'iters_fpi']
+                      'samps', 'name', 'iters_fpi_pre', 'iters_fpi_post']
 
 
 def train(sess, task, debug_options):
@@ -198,11 +198,11 @@ def train(sess, task, debug_options):
     out.section('training MF')
 
     # FPI
-    if task.config.iters_fpi:
+    if task.config.iters_fpi_pre:
         out.section('performing initial fixed-point iterations')
         elbo = mod.elbo()[0]
         out.kv('ELBO before', sess.run(elbo), mod='.2e')
-        mod.fpi(task.config.iters_fpi)
+        mod.fpi(task.config.iters_fpi_pre)
         out.kv('ELBO after', sess.run(elbo), mod='.2e')
         out.section_end()
 
@@ -250,11 +250,11 @@ def train(sess, task, debug_options):
         out.section_end()
 
     # FPI
-    if task.config.iters_fpi:
+    if task.config.iters_fpi_post:
         out.section('performing final fixed-point iterations')
         elbo = mod.elbo()[0]
         out.kv('ELBO before', sess.run(elbo), mod='.2e')
-        mod.fpi(task.config.iters_fpi)
+        mod.fpi(task.config.iters_fpi_post)
         out.kv('ELBO after', sess.run(elbo), mod='.2e')
         out.section_end()
 
