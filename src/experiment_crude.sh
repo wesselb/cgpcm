@@ -10,10 +10,10 @@ length_increment=$6
 
 opts=${@:7:${#}}
 
-for (( offset = $from_offset; offset <= $to_offset; offset += $offset_increment )); do
-    echo Offset: $offset
-    for (( len = $from_length; len <= $to_length; len += $length_increment )); do
-        echo Length: $len
+for (( len = $from_length; len <= $to_length; len += $length_increment )); do
+    echo Length: $len
+    for (( offset = $from_offset; offset <= $to_offset; offset += $offset_increment )); do
+        echo Offset: $offset
         ./controller.py -t crude offset $offset length $len causal-model \
                         -t crude offset $offset length $len \
                         -p compare index0 0 index1 0 mf0 \

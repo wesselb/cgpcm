@@ -31,13 +31,13 @@ class Experiment(Task):
                           iters=500,
                           iters_post=200,
                           iters_fpi_post=500,
-                          samps=0,
+                          samps=500,
 
                           # Model options
                           causal_model=options['causal-model'],
                           n=600,
                           nx=300,
-                          nh=51,
+                          nh=75,
                           noise_init=5e-3,
                           tau_w=1.,
                           tau_f=.1,

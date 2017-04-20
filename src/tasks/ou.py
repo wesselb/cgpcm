@@ -36,7 +36,7 @@ class Experiment(Task):
                           causal_model=options['causal-model'],
                           n=600,
                           nx=300,
-                          nh=51,
+                          nh=75,
                           noise_init=5e-3,
                           tau_w=0.15,
                           tau_f=0.025,
