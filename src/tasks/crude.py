@@ -6,7 +6,7 @@ import core.data as data
 import config
 
 
-config.reg = 1e-5
+config.reg = 5e-4
 
 
 class Experiment(Task):
@@ -19,11 +19,12 @@ class Experiment(Task):
         options.add_option('causal-model', 'use the causal model')
         options.add_value_option('offset', int, required=True)
         options.add_value_option('length', int, required=True)
+        options.add_value_option('n', int, required=True)
         options.parse(args)
 
         return TaskConfig(name='Crude oil',
                           seed=0,
-                          fp=options.fp([['offset', 'length']]),
+                          fp=options.fp([['offset', 'length', 'n']]),
 
                           # Training options
                           iters_fpi_pre=0,
@@ -35,9 +36,9 @@ class Experiment(Task):
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=600,
+                          n=options['n'],
                           nx=300,
-                          nh=75,
+                          nh=51,
                           noise_init=5e-3,
                           tau_w=1.,
                           tau_f=.1,
@@ -49,7 +50,7 @@ class Experiment(Task):
     def load(self, sess):
         # Load data
         f = data.load_crude_oil()
-        self.data['starts'] = self.config.offset + np.arange(100, 1000, 100)
+        self.data['starts'] = self.config.offset + np.arange(500, 900, 80)
         self.data['f_pred'], f_train = f.fragment(self.config.length,
                                                   self.data['starts'])
         e = f_train
