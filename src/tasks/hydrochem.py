@@ -3,8 +3,10 @@ import numpy as np
 from core.experiment import Task, TaskConfig, Options
 from core.cgpcm import VCGPCM
 import core.data as data
+import config
 
-import scipy.signal as sp
+
+config.reg = 1e-5
 
 
 class Experiment(Task):
@@ -18,39 +20,30 @@ class Experiment(Task):
         options.parse(args)
 
         return TaskConfig(name='Hydrochemical Data',
-                          seed=1,
+                          seed=0,
                           fp=options.fp(),
 
                           # Training options
-                          iters_fpi=50,
+                          iters_fpi_pre=0,
                           iters_pre=20,
-                          iters=100,
+                          iters=50,
                           iters_post=0,
+                          iters_fpi_post=500,
                           samps=0,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=500,
-                          nx=250,
-                          nh=51,
-                          noise_init=1e-2,
-                          tau_w=0.2,
-                          tau_f=0.05,
-
-                          # Experiment options; data set is 1139 long
-                          noise=0,
-                          fragment_start=500,
-                          fragment_length=100)
+                          n=600,
+                          nx=400,
+                          nh=151,
+                          noise_init=1e-1,
+                          tau_w=5,
+                          tau_f=0.1)
 
     def load(self, sess):
         # Load data: take last data set
-        f = data.load_hydrochem()[2]
-
-        # Predict on
-        self.data['f_pred'], f_train = f.fragment(self.config.fragment_length,
-                                                  self.config.fragment_start)
-        # Further downsample
-        e = f_train.subsample(self.config.n)[0].make_noisy(self.config.noise)
+        f = data.load_hydrochem()[3].subsample(self.config.n)[0]
+        e = f
 
         # Store data
         t = data.Data(np.linspace(-2 * self.config.tau_w,

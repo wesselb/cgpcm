@@ -5,9 +5,6 @@ from core.cgpcm import VCGPCM
 import core.data as data
 
 
-import scipy.signal as sp
-
-
 class Experiment(Task):
     """
     TIMIT 2.
@@ -19,31 +16,33 @@ class Experiment(Task):
         options.parse(args)
 
         return TaskConfig(name='TIMIT 2',
-                          seed=10,
+                          seed=0,
                           fp=options.fp(),
 
                           # Training options
-                          iters_pre=50,
-                          iters=50,
+                          iters_fpi_pre=0,
+                          iters_pre=100,
+                          iters=100,
                           iters_post=0,
+                          iters_fpi_post=500,
                           samps=0,
 
                           # Model options
                           causal_model=options['causal-model'],
-                          n=350,
-                          nx=150,
+                          n=800,
+                          nx=400,
                           nh=150,
-                          noise_init=1e-2,
-                          tau_w=3e-2,
-                          tau_f=.5e-3)
+                          noise_init=1e-3,
+                          tau_w=1.5e-2,
+                          tau_f=.05e-3)
 
     def load(self, sess):
         # Load data
         f = data.load_timit_voiced_fricative()
-        e = f.subsample(400)[0]
+        e = f.subsample(self.config.n)[0]
 
         # Store data
-        self._set_data(f=f, e=f,
+        self._set_data(f=f, e=e,
                        k=data.Data(np.linspace(-2 * self.config.tau_w,
                                                2 * self.config.tau_w,
                                                501)),
@@ -53,7 +52,7 @@ class Experiment(Task):
 
         # Construct model
         mod = VCGPCM.from_recipe(sess=sess,
-                                 e=f,
+                                 e=e,
                                  nx=self.config.nx,
                                  nh=self.config.nh,
                                  tau_w=self.config.tau_w,
