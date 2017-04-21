@@ -240,6 +240,17 @@ class Data(object):
             # If e.g. `other` has is of another shape
             return False
 
+    def not_at(self, other_x):
+        """
+        Find the data not at some x values
+
+        :param other_x: x values to avoid
+        :return: new data
+        """
+        if type(other_x) == Data:
+            other_x = other_x.x
+        return self.at(sorted(set(self.x) - set(other_x)))
+
     def at(self, other_x):
         """
         Find the data at some new x values through linear interpolation.
@@ -247,6 +258,8 @@ class Data(object):
         :param other_x: new x values
         :return: new data
         """
+        if type(other_x) == Data:
+            other_x = other_x.x
         return Data(other_x, np.interp(other_x, self.x, self.y))
 
     def zero_phase(self):
@@ -274,7 +287,7 @@ class Data(object):
         y_app = np.zeros(n)
         return Data(np.concatenate((self.x[0] - x_app[::-1],
                                     self.x,
-                                    self.x[-1] + x_app[::-1])),
+                                    self.x[-1] + x_app)),
                     np.concatenate((y_app, self.y, y_app)))
 
     def minimum_phase(self):
@@ -469,7 +482,7 @@ class Data(object):
 UncertainData = namedtuple('UncertainData', 'mean lower upper std')
 
 
-def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
+def load_hrir(n=1000, h_wav_fn='./data/KEMAR/elev20/R20e280a.wav', resample=0):
     """
     Load HRIR data.
 
@@ -480,6 +493,9 @@ def load_hrir(n=1000, h_wav_fn='data/KEMAR_R10e355a.wav', resample=0):
     """
     # Load data
     h = Data.from_wav(h_wav_fn)
+
+    # Clean filter using heuristics
+    h = h[h.x <= 4e-3]  # Get rid of noisy tail
 
     # Take `h.len` extra points to avoid transition effects
     t = np.arange(n + h.len) * h.dx
@@ -541,6 +557,30 @@ def load_gp_exp(sess, n=250, k_len=.1):
     t = util.vlinspace(0, 1, n)
     tk = util.vlinspace(0, 1, 301)
     k_fun = kernel.Exponential(s2=1., gamma=1 / k_len)
+    f = Data.from_gp(sess, k_fun, t)
+    k = Data(tk, sess.run(k_fun(tk, np.array([[0.]]))))
+
+    # Normalise
+    f -= f.mean
+    f /= f.std
+    k /= k.max
+    return f, k
+
+
+def load_gp_eq(sess, n=250, k_len=.1):
+    """
+    Sample from a GP with an exponentiated quadratic kernel.
+
+    :param sess: TensorFlow session
+    :param n: number of time points
+    :param k_len: time constant of kernel
+    :return: data for function and kernel
+    """
+    t = util.vlinspace(0, 1, n)
+    tk = util.vlinspace(0, 1, 301)
+    k_fun = kernel.DEQ(s2=1.,
+                       gamma=util.length_scale(k_len),
+                       alpha=0.)
     f = Data.from_gp(sess, k_fun, t)
     k = Data(tk, sess.run(k_fun(tk, np.array([[0.]]))))
 
@@ -842,8 +882,3 @@ def load_currency():
         ds[k] = d
 
     return ds
-
-
-
-
-
