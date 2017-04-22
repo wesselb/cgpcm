@@ -6,7 +6,7 @@ import core.data as data
 import config
 
 
-config.reg = 5e-4
+config.reg = 1e-4
 
 
 class Experiment(Task):
@@ -30,15 +30,15 @@ class Experiment(Task):
                           iters_fpi_pre=0,
                           iters_pre=100,
                           iters=500,
-                          iters_post=200,
+                          iters_post=500,
                           iters_fpi_post=500,
-                          samps=500,
+                          samps=1500,
 
                           # Model options
                           causal_model=options['causal-model'],
                           n=options['n'],
                           nx=300,
-                          nh=51,
+                          nh=101,
                           noise_init=5e-3,
                           tau_w=1.,
                           tau_f=.1,
@@ -50,10 +50,10 @@ class Experiment(Task):
     def load(self, sess):
         # Load data
         f = data.load_crude_oil()
-        self.data['starts'] = self.config.offset + np.arange(500, 900, 80)
-        self.data['f_pred'], f_train = f.fragment(self.config.length,
-                                                  self.data['starts'])
-        e = f_train
+        self.data['starts'] = [100, 300, 550, 800, 900]  # Randomly spread out
+        self.data['f_in'], f_train = f.fragment(self.config.length,
+                                                self.data['starts'])
+        e, self.data['f_out'] = f_train.subsample(self.config.n)
 
         # Store data
         self._set_data(f=f, e=e,
