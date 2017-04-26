@@ -882,3 +882,43 @@ def load_currency():
         ds[k] = d
 
     return ds
+
+
+def load_solar():
+    head = 70
+    x, y, y_bg = [], [], []
+
+    # Parse file
+    with open('data/lean2000_irradiance.txt') as f:
+        reader = csv.reader(f, delimiter=' ')
+
+        # Skip header
+        for i in range(head):
+            next(reader)
+
+        # Read
+        for line in reader:
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Append current line
+            year, mean, mean_bg = map(float, filter(None, line))
+            x.append(year)
+            y.append(mean)
+            y_bg.append(mean_bg)
+
+    # Convert to data
+    d, d_bg = Data(x, y), Data(x, y_bg)
+
+    # Take years after 1750
+    d = d[d.x >= 1750]
+    d_bg = d_bg[d_bg.x >= 1750]
+
+    # Normalise
+    d -= d.mean
+    d /= d.std
+    d_bg -= d_bg.mean
+    d_bg /= d_bg.std
+
+    return d, d_bg
